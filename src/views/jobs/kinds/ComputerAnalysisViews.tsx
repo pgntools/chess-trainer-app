@@ -4,6 +4,7 @@ import { KeyValueList } from "../../../design-system/components/lists";
 import { JOB_ENTITIES } from "../../../lib/jobs/entities";
 import { ANALYSIS_CASE_ENTITY, ANALYSIS_PROJECT_ENTITY } from "../../../lib/jobs/entityTypes";
 import { readComputerAnalysisJob } from "../../../lib/jobs/kinds/computerAnalysis/kind";
+import { continuesRowsOf } from "../jobViews";
 import type { JobViewProps } from "../kindViewTypes";
 import { useJobEntitiesVersion } from "../useJobs";
 import { ComputerAnalysisDoneReport, ComputerAnalysisLiveReport } from "./ComputerAnalysisReports";
@@ -26,10 +27,10 @@ export function ComputerAnalysisDetails({ job, testId }: JobViewProps) {
 /**
  * **What a computer analysis was asked to do** — the engine that ran it (or
  * was asked for), the preset as the popup named it, where the results go,
- * the search and the rest of the form.
+ * the search and the rest of the form — and the job it continues (CTA-236).
  */
 export function ComputerAnalysisParameters({ job, testId }: JobViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   useJobEntitiesVersion();
   const read = readComputerAnalysisJob(job);
   if (read === undefined) return null;
@@ -61,6 +62,7 @@ export function ComputerAnalysisParameters({ job, testId }: JobViewProps) {
       value: options.toMove === null ? t("jobs.facts.fromMove", { move: from }) : t("jobs.facts.moveRange", { from, to: options.toMove }),
     },
     { id: "variants", label: t("jobs.facts.variants"), value: options.outputs.map((variant) => t(`computerAnalysis.variants.${variant}`)).join(", ") },
+    ...continuesRowsOf(t, i18n.language, input.continues, input.seed?.length ?? 0),
   ];
   return <KeyValueList rows={rows} ariaLabel={t("jobs.facts.title")} testId={testId} />;
 }

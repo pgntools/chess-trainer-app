@@ -11,7 +11,7 @@ import { addAnalysisCases } from "../../lib/analysisCaseStore";
 import { createAnalysisProject } from "../../lib/analysisProjectStore";
 import { gameCaseOf } from "../../lib/analysisProjects";
 import { indexedRowOf } from "../../lib/collectionIndex";
-import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../lib/computerAnalysis";
+import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type ComputerAnalysisOptions } from "../../lib/computerAnalysis";
 import { addCollection, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
 import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
 import { JOBS_DB, jobRuntime, startJobRuntime } from "../../lib/jobs/runtime";
@@ -57,16 +57,21 @@ const mountAt = (path: string) => {
   return router;
 };
 
-/** A Case's computer analysis, queued to run in an hour — it stays queued here. */
-const queueAnalysis = async () => {
+/**
+ * A Case's computer analysis, queued to run in an hour — it stays queued
+ * here — with the settings a new job is given now (the Default preset's
+ * depth and move time, the Engine menu's Threads and Hash), unless `options`
+ * says otherwise.
+ */
+const queueAnalysis = async (options: Partial<ComputerAnalysisOptions> = {}) => {
   const project = (await createAnalysisProject("Openings", null))!;
   await addAnalysisCases([gameCaseOf({ id: "case", projectId: project.id, name: "Alice – Bob" }, parsePgnTree(PGN))]);
   const queued = await jobRuntime().enqueue(
     COMPUTER_ANALYSIS_KIND,
     {
       source: { projectId: project.id, caseId: "case", name: "Alice – Bob", pgn: PGN },
-      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
-      preset: { id: "", name: "Default", values: {} },
+      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"], moveTimeMs: 0, hashMb: 16, ...options },
+      preset: { id: "default", name: "Default", values: {} },
       target: { kind: "project", projectId: project.id },
     },
     { runAfter: new Date(Date.now() + 3_600_000) },
@@ -211,6 +216,67 @@ describe("the Jobs screen — /jobs (CTA-221)", () => {
     mountAt("/jobs");
     expect(await screen.findByRole("link", { name: "Jobs settings" })).toHaveAttribute("href", "/jobs/settings");
     expect(matchRoutes(appRoutes, "/analysis/jobs")?.at(-1)?.route.path).not.toBe("/analysis/jobs");
+  });
+});
+
+describe("Resume against the settings in effect (CTA-236)", () => {
+  /** A job queued deeper than the current settings, then paused. */
+  const pausedDeeper = async () => {
+    const id = await queueAnalysis({ depth: 30, minDepth: 30 });
+    expect(await jobRuntime().pause(id)).toBeUndefined();
+    return id;
+  };
+
+  it("asks first on /jobs when the job's settings differ — Cancel leaves it, the job's settings resume it as it is", async () => {
+    const id = await pausedDeeper();
+    mountAt("/jobs");
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Paused"));
+    await user.click(screen.getByRole("button", { name: "Resume Alice – Bob" }));
+    const dialog = await screen.findByRole("dialog", { name: "Engine settings changed" });
+    expect(within(dialog).getAllByRole("listitem").map((row) => row.textContent)).toEqual(["Depth: 30 → 20"]);
+    await expectNoAxeViolations(dialog);
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(jobRuntime().snapshot()?.find((job) => job.id === id)?.status).toBe("paused");
+
+    await user.click(screen.getByRole("button", { name: "Resume Alice – Bob" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Continue with the job's settings" }));
+    await waitFor(() => expect(screen.getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Queued"));
+    expect(jobRuntime().snapshot()?.map((job) => job.id)).toEqual([id]);
+  });
+
+  it("continues with the current settings from the job's page: a new job, the old one gone, the page following to it", async () => {
+    const id = await pausedDeeper();
+    const router = mountAt(`/jobs/${id}`);
+    expect(await screen.findByRole("heading", { level: 1, name: "Alice – Bob" })).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Resume/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Engine settings changed" });
+    await user.click(within(dialog).getByRole("button", { name: "Continue with current settings" }));
+
+    await waitFor(() => expect(router.state.location.pathname).not.toBe(`/jobs/${id}`));
+    const jobs = jobRuntime().snapshot() ?? [];
+    expect(jobs).toHaveLength(1);
+    const [next] = jobs;
+    expect(next.id).not.toBe(id);
+    expect(router.state.location.pathname).toBe(`/jobs/${next.id}`);
+    expect(next.input).toMatchObject({ options: { depth: 20 }, continues: { jobId: id, title: "Alice – Bob" } });
+    expect(await screen.findByText("Continued with the current settings: Alice – Bob.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Alice – Bob" })).toBeInTheDocument();
+    expect(screen.getByTestId("job-parameters")).toHaveTextContent("Continues");
+    expect(screen.getByTestId("job-parameters")).toHaveTextContent("Alice – Bob, asked for");
+  });
+
+  it("resumes at once a job whose settings are the current ones", async () => {
+    const id = await queueAnalysis();
+    await jobRuntime().pause(id);
+    mountAt(`/jobs/${id}`);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Resume/ }));
+    await waitFor(() => expect(jobRuntime().snapshot()?.find((job) => job.id === id)?.status).toBe("queued"));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 
