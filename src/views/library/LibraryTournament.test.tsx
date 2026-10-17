@@ -367,6 +367,23 @@ describe("the tournament view's own panel (CTA-229)", () => {
   });
 });
 
+describe("the Games tab's filters folded to a rail (CTA-230)", () => {
+  it("stays folded across a change of tab, and opens again with its filters", async () => {
+    const user = userEvent.setup();
+    const cup = await marked("roundRobin");
+    mount(`/library/${cup.id}?tab=games&player=Amy`);
+    await screen.findByTestId("library-table");
+    await user.click(screen.getByRole("button", { name: "Hide filters" }));
+    expect(screen.getByRole("button", { name: "Show filters — 1 filter on" })).toBeInTheDocument();
+
+    await user.click(tab("info"));
+    await user.click(tab("games"));
+    await screen.findByTestId("library-table");
+    await user.click(screen.getByRole("button", { name: "Show filters — 1 filter on" }));
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+  });
+});
+
 describe("a collection that does not read as a tournament", () => {
   it("keeps its games table, with no tabs", async () => {
     const plain = await upload();

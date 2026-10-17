@@ -9,7 +9,7 @@ import CollectionFilters from "./CollectionFilters";
 import { FULL_FACETS, NO_FILTERS, SOME_FILTERS, SPARSE_FACETS } from "./fixtures";
 
 /** The filters on fixtures, their values held by the demo as the collection's URL holds them. */
-const demo = (facets: CollectionFacets, initial: CollectionFilterValues, board = false) => (
+const demo = (facets: CollectionFacets, initial: CollectionFilterValues, board = false, foldable = false) => (
   <Box sx={{ maxWidth: 320 }}>
     <WithState<CollectionFilterValues> initial={initial}>
       {(values, set) => (
@@ -25,6 +25,7 @@ const demo = (facets: CollectionFacets, initial: CollectionFilterValues, board =
               </Typography>
             ) : undefined
           }
+          onCollapse={foldable ? () => {} : undefined}
           testId="library-filter"
         />
       )}
@@ -39,6 +40,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Every filter, none on (the side waits for a player)", render: () => demo(FULL_FACETS, NO_FILTERS, true) },
     { name: "Some on — a player as White, an event, a start date, a result", render: () => demo(FULL_FACETS, SOME_FILTERS, true) },
     { name: "An upload with players only — no opening, event, dates or result", render: () => demo(SPARSE_FACETS, NO_FILTERS) },
+    { name: "Foldable to a rail — its Hide button after Clear (CTA-230)", render: () => demo(FULL_FACETS, SOME_FILTERS, false, true) },
   ],
 };
 

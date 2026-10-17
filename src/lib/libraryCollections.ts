@@ -426,6 +426,26 @@ export const COLLECTION_FILTER_PARAMS = [
   "line",
 ] as const satisfies readonly (keyof CollectionFilterValues)[];
 
+/**
+ * **How many of the panel's filters are on** (CTA-230 — the folded panel's
+ * badge): the players (however many names), the side they played (only with
+ * a player, as `filteredRows` reads it), the opening, the event, the date
+ * range (either end), the result and the opening-moves line — the words box
+ * is the table's, not counted.
+ */
+export const activeFilterCount = (values: CollectionFilterValues): number => {
+  const players = values.player.some((name) => name.trim() !== "");
+  return [
+    players,
+    players && values.color !== "",
+    values.opening.trim() !== "",
+    values.event !== "",
+    values.from !== "" || values.to !== "",
+    values.result !== "",
+    values.line !== "",
+  ].filter(Boolean).length;
+};
+
 const searchTextOf = (row: CollectionRow): string =>
   [
     row.white,

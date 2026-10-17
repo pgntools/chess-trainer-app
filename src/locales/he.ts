@@ -1164,6 +1164,10 @@ const he: typeof en = {
     filters: {
       title: "מסננים",
       clear: "ניקוי",
+      collapse: "הסתרת המסננים",
+      expand: "הצגת המסננים",
+      expandActive_one: "הצגת המסננים — מסנן אחד פעיל",
+      expandActive_other: "הצגת המסננים — {{count}} מסננים פעילים",
       player: "שחקן",
       color: "שיחק ב",
       anyColor: "כל צבע",

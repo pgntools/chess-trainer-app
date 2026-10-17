@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
@@ -51,7 +51,7 @@ import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { RightPanel } from "../main/rightPanel";
 import { useShellCompact } from "../main/shellCompact";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
-import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
+import { CollectionFilters, CollectionFiltersRail, TournamentSuggestion } from "../../blocks/forms";
 import { CollectionDetails, type CollectionDetailsTab } from "../../blocks/panels";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
@@ -157,6 +157,8 @@ function CollectionTable({
   rows,
   tabs,
   detailsToggle,
+  filtersFolded,
+  onFiltersFoldedChange,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
@@ -164,8 +166,13 @@ function CollectionTable({
   tabs?: TournamentTabs;
   /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the actions. */
   detailsToggle?: ReactNode;
+  /** The filters' panel folded to the shell's rail (CTA-230) — the page's state, so a tournament's change of tab keeps it. */
+  filtersFolded: boolean;
+  onFiltersFoldedChange: (folded: boolean) => void;
 }) {
   const { t } = useTranslation();
+  // Under the shell's breakpoint the panel is stacked under the table: nothing to fold (CTA-230).
+  const compact = useShellCompact();
   const navigate = useNavigate();
   const location = useLocation();
   const { show } = useSnackbar();
@@ -472,6 +479,23 @@ function CollectionTable({
   const gamePath = (number: number) => `/library/${encodeURIComponent(collection.id)}/${number}`;
   const cameFrom = `${location.pathname}${location.search}`;
 
+  /*
+    Folding the filters (CTA-230) takes away the button pressed — the panel's
+    Hide, the rail's Show — so the focus goes on to the one that undoes it,
+    once the shell has drawn it.
+  */
+  const focusAfterFold = useRef<string | null>(null);
+  const foldFilters = (folded: boolean) => {
+    focusAfterFold.current = folded ? "library-filters-rail-expand" : "library-filter-collapse";
+    onFiltersFoldedChange(folded);
+  };
+  useEffect(() => {
+    const target = focusAfterFold.current;
+    if (target === null) return;
+    focusAfterFold.current = null;
+    document.querySelector<HTMLElement>(`[data-testid="${target}"]`)?.focus();
+  }, [filtersFolded]);
+
   const confirmDelete = async () => {
     const failed = await removeCollectionGames(collection.id, [...picked]);
     if (failed !== undefined) {
@@ -646,7 +670,10 @@ function CollectionTable({
           />
         </Box>
       </Box>
-      <RightPanel>
+      <RightPanel
+        collapsed={filtersFolded}
+        rail={<CollectionFiltersRail values={filters} onExpand={() => foldFilters(false)} testId="library-filters-rail" />}
+      >
         {/* The aside does not scroll; the panel is its own scrolling column. */}
         <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
           <CollectionFilters
@@ -665,6 +692,7 @@ function CollectionTable({
                 />
               )
             }
+            onCollapse={compact ? undefined : () => foldFilters(true)}
             testId="library-filter"
             rootTestId="library-filters"
           />
@@ -717,7 +745,9 @@ function CollectionTable({
  * to the Library; a frame for now: the collection's name, a General tab's
  * placeholder and an Options tab's example switch, held here (above the
  * tournament view's tabs, so a change of tab keeps them) and kept nowhere.
- * Under the shell's breakpoint it is a drawer, opened from the header.
+ * Under the shell's breakpoint it is a drawer, opened from the header. It holds
+ * too whether the right-hand filters are **folded to a rail** (CTA-230) — so a
+ * tournament's change of tab keeps it — for this visit only.
  */
 function CollectionPage({ collection, rows }: { collection: CollectionSummary; rows: readonly CollectionRow[] }) {
   const { t } = useTranslation();
@@ -725,6 +755,9 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTab, setDetailsTab] = useState<CollectionDetailsTab>("general");
   const [exampleOption, setExampleOption] = useState(false);
+  // The filters folded to a rail (CTA-230): for this visit only — the page opens with them open.
+  const [filtersFolded, setFiltersFolded] = useState(false);
+  const fold = { filtersFolded, onFiltersFoldedChange: setFiltersFolded };
   // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
   const detailsToggle = compact ? (
     <IconAction
@@ -745,10 +778,10 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           collection={collection}
           rows={rows}
           detailsToggle={detailsToggle}
-          games={(tabs) => <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} />}
+          games={(tabs) => <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} {...fold} />}
         />
       ) : (
-        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} />
+        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} {...fold} />
       )}
       <BoardLeftPanel
         collapsed={false}

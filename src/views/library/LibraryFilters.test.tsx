@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { indexedRowOf, numberedRows, type IndexedRow } from "../../lib/collectionIndex";
 import { addCollection } from "../../lib/libraryCollectionStore";
@@ -41,6 +42,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
 });
 
+// The shell's breakpoint, as the screen asks it (the panel's fold, CTA-230); wide unless a test says otherwise.
+const shell = vi.hoisted(() => ({ compact: false }));
+vi.mock("../main/shellCompact", () => ({ useShellCompact: () => shell.compact }));
+
 /*
   The Library (CTA-75), through its screens — here a collection's table narrowed: the panel's filters, and the opening-moves board with its tree and its PGN. The other
   Library screen tests are `Library.test.tsx`, `LibraryFilters.test.tsx`,
@@ -50,7 +55,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   with the other v2 boards (`boards.test.tsx`, `panelPropagation.test.tsx`).
 */
 
-beforeEach(resetLibrary);
+beforeEach(async () => {
+  shell.compact = false;
+  await resetLibrary();
+});
 
 describe("the table's filters", () => {
   const RICH = [
@@ -456,5 +464,73 @@ describe("the opening-moves filter", () => {
         '[Event "Rich"]\n[Result "*"]\n\n1. e4 (1. d4) 1... e5 (1... c5) *',
       ]);
     });
+  });
+});
+
+describe("the filters folded to a rail (CTA-230)", () => {
+  const SPRING = [
+    '[Event "Spring Open"]\n[Date "2023.04.02"]\n[White "Carlsen"]\n[Black "Nepo"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+    '[Event "Spring Open"]\n[Date "2023.04.03"]\n[White "Nepo"]\n[Black "Carlsen"]\n[Result "0-1"]\n\n1. e4 c5 0-1',
+    '[Event "Autumn Cup"]\n[Date "2023.10"]\n[White "Ding"]\n[Black "Carlsen"]\n[Result "1/2-1/2"]\n\n1. d4 d5 1/2-1/2',
+  ];
+
+  it("folds and opens by its two buttons, the focus going on to the other, the filters untouched", async () => {
+    const user = userEvent.setup();
+    const spring = await keep("Spring", SPRING);
+    await mountTable(`/library/${spring.id}?event=Spring+Open`);
+    expect(rowNumbers()).toHaveLength(2);
+
+    const hide = screen.getByRole("button", { name: "Hide filters" });
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+    await user.click(hide);
+    expect(screen.queryByTestId("library-filters")).toBeNull();
+    const show = screen.getByRole("button", { name: "Show filters — 1 filter on" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(show).toHaveFocus());
+    // Folded, the table is filtered as it was.
+    expect(rowNumbers()).toHaveLength(2);
+
+    await user.keyboard("{Enter}");
+    const back = await screen.findByRole("button", { name: "Hide filters" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(within(screen.getByTestId("library-filter-event")).getByRole("combobox")).toHaveValue("Spring Open");
+    expect(where()).toBe(`/library/${spring.id}?event=Spring+Open`);
+  });
+
+  it("counts the filters still on in the rail's badge — none, no badge", async () => {
+    const user = userEvent.setup();
+    const spring = await keep("Spring", SPRING);
+    await mountTable(`/library/${spring.id}?player=Carlsen&color=white&result=1-0`);
+    await user.click(screen.getByRole("button", { name: "Hide filters" }));
+    const show = screen.getByRole("button", { name: "Show filters — 3 filters on" });
+    expect(within(show).getByText("3")).toBeInTheDocument();
+
+    await user.click(show);
+    await user.click(screen.getByTestId("library-filter-clear"));
+    await user.click(screen.getByRole("button", { name: "Hide filters" }));
+    const bare = screen.getByRole("button", { name: "Show filters" });
+    expect(within(bare).queryByText(/\d/)).toBeNull();
+  });
+
+  it("opens with the panel open every visit — the fold is kept nowhere", async () => {
+    const user = userEvent.setup();
+    const spring = await keep("Spring", SPRING);
+    const kept = { local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() };
+    await mountTable(`/library/${spring.id}`);
+    await user.click(screen.getByRole("button", { name: "Hide filters" }));
+    expect(screen.queryByTestId("library-filters")).toBeNull();
+
+    cleanupAndMount(`/library/${spring.id}`);
+    await screen.findByTestId("library-table");
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+    expect({ local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() }).toEqual(kept);
+  });
+
+  it("has nothing to fold under the shell's breakpoint — the panel stays under the table", async () => {
+    shell.compact = true;
+    const spring = await keep("Spring", SPRING);
+    await mountTable(`/library/${spring.id}`, { compact: true });
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Hide filters" })).toBeNull();
   });
 });

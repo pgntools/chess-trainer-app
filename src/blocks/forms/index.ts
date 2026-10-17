@@ -6,6 +6,7 @@
  */
 export * from "./ArrowSettingsFields";
 export * from "./CollectionFilters";
+export * from "./CollectionFiltersRail";
 export * from "./CollectionSettingsForm";
 export * from "./ComputerAnalysisForm";
 export * from "./EnginePicker";

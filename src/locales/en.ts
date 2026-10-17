@@ -1536,6 +1536,11 @@ const en = {
     filters: {
       title: "Filters",
       clear: "Clear",
+      /** The panel folded to a rail at the inline end, and opened again (CTA-230); the count is the filters still on. */
+      collapse: "Hide filters",
+      expand: "Show filters",
+      expandActive_one: "Show filters — {{count}} filter on",
+      expandActive_other: "Show filters — {{count}} filters on",
       player: "Player",
       color: "Played as",
       anyColor: "Either",

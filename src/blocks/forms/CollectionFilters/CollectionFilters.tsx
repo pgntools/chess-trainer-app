@@ -5,10 +5,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import { useTranslation } from "react-i18next";
 
 import { ChipsAutocomplete, SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { DateRangeFields, SelectField, SideToggle } from "../../../design-system/components/forms";
+import { IconAction } from "../../../design-system/components/toolbars";
 import {
   COLLECTION_FILTER_PARAMS,
   type CollectionFacets,
@@ -26,9 +28,15 @@ export type CollectionFiltersProps = {
   /** Between the players and the rest: the opening-moves board (the screen's — it is a board). Absent, nothing. */
   openingBoard?: ReactNode;
   /**
+   * Fold the panel to a rail (CTA-230): a button after Clear, at the inline
+   * end the panel folds towards (`-collapse`, `aria-expanded`). Absent, no
+   * button — the panel stacked under the table.
+   */
+  onCollapse?: () => void;
+  /**
    * The fields' prefix: `library-filter-player`, `-color` (its
    * buttons `-color-all`, `-white`, `-black`), `-opening`, `-event`,
-   * `-from`, `-to`, `-clear`, and the result's `library-table-result` — the
+   * `-from`, `-to`, `-clear`, `-collapse`, and the result's `library-table-result` — the
    * ids the Library's tests have always used.
    */
   testId: string;
@@ -54,8 +62,8 @@ export type CollectionFiltersProps = {
  * Presentational: the values and every change are props; its words are the
  * Library's catalog keys (`library.filters.*`).
  */
-function CollectionFilters({ facets, values, onChange, onClear, openingBoard, testId, rootTestId = testId }: CollectionFiltersProps) {
-  const { t } = useTranslation();
+function CollectionFilters({ facets, values, onChange, onClear, openingBoard, onCollapse, testId, rootTestId = testId }: CollectionFiltersProps) {
+  const { t, i18n } = useTranslation();
   // Any filter on: the player filter holds its names as an array, the rest are strings.
   const active = COLLECTION_FILTER_PARAMS.some((key) => {
     const value = values[key];
@@ -72,6 +80,20 @@ function CollectionFilters({ facets, values, onChange, onClear, openingBoard, te
         <Button size="small" disabled={!active} onClick={onClear} data-testid={id("clear")}>
           {t("library.filters.clear")}
         </Button>
+        {onCollapse !== undefined && (
+          <IconAction label={t("library.filters.collapse")} onClick={onCollapse} expanded edge="end" testId={id("collapse")}>
+            {/*
+              Towards the inline end, where the panel folds. The language's own
+              direction, not the theme's: a screen's panel is drawn from inside
+              the board's `ForceLTR`. An inline style, which the RTL stylis
+              plugin leaves alone.
+            */}
+            <KeyboardDoubleArrowRightRoundedIcon
+              fontSize="small"
+              style={i18n.dir() === "rtl" ? { transform: "scaleX(-1)" } : undefined}
+            />
+          </IconAction>
+        )}
       </Box>
 
       {facets.players.length > 0 && (
