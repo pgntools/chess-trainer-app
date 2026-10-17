@@ -136,14 +136,40 @@ describe("the index file", () => {
     expect(file.rows[1][file.columns.indexOf("line")]).toBeNull();
     expect(decodeCollectionIndex(file)?.rows[0].line).toEqual(["e4", "e5", "Nf3", "Nf6", "Nxe5"]);
 
+    const at = file.columns.indexOf("line");
     const old = {
       ...file,
       columns: file.columns.filter((column: string) => column !== "line"),
-      rows: file.rows.map((row: unknown[]) => row.slice(0, -1)),
+      rows: file.rows.map((row: unknown[]) => row.filter((_, index) => index !== at)),
     };
     const rows = decodeCollectionIndex(old)?.rows;
     expect(rows?.[0]).toMatchObject({ white: "Carlsen", moves: 3 });
     expect(rows?.every((row) => row.line === undefined)).toBe(true);
+  });
+
+  it("writes a game's Source tags as one object, and reads a file from before the column as naming none (CTA-233)", () => {
+    const TWIC = `[SourceTitle "The Week in Chess 1662"]\n[Source "Mark Crowther"]\n[SourceDate "2026.09.14"]\n${PETROV}`;
+    const text = encodeCollectionIndex(buildCollectionIndex([TWIC, UNTAGGED]));
+    const file = JSON.parse(text);
+    const at = file.columns.indexOf("sourceTags");
+    const tags = { SourceTitle: "The Week in Chess 1662", Source: "Mark Crowther", SourceDate: "2026.09.14" };
+    expect(file.rows[0][at]).toEqual(tags);
+    expect(file.rows[1][at]).toBeNull();
+    const rows = decodeCollectionIndex(file)?.rows;
+    expect(rows?.[0].sourceTags).toEqual(tags);
+    expect(rows?.[1].sourceTags).toBeUndefined();
+
+    // A cell that is not an object of `Source…` strings reads as none, or as what is left of it.
+    const odd = { ...file, rows: [file.rows[0].map((cell: unknown, index: number) => (index === at ? { Source: "Crowther", White: "x", SourceDate: 7 } : cell)), file.rows[1].map((cell: unknown, index: number) => (index === at ? ["Source"] : cell))] };
+    expect(decodeCollectionIndex(odd)?.rows.map((row) => row.sourceTags)).toEqual([{ Source: "Crowther" }, undefined]);
+
+    const old = {
+      ...file,
+      columns: file.columns.filter((column: string) => column !== "sourceTags"),
+      rows: file.rows.map((row: unknown[]) => row.filter((_, index) => index !== at)),
+    };
+    expect(decodeCollectionIndex(old)?.rows.every((row) => row.sourceTags === undefined)).toBe(true);
+    expect(decodeCollectionIndex(old)?.rows[0]).toMatchObject({ white: "Carlsen", moves: 3 });
   });
 
   it("refuses what is not an index", () => {

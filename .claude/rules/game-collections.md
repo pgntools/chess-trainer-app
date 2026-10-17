@@ -59,7 +59,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `activeFilterCount` (the folded panel's badge, CTA-230), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, its standings table since CTA-204 — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `activeFilterCount` (the folded panel's badge, CTA-230), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127); **the games' sources** (CTA-233): `sourceTagsOf` (a game's `Source…` tags), `KNOWN_SOURCE_TAGS`, `sourceLinkHref` (a `SourceLink` a reader may follow: `http(s)` only), `collectionSourcesOf` / `CollectionSources` (each distinct source with its games, and the games naming none). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, its standings table since CTA-204 — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -82,6 +82,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts`, `tournamentFacts.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`); the event's facts (`tournamentFactsOf`, the left panel's General since CTA-231). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
 | `src/lib/arena.ts`, `src/blocks/tables/ArenaStandingsTable/` | **An arena's standings** (CTA-204): `arenaOf` (each player's score sheet in the order played, scored as Lichess arena points or game points — tags only, the games' lengths counted off their movetext), `isLichessExport` (what makes the guess a Lichess arena), `pliesOfGames`; the block draws it as scored — an Arena in game points, a Lichess arena in Lichess arena points. The rules: `tournament-tables.md` §4.2. |
+| `src/blocks/cards/CollectionSource/` | **Where the games come from** (CTA-233): the collection page's General's Source card, at the panel's foot — the games' `Source…` tags, a `SourceLink` a link, several sources a list with their games (§6.4). |
 | `src/blocks/cards/TournamentInfo/`, `tables/ParticipantsTable/`, `panels/TopPlayers/`, `lists/TeamRosters/` | The tournament view's blocks (CTA-142): the event's facts, every player's record (sortable), the standouts, a team event's teams and their players. |
 | `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one selectable since CTA-142, each with its table — the arena's since CTA-204) and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the collection page's Options tab. |
 | `src/views/library/CollectionSettingsPanel.tsx`, `useCollectionSettings.ts` | **A collection's settings on its page** (CTA-231 — the `/library/<c>/settings` screen of CTA-121 before): the left panel's Options tab, the `CollectionSettingsForm` block in a `SettingsFrame` over one draft — held by `CollectionPage` (`useCollectionSettings`), saved whole through `updateCollectionSettings` — uploads only (§6.4.2). |
@@ -94,7 +95,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/dialogs/CollectionMergeDialog/`, `src/blocks/forms/CollectionMergeForm/` | The merge's dialog (the form, Merge, a refusal; done, Open collection and Download PGN) and its form (the sources in order — with a picker over the Library's others from *Merge with…* —, the dedupe mode, the name) — presentational (CTA-232; the form CTA-220's, a New-job form until then). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
-| `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229, its content CTA-231), on both its views: a Close back to `/library`, the collection's name (its `h2`), then two tabs — General (a tournament's `TournamentInfo` card, else the description and the index's facts) and Options (the screen's settings; a shipped collection's a read-only line) — its Jobs tab gone with the merge job (CTA-232); presentational, the open tab, the facts and the settings the screen's. |
+| `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229, its content CTA-231), on both its views: a Close back to `/library`, the collection's name (its `h2`), then two tabs — General (a tournament's `TournamentInfo` card, else the description and the index's facts; under either the `CollectionSource` card, CTA-233) and Options (the screen's settings; a shipped collection's a read-only line) — its Jobs tab gone with the merge job (CTA-232); presentational, the open tab, the facts and the settings the screen's. |
 | `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, the Info and Settings tabs (Info first and the default) and previous / next at its foot (CTA-212) — presentational, the session's state the board's. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
@@ -166,6 +167,7 @@ a collection =   ──▶ rows:  CollectionRow[]  (its INDEX, one per game)    
 | `eco` | `ECO` tag | Or, when the tags lack it, from eco.json. **A tag always wins.** |
 | `moves` | parsed mainline | Full moves: 41 plies → 21. (`collectionRowOf` counts it from the text; the index replaces that with the parsed count.) |
 | `unreadable` | index pass | `parsePgnTree` threw. The table marks it; Analyse skips it. |
+| `sourceTags` | `Source…` tags | Every tag whose name starts `Source` (`SourceTitle`, `Source`, `SourceDate`, `SourceVersion`, … and any other), as written, a placeholder left out (`sourceTagsOf`, CTA-233). **Absent** for a game naming none, and for every game of an index from before the column. |
 | `line` | index pass | The parsed mainline **in full**, as SAN (CTA-92; CTA-76's first cut stopped at 30 plies). **Absent** for unreadable games, games not from the standard start, and indexes from before the column; an index from between the two holds only each game's first 30 plies, which the tree follows as far as they go. |
 
 **The table never parses a game.** A row is built **once**, when the
@@ -470,7 +472,8 @@ then `rows` as **tuples under the column list**, one row per line (so a
 re-wired file diffs by game). `decodeCollectionIndex` finds cells **by column
 name**, so a newer column in an older file reads as absent, and an unknown
 column is ignored. `line` is stored as its SAN joined by spaces. `unreadable`
-is `1` or `null`. Decoding is non-throwing: a wrong format, a wrong version,
+is `1` or `null`. `sourceTags` (CTA-233) is an object — `{"SourceTitle": "…", "Source": "…"}` — or `null`; a
+cell that is not an object of `Source…` strings reads as absent. Decoding is non-throwing: a wrong format, a wrong version,
 or a count mismatch gives `undefined`.
 
 ---
@@ -758,7 +761,25 @@ tabs (CTA-231; a third, Jobs, went in CTA-232 with the merge job):
   rows: the source — Built-in or the reader's upload —, the games, the
   players, the event — named when one, counted when several —, the dates, the
   ratings and when an upload was added), a fact the index does not give left
-  out.
+  out. **Under either, at the panel's foot, where the games come from**
+  (CTA-233, the `CollectionSource` card, `library-collection-details-source`,
+  its heading an `h3` — in `-source-foot`, outside the part that scrolls, so
+  it stays at the bottom of the panel while the facts above it scroll; past
+  half the panel's height it scrolls itself): the games' `Source…` tags (`[SourceTitle "The Week in Chess
+  1662"]`, `[Source "Mark Crowther"]`, `[SourceDate "2026.09.14"]`) off the
+  index rows (`collectionSourcesOf` — no game read) — PGN's tags labelled
+  and in their order (title, publisher, date, version, version date,
+  edition, edition date, quality, link), any other `Source…` tag by its
+  name, dates as the PGN writes them pinned LTR, and a **`SourceLink`** that
+  is an `http(s)` address **a link**, opened in a new tab
+  (`sourceLinkHref` — any other value, `javascript:` among them, is text). Several distinct sets (a merge
+  of two issues) are a list, "Sources", each with its games; one set over
+  every game is its tags alone; games naming none are counted under them.
+  **No card** where no game carries a `Source…` tag — and so for an upload
+  indexed before the column (CTA-233): its rows have no `sourceTags`, and
+  nothing re-indexes it (no migration; a game updated on its board gets its
+  row anew). None of the shipped files carries the tags today; one that
+  does is re-wired (`wirepgn --rebuild`) to show it.
 - **Options** (`-options`) — an upload's **settings** (§6.4.2); a shipped
   collection's a line saying it is read-only (`-options-read-only`).
 

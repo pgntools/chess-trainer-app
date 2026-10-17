@@ -22,6 +22,7 @@ import {
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
   collectionMetadataOf,
+  collectionSourcesOf,
   filteredRows,
   isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
@@ -805,18 +806,21 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
   const games = useCollectionGames(tournament && detailsTab === "general" ? collection.id : undefined);
   const gameTexts = games.status === "ready" ? games.value : undefined;
   const headers = useMemo(() => gameTexts?.map(readPgnTags), [gameTexts]);
+  // Where the games come from (CTA-233): their `Source…` tags, off the index rows — under either kind's General.
+  const sources = useMemo(() => collectionSourcesOf(rows), [rows]);
   const general = useMemo<CollectionDetailsGeneral>(
     () =>
       tournament
-        ? { kind: "tournament", facts: tournamentFactsOf(collection, rows, headers), description: collection.description }
+        ? { kind: "tournament", facts: tournamentFactsOf(collection, rows, headers), description: collection.description, sources }
         : {
             kind: "collection",
             source: collection.source,
             metadata: collectionMetadataOf(rows),
             addedAt: collection.addedAt,
             description: collection.description,
+            sources,
           },
-    [tournament, collection, rows, headers],
+    [tournament, collection, rows, headers, sources],
   );
 
   // *Merge with…* (CTA-232): this collection first, the rest picked in the dialog.

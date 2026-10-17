@@ -1304,6 +1304,33 @@ const en = {
      * its views: its Close back to the Library, its name, and General, Options and
      * Jobs (CTA-231).
      */
+    /** Where a collection's games come from (CTA-233): their `Source…` tags, the `CollectionSource` card on the collection page's General. */
+    collectionSource: {
+      /* `_two` is Hebrew's dual (its plural rules' "two"); English never reads it, but `he` is typed by this catalog. */
+      title_one: "Source",
+      title_other: "Sources",
+      title_two: "Sources",
+      /** The tags PGN names; any other is shown by its own name. */
+      tags: {
+        SourceTitle: "Title",
+        Source: "Publisher",
+        SourceDate: "Date",
+        SourceVersion: "Version",
+        SourceVersionDate: "Version date",
+        SourceEdition: "Edition",
+        SourceEditionDate: "Edition date",
+        SourceQuality: "Quality",
+        SourceLink: "Link",
+      },
+      games_one: "{{games}} game",
+      games_other: "{{games}} games",
+      games_two: "{{games}} games",
+      untagged_one: "{{games}} game names no source.",
+      untagged_other: "{{games}} games name no source.",
+      untagged_two: "{{games}} games name no source.",
+      /** After a `SourceLink`, for a screen reader: where it opens. */
+      newTab: "(opens in a new tab)",
+    },
     collectionDetails: {
       label: "Details of {{name}}",
       /** The panel's Close, at its head: back to the Library — the page's one way back. */

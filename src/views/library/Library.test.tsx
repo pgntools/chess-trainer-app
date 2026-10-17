@@ -659,6 +659,26 @@ describe("a collection page's own panel (CTA-229; its content CTA-231, CTA-232)"
     await waitFor(() => expect(within(general).getByTestId("library-collection-details-description")).toHaveTextContent("Every Tuesday."));
   });
 
+  it("shows on General where the games come from, read from their Source tags — none for games naming none (CTA-233)", async () => {
+    const twic = (issue: number, pgn: string) =>
+      `[SourceTitle "The Week in Chess ${issue}"]\n[Source "Mark Crowther"]\n[SourceDate "2026.09.${issue === 1661 ? "07" : "14"}"]\n${pgn}`;
+    const sourced = await keep("TWIC", [twic(1661, GAMES[0]!), twic(1662, GAMES[1]!), GAMES[2]!]);
+    const { unmount } = mount(`/library/${sourced.id}`);
+    await screen.findByTestId("library-table");
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    const card = within(general).getByRole("region", { name: "Sources" });
+    expect(within(card).getByRole("heading", { level: 3, name: "Sources" })).toBeInTheDocument();
+    const items = within(card).getAllByRole("listitem");
+    expect(items.map((item) => within(item).getByText(/^The Week in Chess/).textContent)).toEqual(["The Week in Chess 1661", "The Week in Chess 1662"]);
+    expect(within(items[1]!).getByText("2026.09.14")).toHaveAttribute("dir", "ltr");
+    expect(within(card).getByText("1 game names no source.")).toBeInTheDocument();
+    unmount();
+
+    const plain = await upload();
+    await mountTable(`/library/${plain.id}`);
+    expect(within(screen.getByRole("tabpanel", { name: "General" })).queryByRole("region", { name: /^Sources?$/ })).toBeNull();
+  });
+
   it("shows a shipped collection read-only on Options", async () => {
     const user = userEvent.setup();
     await mountTable("/library/capablanca");
