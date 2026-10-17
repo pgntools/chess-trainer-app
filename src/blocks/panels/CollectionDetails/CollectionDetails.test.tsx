@@ -99,11 +99,18 @@ describe("CollectionDetails (CTA-229, CTA-231)", () => {
     expect(within(card).getByRole("heading", { level: 3, name: "Source" })).toBeInTheDocument();
     expect(within(card).getByTestId("probe-source-source-0-SourceTitle")).toHaveTextContent("The Week in Chess 1662");
     expect(screen.getByTestId("probe-facts").compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // At the panel's foot: outside the part that scrolls, the last thing in the tab.
+    const foot = screen.getByTestId("probe-source-foot");
+    expect(foot).toContainElement(card);
+    expect(foot.parentElement).toBe(general);
+    expect(general.lastElementChild).toBe(foot);
+    expect(foot.contains(screen.getByTestId("probe-facts"))).toBe(false);
     await expectNoAxeViolations(container);
     unmount();
     render(<Held />);
     expect(screen.queryByRole("region", { name: "Source" })).toBeNull();
     expect(screen.queryByTestId("probe-source")).toBeNull();
+    expect(screen.queryByTestId("probe-source-foot")).toBeNull();
   });
 
   it("shows a tournament's sources under its event card (CTA-233)", async () => {

@@ -934,6 +934,7 @@ const he: typeof en = {
         SourceEdition: "מהדורה",
         SourceEditionDate: "תאריך המהדורה",
         SourceQuality: "איכות",
+        SourceLink: "קישור",
       },
       games_one: "משחק אחד",
       games_other: "{{games}} משחקים",
@@ -941,6 +942,7 @@ const he: typeof en = {
       untagged_one: "משחק אחד בלי מקור.",
       untagged_other: "{{games}} משחקים בלי מקור.",
       untagged_two: "שני משחקים בלי מקור.",
+      newTab: "(נפתח בכרטיסייה חדשה)",
     },
     collectionDetails: {
       label: "הפרטים של {{name}}",

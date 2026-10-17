@@ -26,6 +26,7 @@ import {
   isPotentialTournament,
   readsAsTournament,
   sharedEventOf,
+  sourceLinkHref,
   sourceTagsOf,
   sortedRows,
   formatOfKind,
@@ -112,6 +113,14 @@ describe("where the games come from — their Source tags (CTA-233)", () => {
     expect(sourceTagsOf({ White: "A", Source: "?" })).toBeUndefined();
     expect(collectionRowOf(twic(1662), 1).sourceTags).toEqual({ SourceTitle: "The Week in Chess 1662", Source: "Mark Crowther", SourceDate: "2026.09.7" });
     expect(collectionRowOf(A, 1).sourceTags).toBeUndefined();
+  });
+
+  it("follows a SourceLink only to a web address", () => {
+    expect(sourceLinkHref("https://theweekinchess.com/twic")).toBe("https://theweekinchess.com/twic");
+    expect(sourceLinkHref("http://example.com/a?b=1")).toBe("http://example.com/a?b=1");
+    for (const value of ["javascript:alert(1)", "theweekinchess.com", "/twic", "ftp://example.com/x", "data:text/html,x"]) {
+      expect(sourceLinkHref(value)).toBeUndefined();
+    }
   });
 
   it("is absent when no game names a source", () => {

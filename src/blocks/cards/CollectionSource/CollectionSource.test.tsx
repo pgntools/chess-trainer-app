@@ -16,12 +16,17 @@ describe("CollectionSource (CTA-233)", () => {
     const card = screen.getByRole("region", { name: "Source" });
     expect(card).toBe(screen.getByTestId("probe"));
     expect(within(card).getByRole("heading", { level: 2, name: "Source" })).toBeInTheDocument();
-    expect(within(card).getAllByRole("term").map((term) => term.textContent)).toEqual(["Title", "Publisher", "Date"]);
+    expect(within(card).getAllByRole("term").map((term) => term.textContent)).toEqual(["Title", "Publisher", "Date", "Link"]);
     expect(screen.getByTestId("probe-source-0-SourceTitle")).toHaveTextContent("The Week in Chess 1662");
     expect(screen.getByTestId("probe-source-0-SourceTitle")).toHaveAttribute("dir", "auto");
     expect(screen.getByTestId("probe-source-0-Source")).toHaveTextContent("Mark Crowther");
     expect(screen.getByTestId("probe-source-0-SourceDate")).toHaveTextContent("2026.09.14");
     expect(screen.getByTestId("probe-source-0-SourceDate")).toHaveAttribute("dir", "ltr");
+    const link = within(card).getByRole("link", { name: "https://theweekinchess.com/twic (opens in a new tab)" });
+    expect(link).toHaveAttribute("href", "https://theweekinchess.com/twic");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByTestId("probe-source-0-SourceLink")).toHaveAttribute("dir", "ltr");
     expect(screen.queryByTestId("probe-source-0-games")).toBeNull();
     expect(screen.queryByRole("list")).toBeNull();
     expect(screen.queryByTestId("probe-untagged")).toBeNull();
@@ -53,8 +58,12 @@ describe("CollectionSource (CTA-233)", () => {
       "Edition",
       "Edition date",
       "Quality",
+      "Link",
       "SourceURL",
     ]);
+    // A `SourceLink` that is no web address is text, never a link; nor is any other tag holding one.
+    expect(screen.getByTestId("probe-source-0-SourceLink")).toHaveTextContent("javascript:alert(1)");
+    expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByTestId("probe-source-0-SourceVersionDate")).toHaveAttribute("dir", "ltr");
     expect(screen.getByTestId("probe-source-0-SourceEditionDate")).toHaveAttribute("dir", "ltr");
     expect(screen.getByTestId("probe-source-0-SourceURL")).toHaveTextContent("https://example.com/mega-2026");

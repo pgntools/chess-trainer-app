@@ -770,7 +770,23 @@ export const KNOWN_SOURCE_TAGS = [
   "SourceEdition",
   "SourceEditionDate",
   "SourceQuality",
+  "SourceLink",
 ] as const;
+
+/**
+ * A `SourceLink` tag's address, when it is one a reader can follow (CTA-233)
+ * — an absolute `http:` or `https:` URL, as written; anything else
+ * (`javascript:`, a bare word, a relative path) is no link and is shown as
+ * text.
+ */
+export const sourceLinkHref = (value: string): string | undefined => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 /** One source a collection's games come from: its tags in reading order, and how many games carry exactly them. */
 export type CollectionSourceEntry = {

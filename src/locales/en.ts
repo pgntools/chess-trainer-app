@@ -1261,6 +1261,7 @@ const en = {
         SourceEdition: "Edition",
         SourceEditionDate: "Edition date",
         SourceQuality: "Quality",
+        SourceLink: "Link",
       },
       games_one: "{{games}} game",
       games_other: "{{games}} games",
@@ -1268,6 +1269,8 @@ const en = {
       untagged_one: "{{games}} game names no source.",
       untagged_other: "{{games}} games name no source.",
       untagged_two: "{{games}} games name no source.",
+      /** After a `SourceLink`, for a screen reader: where it opens. */
+      newTab: "(opens in a new tab)",
     },
     collectionDetails: {
       label: "Details of {{name}}",

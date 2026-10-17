@@ -1,9 +1,11 @@
 import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import { KeyValueList, type KeyValueRow } from "../../../design-system/components/lists";
-import { KNOWN_SOURCE_TAGS, type CollectionSourceEntry, type CollectionSources } from "../../../lib/libraryCollections";
+import { KNOWN_SOURCE_TAGS, sourceLinkHref, type CollectionSourceEntry, type CollectionSources } from "../../../lib/libraryCollections";
 
 export type CollectionSourceProps = {
   /** Where the games come from (`collectionSourcesOf` over the rows) — the screen draws no card without one. */
@@ -12,7 +14,8 @@ export type CollectionSourceProps = {
   headingLevel?: "h2" | "h3";
   /**
    * The root; each source's tags are `<testId>-source-<i>` (each value
-   * `-source-<i>-<tag>`, the tag as the PGN names it), its count
+   * `-source-<i>-<tag>`, the tag as the PGN names it — a `SourceLink`'s link
+ * `-source-<i>-SourceLink-link`), its count
    * `-source-<i>-games`, the games with none `-untagged`.
    */
   testId: string;
@@ -29,7 +32,7 @@ const isKnownTag = (name: string): name is (typeof KNOWN_SOURCE_TAGS)[number] =>
  * name. Several sources (a merge of two issues) are a list, each with the
  * games it gives; one is its tags alone — counted only when some games name
  * none, which are counted too. A date is shown as the PGN writes it, pinned
- * LTR. Presentational: the sources arrive worked out
+ * LTR; a `SourceLink` that is a web address is a link, opened in a new tab. Presentational: the sources arrive worked out
  * (`lib/libraryCollections.ts`'s `collectionSourcesOf`); its words are
  * `library.collectionSource.*`.
  */
@@ -41,12 +44,26 @@ function CollectionSource({ sources, headingLevel = "h2", testId }: CollectionSo
   // One source over every game needs no count; anything else says how many games each gives.
   const counted = several || untagged > 0;
 
-  const tagRows = (entry: CollectionSourceEntry): KeyValueRow[] =>
+  // A `SourceLink` that is a web address is a link, opened in a new tab; any other value is text.
+  const valueOf = (name: string, value: string, id: string) => {
+    const href = name === "SourceLink" ? sourceLinkHref(value) : undefined;
+    if (href === undefined) return value;
+    return (
+      <Link href={href} target="_blank" rel="noopener noreferrer" underline="hover" data-testid={`${id}-link`}>
+        {value}{" "}
+        <Box component="span" sx={visuallyHidden}>
+          {t("library.collectionSource.newTab")}
+        </Box>
+      </Link>
+    );
+  };
+
+  const tagRows = (entry: CollectionSourceEntry, index: number): KeyValueRow[] =>
     entry.tags.map(({ name, value }) => ({
       id: name,
       label: isKnownTag(name) ? t(`library.collectionSource.tags.${name}`) : <span dir="ltr">{name}</span>,
-      value,
-      dir: name.endsWith("Date") ? ("ltr" as const) : ("auto" as const),
+      value: valueOf(name, value, `${testId}-source-${index}-${name}`),
+      dir: name.endsWith("Date") || name === "SourceLink" ? ("ltr" as const) : ("auto" as const),
     }));
 
   const entryOf = (entry: CollectionSourceEntry, index: number) => (
@@ -56,7 +73,7 @@ function CollectionSource({ sources, headingLevel = "h2", testId }: CollectionSo
           {t("library.collectionSource.games", { count: entry.games, games: count(entry.games) })}
         </Typography>
       )}
-      <KeyValueList rows={tagRows(entry)} testId={`${testId}-source-${index}`} />
+      <KeyValueList rows={tagRows(entry, index)} testId={`${testId}-source-${index}`} />
     </>
   );
 

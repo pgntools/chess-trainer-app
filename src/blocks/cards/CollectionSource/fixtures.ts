@@ -5,7 +5,7 @@ import type { CollectionSources } from "../../../lib/libraryCollections";
   `Source…` tags. Imported only by the block's gallery and its test.
 */
 
-/** One issue of The Week in Chess, every game from it. */
+/** One issue of The Week in Chess, every game from it, and where to find it. */
 export const TWIC: CollectionSources = {
   entries: [
     {
@@ -13,6 +13,7 @@ export const TWIC: CollectionSources = {
         { name: "SourceTitle", value: "The Week in Chess 1662" },
         { name: "Source", value: "Mark Crowther" },
         { name: "SourceDate", value: "2026.09.14" },
+        { name: "SourceLink", value: "https://theweekinchess.com/twic" },
       ],
       games: 412,
     },
@@ -43,7 +44,7 @@ export const MERGED: CollectionSources = {
   untagged: 3,
 };
 
-/** Every tag PGN names, and one it does not — labelled by its name. */
+/** Every tag PGN names — its `SourceLink` no web address, so text — and one it does not, labelled by its name. */
 export const EVERY_TAG: CollectionSources = {
   entries: [
     {
@@ -56,6 +57,7 @@ export const EVERY_TAG: CollectionSources = {
         { name: "SourceEdition", value: "2" },
         { name: "SourceEditionDate", value: "2026.01.05" },
         { name: "SourceQuality", value: "1" },
+        { name: "SourceLink", value: "javascript:alert(1)" },
         { name: "SourceURL", value: "https://example.com/mega-2026" },
       ],
       games: 25,
