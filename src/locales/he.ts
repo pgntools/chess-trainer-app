@@ -166,7 +166,6 @@ const he: typeof en = {
     library: "ספרייה",
     addCollection: "הוספת אוסף",
     collection: "אוסף",
-    collectionSettings: "הגדרות אוסף",
     libraryGame: "משחק מהספרייה",
     settings: "הגדרות",
     designSystem: "מערכת עיצוב",
@@ -343,8 +342,6 @@ const he: typeof en = {
     breadcrumb: "תיקיות",
     folder: {
       openNamed: "פתיחת התיקייה {{name}}",
-      newNamed: "תיקייה חדשה בתוך {{name}}",
-      uploadNamed: "העלאת אוסף אל {{name}}",
       downloadNamed: "הורדת {{name}} כ־PGN",
       renameNamed: "שינוי השם של {{name}}",
       moveNamed: "העברת {{name}}",
@@ -871,7 +868,6 @@ const he: typeof en = {
   library: {
     filterClear: "ניקוי הסינון",
     treeHint: "Tab עובר בכל שורה בין החץ, שפותח או סוגר תיקייה, הקישור והפעולות. מיון לפי עמודה בלחצן שבכותרת שלה.",
-    newJobNamed: "משימה חדשה עבור {{name}}",
     picks: {
       selectAll: "לבחור כל אוסף שמוצג",
       pick: "לבחור את {{name}}",
@@ -907,14 +903,12 @@ const he: typeof en = {
     folder: {
       untitled: "תיקייה ללא שם",
       newFolder: "תיקייה חדשה",
-      newSubFolder: "תת־תיקייה חדשה",
       renameFolder: "שינוי שם התיקייה",
       moveFolder: "העברת התיקייה",
       moveCollection: "העברת האוסף",
       moveTo: "העברה אל…",
       deleteFolder: "מחיקת התיקייה",
       download: "הורדת כל מה שבתיקייה כקובץ PGN אחד",
-      uploadHere: "הוספת אוסף לכאן",
       expand: "פתיחת {{name}}",
       collapse: "סגירת {{name}}",
       topLevel: "רמה עליונה",
@@ -925,6 +919,7 @@ const he: typeof en = {
         "מחיקת התיקייה שומרת על תוכנה: האוספים ותתי־התיקיות שבה עוברים לתיקייה שמעליה.",
       deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
       picker: "תיקיות",
+      parent: "ליצור בתוך",
     },
     collectionDetails: {
       label: "הפרטים של {{name}}",
@@ -934,10 +929,26 @@ const he: typeof en = {
         label: "פרטי האוסף",
         general: "כללי",
         options: "אפשרויות",
+        jobs: "משימות",
       },
-      placeholder: "פרטי האוסף יוצגו כאן.",
-      exampleOption: "אפשרות לדוגמה",
-      exampleOptionHelp: "מתג לדוגמה — הוא עדיין לא משנה דבר.",
+      general: {
+        noDescription: "אין תיאור.",
+        source: "מקור",
+        sources: { shipped: "מובנה", uploaded: "העלאה שלך" },
+        games: "משחקים",
+        players: "שחקנים",
+        event: "אירוע",
+        events: "אירועים",
+        dates: "תאריכים",
+        elo: "דירוגים",
+        added: "נוסף",
+      },
+      readOnly: "אוסף מובנה הוא לקריאה בלבד: אי אפשר לשנות את הכותרת, התיאור וסוג הטורניר שלו.",
+      saved: "נשמר.",
+      jobs: {
+        list: "המשימות של האוסף הזה",
+        none: "עדיין אין משימות לאוסף הזה.",
+      },
     },
     table: {
       label: "משחקים",
@@ -1021,8 +1032,6 @@ const he: typeof en = {
      * הבלוק `CollectionSettingsForm`, ושל המסך עצמו.
      */
     settings: {
-      /** כותרת העמוד (`h1`). */
-      title: "הגדרות אוסף",
       general: "כללי",
       name: "כותרת",
       nameHelp: "שם האוסף בספרייה.",
@@ -1131,6 +1140,8 @@ const he: typeof en = {
         teams: "קבוצות",
         players: "שחקנים",
         top: "סטטיסטיקה",
+        collapse: "הסתרת הסטטיסטיקה",
+        expand: "הצגת הסטטיסטיקה",
         empty: "אין שחקנים במשחקים האלה.",
         columns: {
           player: "שחקן",

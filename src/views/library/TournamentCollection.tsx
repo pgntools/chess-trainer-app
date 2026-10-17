@@ -1,12 +1,13 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
+import LeaderboardOutlinedIcon from "@mui/icons-material/LeaderboardOutlined";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { TournamentInfo, type TournamentFacts } from "../../blocks/cards";
 import { suggestionReasonOf } from "../../blocks/forms";
 import { TeamRosters, type TeamRoster } from "../../blocks/lists";
 import { TopPlayers } from "../../blocks/panels";
@@ -18,17 +19,10 @@ import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
 import type { DataTableSort } from "../../design-system/patterns/tables";
 import { arenaOf, pliesOfGames, type ArenaScoring } from "../../lib/arena";
-import { gameTag, type GameHeaders } from "../../lib/gameModel";
-import {
-  collectionMetadataOf,
-  sharedEventOf,
-  formatOfKind,
-  type CollectionRow,
-  type CollectionSummary,
-  type TournamentFormat,
-} from "../../lib/libraryCollections";
+import type { GameHeaders } from "../../lib/gameModel";
+import { formatOfKind, type CollectionRow, type CollectionSummary, type TournamentFormat } from "../../lib/libraryCollections";
 import { teamPlayersOf, teamTournamentOf } from "../../lib/teamTournament";
-import { roundPartsOf, type TournamentPlayer } from "../../lib/tournament";
+import type { TournamentPlayer } from "../../lib/tournament";
 import { guessTournamentKind } from "../../lib/tournamentKind";
 import { participantsOf, topPlayersOf } from "../../lib/tournamentParticipants";
 import { slugify } from "../../lib/pgnText";
@@ -37,6 +31,7 @@ import { useEmbedPaging } from "../home/frontPage/pgnTournament";
 import { KnockoutView, StandingsView, TeamStandingsView } from "../home/frontPage/tournamentEmbedViews";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { HideRightPanel, RightPanel } from "../main/rightPanel";
+import { useShellCompact } from "../main/shellCompact";
 import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tournamentTabs";
 
 /**
@@ -46,8 +41,9 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  * table: one header (the name, the `h1`; no Back since CTA-229 — the page's
  * left panel's Close is the way back to the Library), and three tabs —
  *
- * - **Info** (the default): the event at a glance (`TournamentInfo`) and the
- *   tournament's table for the type it is marked as — the Blog's own
+ * - **Info** (the default): the tournament's table for the type it is
+ *   marked as — the event's card (`TournamentInfo`) is the page's left
+ *   panel's General since CTA-231, so the table has the width — the Blog's own
  *   Library-backed views over the same reader (`<EmbedSource>`,
  *   `tournamentEmbedViews.tsx`), a name linking to the Games tab filtered by
  *   that player, a result to the game on the Library's board. Games that do
@@ -58,7 +54,8 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  *   `participantsOf`) — each name a link to the Games tab filtered by that
  *   player — and, in the right-hand panel, the statistics (the standouts,
  *   `TopPlayers`) and a team event's teams, a line each with its players
- *   (`TeamRosters`).
+ *   (`TeamRosters`); the panel folds to the shell's rail (CTA-231, as the
+ *   games table's filters, CTA-230).
  * - **Games**: the collection's games table, exactly as an unmarked
  *   collection's (`CollectionTable` — its filters' panel, picks, Analyse,
  *   its URL state), the strip under its header.
@@ -179,34 +176,22 @@ function TournamentTable({ read, type }: { read: SourceRead; type: TournamentFor
   }
 }
 
-/** The event's facts — from the rows at once, the games' own tags (the site, the teams) once read. */
-const factsOf = (summary: CollectionSummary, rows: readonly CollectionRow[], headers: readonly GameHeaders[] | undefined): TournamentFacts => {
-  const metadata = collectionMetadataOf(rows);
-  const rounds = new Set(rows.map((row) => roundPartsOf(row.round)[0]).filter((round) => round !== undefined));
-  const sites = new Set(headers?.map((game) => gameTag(game, "Site")));
-  const [site] = sites;
-  const type = summary.tournament?.type ?? "swiss";
-  const teams = headers === undefined || (type !== "teamSwiss" && type !== "teamKnockout") ? undefined : teamPlayersOf(headers).size;
-  return {
-    type,
-    event: sharedEventOf(rows),
-    ...(sites.size === 1 && site !== undefined && { site }),
-    ...(metadata.dates !== undefined && { dates: metadata.dates }),
-    rounds: rounds.size,
-    players: metadata.players,
-    ...(teams !== undefined && teams > 0 && { teams }),
-    games: rows.length,
-    unfinished: rows.filter((row) => row.result === "*").length,
-  };
-};
-
 /** The two arena types (CTA-204): the same pairing, two scorings — either is the reader's choice for the other's games. */
 const ARENA_TYPES: readonly TournamentFormat[] = ["arena", "lichessArena"];
 
 /** Said over the table when the games do not read as the type they are marked as — with the type they look like. */
-function Misfit({ collection, headers, type }: { collection: CollectionSummary; headers: readonly GameHeaders[]; type: TournamentFormat }) {
+function Misfit({
+  collection,
+  headers,
+  type,
+  onOpenSettings,
+}: {
+  collection: CollectionSummary;
+  headers: readonly GameHeaders[];
+  type: TournamentFormat;
+  onOpenSettings: () => void;
+}) {
   const { t } = useTranslation();
-  const location = useLocation();
   const guess = useMemo(() => guessTournamentKind(headers), [headers]);
   const looksLike = guess === undefined ? undefined : formatOfKind(guess.kind);
   if (guess === undefined || looksLike === type || (looksLike !== undefined && ARENA_TYPES.includes(looksLike) && ARENA_TYPES.includes(type))) return null;
@@ -221,10 +206,11 @@ function Misfit({ collection, headers, type }: { collection: CollectionSummary; 
       testId="library-tournament-misfit"
       action={
         collection.source === "uploaded" ? (
+          // The collection's settings: the page's left panel's Options (CTA-231).
           <Link
-            component={RouterLink}
-            to={`/library/${encodeURIComponent(collection.id)}/settings`}
-            state={{ from: `${location.pathname}${location.search}` }}
+            component="button"
+            type="button"
+            onClick={onOpenSettings}
             data-testid="library-tournament-change-type"
             sx={{ alignSelf: "center", whiteSpace: "nowrap" }}
           >
@@ -238,25 +224,17 @@ function Misfit({ collection, headers, type }: { collection: CollectionSummary; 
   );
 }
 
-function InfoTab({ collection, rows, read }: { collection: CollectionSummary; rows: readonly CollectionRow[]; read: SourceRead }) {
+function InfoTab({ collection, read, onOpenSettings }: { collection: CollectionSummary; read: SourceRead; onOpenSettings: () => void }) {
   const { t } = useTranslation();
   const type = collection.tournament?.type ?? "swiss";
   const headers = read.status === "ready" ? read.headers : undefined;
-  const facts = useMemo(() => factsOf(collection, rows, headers), [collection, rows, headers]);
   /*
-    Centred, and as wide as the room allows: the event card beside the table
-    where both fit, the table under it where they do not — each centred, the
-    table its own width (a crosstable is no wider than its columns) and
-    scrolling sideways past the screen's. Logical throughout, so it mirrors.
+    The table alone (CTA-231: the event's card is the left panel's General),
+    centred and as wide as the room allows — its own width (a crosstable is
+    no wider than its columns), scrolling sideways past the screen's.
   */
   return (
-    <Box
-      data-testid="library-tournament-info-layout"
-      sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start", gap: 2, pb: 2 }}
-    >
-      <Box sx={{ flex: "0 1 22rem", minWidth: 0, maxWidth: "100%" }}>
-        <TournamentInfo facts={facts} description={collection.description} testId="library-tournament-info" />
-      </Box>
+    <Box data-testid="library-tournament-info-layout" sx={{ display: "flex", justifyContent: "center", alignItems: "flex-start", pb: 2 }}>
       <Box
         component="section"
         aria-labelledby="library-tournament-table-title"
@@ -266,7 +244,7 @@ function InfoTab({ collection, rows, read }: { collection: CollectionSummary; ro
         <Typography id="library-tournament-table-title" variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
           {t("library.tournament.table.title")}
         </Typography>
-        {headers !== undefined && <Misfit collection={collection} headers={headers} type={type} />}
+        {headers !== undefined && <Misfit collection={collection} headers={headers} type={type} onOpenSettings={onOpenSettings} />}
         <TournamentTable read={read} type={type} />
       </Box>
     </Box>
@@ -285,8 +263,18 @@ function SourceNote({ collection }: { collection: CollectionSummary }) {
   );
 }
 
-function ParticipantsTab({ collection, read }: { collection: CollectionSummary; read: SourceRead }) {
-  const { t } = useTranslation();
+/** The Participants panel folded to the shell's rail (CTA-231) — the page's state, for this visit only. */
+type StatisticsFold = { statisticsFolded: boolean; onStatisticsFoldedChange: (folded: boolean) => void };
+
+function ParticipantsTab({
+  collection,
+  read,
+  statisticsFolded,
+  onStatisticsFoldedChange,
+}: { collection: CollectionSummary; read: SourceRead } & StatisticsFold) {
+  const { t, i18n } = useTranslation();
+  // Under the shell's breakpoint the panel is stacked under the table: nothing to fold.
+  const compact = useShellCompact();
   const [sort, setSort] = useState<DataTableSort<ParticipantsColumn>>(PARTICIPANTS_DEFAULT_SORT);
   const headers = read.status === "ready" ? read.headers : undefined;
   const team = TEAM_TYPES.includes(collection.tournament?.type ?? "swiss");
@@ -311,12 +299,56 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
   }, [team, headers, participants]);
   const toPlayer = useCallback((player: TournamentPlayer) => gamesOfPlayers(collection.id, [player.name]), [collection.id]);
 
+  /*
+    Folding the panel (CTA-231, as the games table's filters, CTA-230) takes
+    away the button pressed — the panel's Hide, the rail's Show — so the
+    focus goes on to the one that undoes it, once the shell has drawn it.
+  */
+  const focusAfterFold = useRef<string | null>(null);
+  const fold = (folded: boolean) => {
+    focusAfterFold.current = folded ? "library-tournament-statistics-rail-expand" : "library-tournament-statistics-collapse";
+    onStatisticsFoldedChange(folded);
+  };
+  useEffect(() => {
+    const target = focusAfterFold.current;
+    if (target === null) return;
+    focusAfterFold.current = null;
+    document.querySelector<HTMLElement>(`[data-testid="${target}"]`)?.focus();
+  }, [statisticsFolded]);
+  const collapse = compact ? undefined : (
+    <IconAction label={t("library.tournament.participants.collapse")} onClick={() => fold(true)} expanded testId="library-tournament-statistics-collapse">
+      {/* Towards the inline end, in the language's direction: the panel is drawn from inside the board's `ForceLTR`. */}
+      <KeyboardDoubleArrowRightRoundedIcon fontSize="small" style={i18n.dir() === "rtl" ? { transform: "scaleX(-1)" } : undefined} />
+    </IconAction>
+  );
+  // The standouts' heading carries the Hide; with none to show, it heads the panel alone.
+  const standouts = top !== undefined && Object.values(top).some((standout) => standout !== undefined) ? top : undefined;
+
   // The right-hand panel: the statistics (the standouts), a team event's teams, then the shipped / uploaded note.
   const panel = (
-    <RightPanel>
+    <RightPanel
+      collapsed={statisticsFolded}
+      rail={
+        // Room above the button, as the collection's filters' rail.
+        <Box data-testid="library-tournament-statistics-rail" sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 1 }}>
+          <IconAction
+            label={t("library.tournament.participants.expand")}
+            onClick={() => fold(false)}
+            expanded={false}
+            testId="library-tournament-statistics-rail-expand"
+          >
+            <LeaderboardOutlinedIcon fontSize="small" />
+          </IconAction>
+        </Box>
+      }
+    >
       {/* The aside does not scroll; the panel is its own scrolling column. */}
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
-        {top !== undefined && <TopPlayers top={top} playerLink={toPlayer} testId="library-tournament-top" />}
+      <Box data-testid="library-tournament-statistics" sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
+        {standouts !== undefined ? (
+          <TopPlayers top={standouts} playerLink={toPlayer} action={collapse} testId="library-tournament-top" />
+        ) : (
+          collapse !== undefined && <Box sx={{ display: "flex", justifyContent: "flex-end" }}>{collapse}</Box>
+        )}
         {rosters !== undefined && rosters.length > 0 && (
           <TeamRosters
             teams={rosters}
@@ -369,9 +401,19 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
 }
 
 /** The Info and Participants tabs over the read games — the links made to open the Games tab. */
-function TabContent({ tab, collection, rows, read }: { tab: "info" | "participants"; collection: CollectionSummary; rows: readonly CollectionRow[]; read: SourceRead }) {
+function TabContent({
+  tab,
+  collection,
+  read,
+  onOpenSettings,
+  ...fold
+}: { tab: "info" | "participants"; collection: CollectionSummary; read: SourceRead; onOpenSettings: () => void } & StatisticsFold) {
   const tabbed = useTabbedRead(read, collection.id);
-  return tab === "info" ? <InfoTab collection={collection} rows={rows} read={tabbed} /> : <ParticipantsTab collection={collection} read={tabbed} />;
+  return tab === "info" ? (
+    <InfoTab collection={collection} read={tabbed} onOpenSettings={onOpenSettings} />
+  ) : (
+    <ParticipantsTab collection={collection} read={tabbed} {...fold} />
+  );
 }
 
 /** The Info and Participants tabs: the header, the strip, the tab's content scrolling under it. */
@@ -381,15 +423,17 @@ function TournamentOverview({
   tab,
   tabs,
   detailsToggle,
+  onOpenSettings,
+  ...fold
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   tab: "info" | "participants";
   tabs: TournamentTabs;
   detailsToggle?: ReactNode;
-}) {
+  onOpenSettings: () => void;
+} & StatisticsFold) {
   const { t } = useTranslation();
-  const location = useLocation();
   // The collection's name is the page's `h1`, and its title (CTA-112).
   useOwnPageHeading();
   usePageTitle(collection.name);
@@ -404,15 +448,8 @@ function TournamentOverview({
             <>
               {detailsToggle}
               {collection.source === "uploaded" && (
-                <IconAction
-                  label={t("library.table.settings")}
-                  link={{
-                    component: RouterLink,
-                    to: `/library/${encodeURIComponent(collection.id)}/settings`,
-                    state: { from: `${location.pathname}${location.search}` },
-                  }}
-                  testId="library-table-settings"
-                >
+                // The collection's settings are its page's left panel's Options (CTA-231).
+                <IconAction label={t("library.table.settings")} onClick={onOpenSettings} testId="library-table-settings">
                   <SettingsRoundedIcon fontSize="small" />
                 </IconAction>
               )}
@@ -423,7 +460,7 @@ function TournamentOverview({
         {tabs.strip}
         <Box {...tabs.panel} data-testid={`library-tournament-panel-${tab}`} sx={{ flex: 1, minHeight: 0, overflowY: "auto", pt: 2 }}>
           <EmbedSource src={`/library/${collection.id}`}>
-            {(read) => <TabContent tab={tab} collection={collection} rows={rows} read={read} />}
+            {(read) => <TabContent tab={tab} collection={collection} read={read} onOpenSettings={onOpenSettings} {...fold} />}
           </EmbedSource>
         </Box>
       </Box>
@@ -444,16 +481,31 @@ export function TournamentCollection({
   rows,
   games,
   detailsToggle,
+  onOpenSettings,
+  ...fold
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   games: (tabs: TournamentTabs) => ReactNode;
   /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the header's actions. */
   detailsToggle?: ReactNode;
-}) {
+  /** The Settings gear's and *Change the type*'s: the page's left panel on Options (CTA-231). */
+  onOpenSettings: () => void;
+} & StatisticsFold) {
   const [params] = useSearchParams();
   const tab = tournamentTabOf(params);
   const tabs = useTournamentTabs(tab);
   if (tab === "games") return <>{games(tabs)}</>;
-  return <TournamentOverview key={tab} collection={collection} rows={rows} tab={tab} tabs={tabs} detailsToggle={detailsToggle} />;
+  return (
+    <TournamentOverview
+      key={tab}
+      collection={collection}
+      rows={rows}
+      tab={tab}
+      tabs={tabs}
+      detailsToggle={detailsToggle}
+      onOpenSettings={onOpenSettings}
+      {...fold}
+    />
+  );
 }

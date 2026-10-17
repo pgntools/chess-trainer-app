@@ -180,11 +180,6 @@ export const ROUTES: readonly PageRoute[] = [
     board: true,
     ready: (page) => page.getByText("Rosen, Anna").first(),
   },
-  {
-    id: "library-collection-settings",
-    pattern: "/library/:collectionId/settings",
-    path: `library/${SEED.collectionId}/settings`,
-  },
   { id: "library-upload", pattern: "/library/new", path: "library/new" },
   { id: "library-game", pattern: "/library/:collectionId/:game", path: `library/${SEED.collectionId}/1`, board: true },
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).

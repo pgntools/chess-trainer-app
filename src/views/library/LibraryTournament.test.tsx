@@ -105,9 +105,9 @@ describe("a tournament collection's view", () => {
     const user = userEvent.setup();
     mount("/library/candidates2026");
     const table = await screen.findByTestId("tournament-collection-candidates2026-roundRobin", {}, { timeout: 15_000 });
-    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Round robin");
-    expect(screen.getByTestId("library-tournament-info-facts-event")).toHaveTextContent("FIDE Candidates 2026");
-    expect(screen.getByTestId("library-tournament-info-facts-players")).toHaveTextContent("8");
+    expect(screen.getByTestId("library-collection-details-tournament-facts-type")).toHaveTextContent("Round robin");
+    expect(screen.getByTestId("library-collection-details-tournament-facts-event")).toHaveTextContent("FIDE Candidates 2026");
+    expect(screen.getByTestId("library-collection-details-tournament-facts-players")).toHaveTextContent("8");
     expect(screen.queryByTestId("library-tournament-misfit")).toBeNull();
     // A shipped collection has no settings.
     expect(screen.queryByTestId("library-table-settings")).toBeNull();
@@ -137,8 +137,8 @@ describe("a tournament collection's view", () => {
     mount("/library/worldrapidteam2026");
     expect(await screen.findByTestId("tournament-collection-worldrapidteam2026-team", {}, { timeout: 20_000 })).toBeInTheDocument();
     // The teams are counted off the games' own tags, once read.
-    await waitFor(() => expect(screen.getByTestId("library-tournament-info-facts-teams")).toHaveTextContent("48"), { timeout: 20_000 });
-    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Team Swiss / round robin");
+    await waitFor(() => expect(screen.getByTestId("library-collection-details-tournament-facts-teams")).toHaveTextContent("48"), { timeout: 20_000 });
+    expect(screen.getByTestId("library-collection-details-tournament-facts-type")).toHaveTextContent("Team Swiss / round robin");
   }, 40_000);
 
   it("draws a Swiss's standings and a match's table for uploads marked so", async () => {
@@ -160,7 +160,11 @@ describe("a tournament collection's view", () => {
     mount(`/library/${cup.id}`);
     const misfit = await screen.findByTestId("library-tournament-misfit");
     expect(misfit).toHaveTextContent("The games do not read as Knockout (elimination) — they look like Round robin: 3 players, every pair met.");
-    expect(within(misfit).getByRole("link", { name: "Change the type" })).toHaveAttribute("href", `/library/${cup.id}/settings`);
+    // Change the type opens the settings: the page's left panel on Options (CTA-231).
+    fireEvent.click(within(misfit).getByRole("button", { name: "Change the type" }));
+    expect(await screen.findByTestId("library-settings-form-type-knockout")).toBeChecked();
+    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    expect(where()).toBe(`/library/${cup.id}`);
   });
 
   it("lists every player's record on Participants, the standouts over them", async () => {
@@ -215,14 +219,34 @@ describe("a tournament collection's view", () => {
     expect(screen.getByTestId("library-table-count")).toHaveTextContent("2 of 3");
   });
 
-  it("carries the settings gear on an upload, back to the tab it left", async () => {
+  it("carries the settings gear on an upload, opening Options beside the tab it is on", async () => {
     const cup = await marked("roundRobin");
     mount(`/library/${cup.id}?tab=participants`);
     await screen.findByTestId("library-tournament-screen");
     fireEvent.click(screen.getByTestId("library-table-settings"));
-    await screen.findByTestId("library-settings-screen");
-    fireEvent.click(screen.getByTestId("library-settings-cancel"));
-    await waitFor(() => expect(where()).toBe(`/library/${cup.id}?tab=participants`));
+    expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
+    expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeChecked();
+    expect(where()).toBe(`/library/${cup.id}?tab=participants`);
+    expect(screen.getByRole("tabpanel", { name: "Participants" })).toBeInTheDocument();
+  });
+
+  it("shows the event's card on the left panel's General, and only the table on Info (CTA-231)", async () => {
+    const cup = await marked("roundRobin");
+    await updateCollectionSettings(cup.id, { description: "Our club's round robin." });
+    mount(`/library/${cup.id}`);
+    expect(await screen.findByTestId(`tournament-collection-${cup.id}-roundRobin`)).toBeInTheDocument();
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    const card = within(general).getByTestId("library-collection-details-tournament");
+    expect(within(card).getByRole("heading", { level: 3, name: "The event" })).toBeInTheDocument();
+    expect(within(card).getByTestId("library-collection-details-tournament-description")).toHaveTextContent("Our club's round robin.");
+    expect(within(card).getByTestId("library-collection-details-tournament-facts-type")).toHaveTextContent("Round robin");
+    expect(within(card).getByTestId("library-collection-details-tournament-facts-players")).toHaveTextContent("3");
+    // The Info tab holds the table alone.
+    const info = screen.getByTestId("library-tournament-panel-info");
+    expect(within(info).queryByTestId("library-tournament-info")).toBeNull();
+    expect(within(info).queryByText("The event")).toBeNull();
+    expect(within(info).getByTestId("library-tournament-table-section")).toBeInTheDocument();
+    await expectNoAxeViolations(screen.getByTestId("library-collection-details"));
   });
 });
 
@@ -254,9 +278,9 @@ describe("an arena (CTA-142; its table, CTA-204)", () => {
     // Ann: two wins and four draws; Bea: four draws; Dan a win and a draw.
     expect(ranked(arena.id)).toEqual(["Ann", "Bea", "Dan", "Cid", "Eve"]);
     expect(within(within(table).getAllByRole("row")[1]).getAllByRole("cell")[3]).toHaveTextContent("4.0");
-    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Arena");
+    expect(screen.getByTestId("library-collection-details-tournament-facts-type")).toHaveTextContent("Arena");
     // No rounds to count.
-    expect(screen.queryByTestId("library-tournament-info-facts-rounds")).toBeNull();
+    expect(screen.queryByTestId("library-collection-details-tournament-facts-rounds")).toBeNull();
     // A name opens the Games tab filtered by that player.
     expect(within(table).getByRole("link", { name: "Ann" })).toHaveAttribute("href", `/library/${arena.id}?tab=games&player=Ann`);
     await user.click(tab("participants"));
@@ -292,7 +316,7 @@ describe("an arena (CTA-142; its table, CTA-204)", () => {
     const arena = await marked("lichessArena", LICHESS, "Lichess Arena");
     mount(`/library/${arena.id}?tab=info`);
     await screen.findByRole("table", { name: "Lichess Arena — standings" });
-    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Lichess arena");
+    expect(screen.getByTestId("library-collection-details-tournament-facts-type")).toHaveTextContent("Lichess arena");
     expect(screen.queryByTestId("library-tournament-misfit")).toBeNull();
     // Bea: 2 + 2 + 4 on fire; Ann: 3 berserked + 1 + 0 + 2.
     expect(ranked(arena.id)).toEqual(["Bea", "Ann", "Dan", "Cid"]);
@@ -321,8 +345,8 @@ describe("an arena (CTA-142; its table, CTA-204)", () => {
   });
 });
 
-describe("the tournament view's own panel (CTA-229)", () => {
-  it("is in the main menu's place on every tab, its tab and switch kept across them — and Close, not Back, leads to the Library", async () => {
+describe("the tournament view's own panel (CTA-229; its content CTA-231)", () => {
+  it("is in the main menu's place on every tab, its tab and settings' draft kept across them — and Close, not Back, leads to the Library", async () => {
     const user = userEvent.setup();
     const cup = await marked("roundRobin");
     mount(`/library/${cup.id}`);
@@ -330,18 +354,21 @@ describe("the tournament view's own panel (CTA-229)", () => {
     const details = () => screen.getByRole("region", { name: "Details of Club games" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details());
     expect(within(details()).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
+    expect(within(details()).getAllByRole("tab").map((each) => each.textContent)).toEqual(["General", "Options", "Jobs"]);
     expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
     await user.click(within(details()).getByRole("tab", { name: "Options" }));
-    await user.click(within(details()).getByRole("switch", { name: "Example option" }));
+    const name = await within(details()).findByTestId("library-settings-form-name");
+    await user.clear(name);
+    await user.type(name, "Club cup");
 
     await user.click(tab("participants"));
     expect(await screen.findByRole("tabpanel", { name: "Participants" })).toBeInTheDocument();
     expect(within(details()).getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
-    expect(within(details()).getByRole("switch", { name: "Example option" })).toBeChecked();
+    expect(within(details()).getByTestId("library-settings-form-name")).toHaveValue("Club cup");
 
     await user.click(tab("games"));
     await screen.findByTestId("library-table");
-    expect(within(details()).getByRole("switch", { name: "Example option" })).toBeChecked();
+    expect(within(details()).getByTestId("library-settings-form-name")).toHaveValue("Club cup");
     expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
     expect(screen.getByTestId("library-filters")).toBeInTheDocument();
 
@@ -364,6 +391,38 @@ describe("the tournament view's own panel (CTA-229)", () => {
     fireEvent.click(tab("games"));
     await screen.findByTestId("library-table");
     expect(within(screen.getByTestId("library-table-header")).getByRole("button", { name: "The collection's details" })).toBeInTheDocument();
+  });
+});
+
+describe("the Participants statistics folded to a rail (CTA-231)", () => {
+  it("folds to the shell's rail and opens again, the focus handed between the two, kept across a change of tab", async () => {
+    const user = userEvent.setup();
+    const cup = await marked("roundRobin");
+    mount(`/library/${cup.id}?tab=participants`);
+    await screen.findByTestId("library-tournament-top");
+    const hide = within(screen.getByTestId("library-tournament-top")).getByRole("button", { name: "Hide statistics" });
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+    await user.click(hide);
+    const show = await screen.findByRole("button", { name: "Show statistics" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("library-tournament-top")).toBeNull();
+    expect(screen.getByTestId("layout-right-panel")).toContainElement(screen.getByTestId("library-tournament-statistics-rail"));
+    await waitFor(() => expect(show).toHaveFocus());
+
+    // Folded for the visit: Info and back keeps it so.
+    await user.click(tab("info"));
+    await user.click(tab("participants"));
+    await user.click(await screen.findByRole("button", { name: "Show statistics" }));
+    expect(await screen.findByTestId("library-tournament-top")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hide statistics" })).toHaveFocus());
+  });
+
+  it("has no Hide under the shell's breakpoint — the panel stacked, open", async () => {
+    shell.compact = true;
+    const cup = await marked("roundRobin");
+    mount(`/library/${cup.id}?tab=participants`, { compact: true });
+    await screen.findByTestId("library-tournament-top");
+    expect(screen.queryByRole("button", { name: "Hide statistics" })).toBeNull();
   });
 });
 
@@ -492,23 +551,32 @@ describe("the list's potential tournaments (CTA-142)", () => {
   });
 });
 
-describe("the settings' suggestion", () => {
+describe("the settings' suggestion — on the page's Options tab (CTA-231)", () => {
+  /** The collection's page, its left panel on Options. */
+  const mountOptions = async (id: string) => {
+    mount(`/library/${id}`);
+    fireEvent.click(await screen.findByRole("tab", { name: "Options" }));
+    await screen.findByTestId("library-settings-form");
+  };
+
   it("suggests the type the games look like, and Apply puts it in the draft for Save", async () => {
     const cup = await upload();
-    mount(`/library/${cup.id}/settings`);
+    await mountOptions(cup.id);
     const text = await screen.findByTestId("library-settings-form-suggestion-text");
     expect(text).toHaveTextContent("Round robin: 3 players, every pair met.");
-    fireEvent.click(screen.getByRole("button", { name: "Apply the suggested type, Round robin" }));
+    // The table offers it too (CTA-142); the form's is the draft's.
+    fireEvent.click(within(screen.getByTestId("library-settings-form")).getByRole("button", { name: "Apply the suggested type, Round robin" }));
     expect(screen.getByTestId("library-settings-form-tournament-switch")).toBeChecked();
     expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeChecked();
     fireEvent.click(screen.getByTestId("library-settings-save"));
+    // Marked, the page turns into its tournament view — the panel still on Options.
     await screen.findByTestId("library-tournament-screen");
+    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("suggests nothing for games that cannot be a tournament", async () => {
     const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
-    mount(`/library/${mixed.id}/settings`);
-    await screen.findByTestId("library-settings-form");
+    await mountOptions(mixed.id);
     expect(screen.queryByTestId("library-settings-form-suggestion")).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
@@ -17,6 +18,8 @@ export type TopPlayersProps = {
   playerLink?: (player: TournamentPlayer) => LinkTarget | undefined;
   /** The heading's level — `h2` under a page's `h1`. */
   headingLevel?: "h2" | "h3";
+  /** Drawn at the end of the heading's row — the panel's Hide (CTA-231). Absent, the heading alone. */
+  action?: ReactNode;
   /** The root; each standout is `<testId>-<score | performance | wins | unbeaten>`. */
   testId: string;
 };
@@ -34,7 +37,7 @@ const KINDS: readonly Kind[] = ["score", "performance", "wins", "unbeaten"];
  * figure, under one heading. A standout no one reached is left out.
  * Presentational: the standouts arrive worked out (`topPlayersOf`).
  */
-function TopPlayers({ top, playerLink, headingLevel = "h2", testId }: TopPlayersProps) {
+function TopPlayers({ top, playerLink, headingLevel = "h2", action, testId }: TopPlayersProps) {
   const { t, i18n } = useTranslation();
   const figure = (kind: Kind, participant: Participant): string => {
     switch (kind) {
@@ -52,9 +55,12 @@ function TopPlayers({ top, playerLink, headingLevel = "h2", testId }: TopPlayers
   if (shown.length === 0) return null;
   return (
     <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1 }}>
-      <Typography id={`${testId}-title`} variant="subtitle1" component={headingLevel} sx={{ fontWeight: 700 }}>
-        {t("library.tournament.participants.top")}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography id={`${testId}-title`} variant="subtitle1" component={headingLevel} sx={{ flexGrow: 1, fontWeight: 700 }}>
+          {t("library.tournament.participants.top")}
+        </Typography>
+        {action}
+      </Box>
       <Box
         component="ul"
         sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fill, minmax(12rem, 1fr))" }}

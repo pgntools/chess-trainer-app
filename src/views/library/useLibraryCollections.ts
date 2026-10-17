@@ -127,8 +127,9 @@ export const loadCollectionGames = async (
  * `guessTournamentKind`) — read off the games' own tags (teams, FIDE ids:
  * what the index rows do not keep), so it loads the games; ask only where a
  * suggestion is wanted (`wanted`). `undefined` while they are read, when not
- * wanted, and for no guess. The settings screen's suggestion, and the games
- * table's for a collection never marked.
+ * wanted, and for no guess. The settings' suggestion (the collection
+ * page's Options, CTA-231), and the games table's for a collection never
+ * marked.
  */
 export const useTournamentGuess = (id: string, wanted: boolean): TournamentGuess | undefined => {
   const games = useCollectionGames(wanted ? id : undefined);

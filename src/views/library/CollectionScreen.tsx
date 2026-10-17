@@ -20,6 +20,7 @@ import {
   COLLECTION_COLUMNS,
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
+  collectionMetadataOf,
   filteredRows,
   isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
@@ -43,7 +44,8 @@ import {
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
 import type { GameTree } from "../../lib/gameTree";
-import { parsePgnTree } from "../../lib/pgn";
+import { LIBRARY_COLLECTION_ENTITY } from "../../lib/jobs/entityTypes";
+import { parsePgnTree, readPgnTags } from "../../lib/pgn";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
 import { projectPath } from "../analysisV2/paths";
@@ -52,7 +54,8 @@ import { RightPanel } from "../main/rightPanel";
 import { useShellCompact } from "../main/shellCompact";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
 import { CollectionFilters, CollectionFiltersRail, TournamentSuggestion } from "../../blocks/forms";
-import { CollectionDetails, type CollectionDetailsTab } from "../../blocks/panels";
+import { EntityJobs } from "../../blocks/lists";
+import { CollectionDetails, type CollectionDetailsGeneral, type CollectionDetailsTab } from "../../blocks/panels";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { useSnackbar } from "../../design-system/components/feedback";
@@ -63,7 +66,14 @@ import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../de
 import OpeningFilterBoard from "./OpeningFilterBoard";
 import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
-import { loadCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
+import { loadCollectionGames, useCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
+import CollectionSettingsPanel from "./CollectionSettingsPanel";
+import { tournamentFactsOf } from "./tournamentFacts";
+import { useCollectionSettings } from "./useCollectionSettings";
+import { isJobOf, jobRowOf, newestFirst } from "../jobs/jobViews";
+import { jobPath } from "../jobs/paths";
+import { useJobRecords } from "../jobs/useJobs";
+import { useNewJob } from "../jobs/useNewJob";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -157,6 +167,7 @@ function CollectionTable({
   rows,
   tabs,
   detailsToggle,
+  onOpenSettings,
   filtersFolded,
   onFiltersFoldedChange,
 }: {
@@ -166,6 +177,8 @@ function CollectionTable({
   tabs?: TournamentTabs;
   /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the actions. */
   detailsToggle?: ReactNode;
+  /** The Settings gear's: the page's left panel on Options (CTA-231). */
+  onOpenSettings: () => void;
   /** The filters' panel folded to the shell's rail (CTA-230) — the page's state, so a tournament's change of tab keeps it. */
   filtersFolded: boolean;
   onFiltersFoldedChange: (folded: boolean) => void;
@@ -543,16 +556,8 @@ function CollectionTable({
                 actions={
                   <>
                     {collection.source === "uploaded" && (
-                      <IconAction
-                        label={t("library.table.settings")}
-                        link={{
-                          component: RouterLink,
-                          // Back to this table, filter and all.
-                          to: `/library/${encodeURIComponent(collection.id)}/settings`,
-                          state: { from: cameFrom },
-                        }}
-                        testId="library-table-settings"
-                      >
+                      // The collection's settings are its page's left panel's Options (CTA-231).
+                      <IconAction label={t("library.table.settings")} onClick={onOpenSettings} testId="library-table-settings">
                         <SettingsRoundedIcon fontSize="small" />
                       </IconAction>
                     )}
@@ -742,22 +747,87 @@ function CollectionTable({
  * view) and **its own panel in the main menu's place** (CTA-229,
  * `CollectionDetails` in the shell's board left panel, `keepShell`: the
  * header and footer stay, as on the Project view) — its Close the way back
- * to the Library; a frame for now: the collection's name, a General tab's
- * placeholder and an Options tab's example switch, held here (above the
- * tournament view's tabs, so a change of tab keeps them) and kept nowhere.
- * Under the shell's breakpoint it is a drawer, opened from the header. It holds
- * too whether the right-hand filters are **folded to a rail** (CTA-230) — so a
- * tournament's change of tab keeps it — for this visit only.
+ * to the Library — with, since CTA-231, its content:
+ *
+ * - **General** — a tournament's event card (its facts from the rows at
+ *   once, the games' tags — the site, the teams — once read: General reads
+ *   the games of a tournament while it is open), any other collection's
+ *   description and its index's facts;
+ * - **Options** — the collection's settings (`CollectionSettingsPanel`, the
+ *   draft held here, `useCollectionSettings`), in place of the
+ *   `/library/<c>/settings` screen; the header's gear and a tournament's
+ *   *Change the type* open it (and, under the breakpoint, the drawer);
+ * - **Jobs** — the collection's jobs and New job for it (`EntityJobs`,
+ *   `useNewJob` over the `library-collection` entity), in place of the
+ *   Library row's New job.
+ *
+ * The open tab is held here (above the tournament view's tabs, so a change
+ * of tab keeps it) and kept nowhere. Under the shell's breakpoint it is a
+ * drawer, opened from the header. It holds too, for this visit only, whether
+ * the right-hand panels are **folded to a rail** (CTA-230) — the games
+ * table's filters, and a tournament's Participants statistics (CTA-231) —
+ * so a tournament's change of tab keeps them.
  */
 function CollectionPage({ collection, rows }: { collection: CollectionSummary; rows: readonly CollectionRow[] }) {
   const { t } = useTranslation();
   const compact = useShellCompact();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTab, setDetailsTab] = useState<CollectionDetailsTab>("general");
-  const [exampleOption, setExampleOption] = useState(false);
+  const settings = useCollectionSettings(collection);
   // The filters folded to a rail (CTA-230): for this visit only — the page opens with them open.
   const [filtersFolded, setFiltersFolded] = useState(false);
+  // A tournament's Participants statistics folded to a rail (CTA-231), the same way.
+  const [statisticsFolded, setStatisticsFolded] = useState(false);
   const fold = { filtersFolded, onFiltersFoldedChange: setFiltersFolded };
+  const tournament = isTournamentCollection(collection, rows);
+
+  /*
+    The gear and *Change the type* open the settings: the Options tab, in the
+    drawer under the breakpoint — the focus on the tab once it is drawn.
+  */
+  const focusOptions = useRef(false);
+  const openSettings = () => {
+    focusOptions.current = true;
+    setDetailsTab("options");
+    if (compact) setDetailsOpen(true);
+  };
+  useEffect(() => {
+    if (!focusOptions.current || detailsTab !== "options") return;
+    focusOptions.current = false;
+    document.querySelector<HTMLElement>('[data-testid="library-collection-details-tab-options"]')?.focus();
+  }, [detailsTab, detailsOpen]);
+
+  // A tournament's General: its games' own tags (the site, the teams), read while it is open.
+  const games = useCollectionGames(tournament && detailsTab === "general" ? collection.id : undefined);
+  const gameTexts = games.status === "ready" ? games.value : undefined;
+  const headers = useMemo(() => gameTexts?.map(readPgnTags), [gameTexts]);
+  const general = useMemo<CollectionDetailsGeneral>(
+    () =>
+      tournament
+        ? { kind: "tournament", facts: tournamentFactsOf(collection, rows, headers), description: collection.description }
+        : {
+            kind: "collection",
+            source: collection.source,
+            metadata: collectionMetadataOf(rows),
+            addedAt: collection.addedAt,
+            description: collection.description,
+          },
+    [tournament, collection, rows, headers],
+  );
+
+  // The collection's jobs (CTA-231) — its Jobs tab — and New job for it.
+  const newJob = useNewJob("library-collection-new-job");
+  const jobRecords = useJobRecords();
+  const jobs = useMemo(
+    () =>
+      jobRecords === undefined
+        ? undefined
+        : newestFirst(jobRecords)
+            .filter((job) => isJobOf(job, { type: LIBRARY_COLLECTION_ENTITY, id: collection.id }))
+            .map((job) => jobRowOf(t, job)),
+    [jobRecords, collection.id, t],
+  );
+
   // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
   const detailsToggle = compact ? (
     <IconAction
@@ -773,15 +843,20 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
   return (
     <>
       {/* A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table. */}
-      {isTournamentCollection(collection, rows) ? (
+      {tournament ? (
         <TournamentCollection
           collection={collection}
           rows={rows}
           detailsToggle={detailsToggle}
-          games={(tabs) => <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} {...fold} />}
+          onOpenSettings={openSettings}
+          statisticsFolded={statisticsFolded}
+          onStatisticsFoldedChange={setStatisticsFolded}
+          games={(tabs) => (
+            <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} onOpenSettings={openSettings} {...fold} />
+          )}
         />
       ) : (
-        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} {...fold} />
+        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} onOpenSettings={openSettings} {...fold} />
       )}
       <BoardLeftPanel
         collapsed={false}
@@ -795,11 +870,27 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           closeLink={{ component: RouterLink, to: "/library" }}
           tab={detailsTab}
           onTabChange={setDetailsTab}
-          exampleOption={exampleOption}
-          onExampleOptionChange={setExampleOption}
+          general={general}
+          // A shipped collection is read-only: no settings.
+          options={
+            collection.source === "uploaded" ? (
+              <CollectionSettingsPanel collection={collection} canMark={canBeTournament(rows)} settings={settings} />
+            ) : undefined
+          }
+          jobs={
+            <EntityJobs
+              jobs={jobs}
+              jobLink={(job) => ({ component: RouterLink, to: jobPath(job.id) })}
+              onNewJob={() => newJob.open({ type: LIBRARY_COLLECTION_ENTITY, id: collection.id })}
+              label={t("library.collectionDetails.jobs.list")}
+              emptyText={t("library.collectionDetails.jobs.none")}
+              testId="library-collection-details-jobs-list"
+            />
+          }
           testId="library-collection-details"
         />
       </BoardLeftPanel>
+      {newJob.dialog}
     </>
   );
 }

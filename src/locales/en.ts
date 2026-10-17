@@ -215,7 +215,6 @@ const en = {
     library: "Library",
     addCollection: "Add collection",
     collection: "Collection",
-    collectionSettings: "Collection settings",
     libraryGame: "Library game",
     settings: "Settings",
     designSystem: "Design system",
@@ -474,8 +473,6 @@ const en = {
     breadcrumb: "Folders",
     folder: {
       openNamed: "Open folder {{name}}",
-      newNamed: "New folder in {{name}}",
-      uploadNamed: "Upload a collection into {{name}}",
       downloadNamed: "Download {{name}} as PGN",
       renameNamed: "Rename {{name}}",
       moveNamed: "Move {{name}}",
@@ -1176,8 +1173,6 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
-    /** New job for one collection (CTA-221) — a row action. */
-    newJobNamed: "New job for {{name}}",
     /** The collections picked (CTA-221) — *Merge collections…* with two or more. */
     picks: {
       selectAll: "Pick every collection shown",
@@ -1225,14 +1220,12 @@ const en = {
     folder: {
       untitled: "Untitled folder",
       newFolder: "New folder",
-      newSubFolder: "New sub-folder",
       renameFolder: "Rename folder",
       moveFolder: "Move folder",
       moveCollection: "Move collection",
       moveTo: "Move to…",
       deleteFolder: "Delete folder",
       download: "Download everything in this folder as one PGN",
-      uploadHere: "Add a collection here",
       expand: "Open {{name}}",
       collapse: "Close {{name}}",
       topLevel: "Top level",
@@ -1244,10 +1237,13 @@ const en = {
       deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
       /** The folder list's name in the move dialog (CTA-113). */
       picker: "Folders",
+      /** New folder's parent (CTA-231): the folder list in its dialog, the top level by default. */
+      parent: "Make it in",
     },
     /**
      * The collection page's own panel (CTA-229), in the main menu's place on both
-     * its views: its Close back to the Library, its name, two tabs — a frame for now.
+     * its views: its Close back to the Library, its name, and General, Options and
+     * Jobs (CTA-231).
      */
     collectionDetails: {
       label: "Details of {{name}}",
@@ -1259,10 +1255,30 @@ const en = {
         label: "Collection details",
         general: "General",
         options: "Options",
+        jobs: "Jobs",
       },
-      placeholder: "The collection's details will be shown here.",
-      exampleOption: "Example option",
-      exampleOptionHelp: "An example switch — it changes nothing yet.",
+      /** General (CTA-231): a collection that is not a tournament — its description and what its index says of it. */
+      general: {
+        noDescription: "No description.",
+        source: "Source",
+        sources: { shipped: "Built-in", uploaded: "Your upload" },
+        games: "Games",
+        players: "Players",
+        event: "Event",
+        events: "Events",
+        dates: "Dates",
+        elo: "Ratings",
+        added: "Added",
+      },
+      /** Options of a shipped collection: nothing to change. */
+      readOnly: "A built-in collection is read-only: its title, description and tournament type cannot be changed.",
+      /** The settings on Options — saved where they are. */
+      saved: "Saved.",
+      /** Jobs (CTA-231): the collection's jobs and New job for it. */
+      jobs: {
+        list: "This collection's jobs",
+        none: "No jobs for this collection yet.",
+      },
     },
     /** The table screen — `/library/<collection>`. */
     table: {
@@ -1364,8 +1380,6 @@ const en = {
      * the `CollectionSettingsForm` block's words, and the screen's own.
      */
     settings: {
-      /** The screen's `h1`. */
-      title: "Collection settings",
       general: "General",
       name: "Title",
       nameHelp: "What the collection is called in the Library.",
@@ -1498,6 +1512,9 @@ const en = {
         teams: "Teams",
         players: "Players",
         top: "Statistics",
+        /** The right-hand panel folded to the shell's rail (CTA-231), and opened again. */
+        collapse: "Hide statistics",
+        expand: "Show statistics",
         empty: "No players in these games.",
         columns: {
           player: "Player",

@@ -23,7 +23,6 @@ import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import CollectionScreen from "./CollectionScreen";
-import CollectionSettingsScreen from "./CollectionSettingsScreen";
 import LibraryGameScreen from "./LibraryGameScreen";
 import LibraryHome from "./LibraryHome";
 import LibraryUpload from "./LibraryUpload";
@@ -60,7 +59,6 @@ export const mount = (entry: string, { compact = false }: MountOptions = {}) => 
               <Route path="/library" element={<LibraryHome />} />
               <Route path="/library/new" element={<LibraryUpload />} />
               <Route path="/library/:collectionId" element={<CollectionScreen />} />
-              <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
               <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
               <Route path="*" element={<div data-testid="elsewhere" />} />
             </Routes>

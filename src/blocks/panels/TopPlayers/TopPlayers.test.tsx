@@ -34,4 +34,12 @@ describe("TopPlayers", () => {
     const { container } = render(<TopPlayers top={NONE} testId="probe" />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("draws an action at the end of its heading's row (CTA-231)", () => {
+    render(<TopPlayers top={SPREAD} action={<button type="button">Hide statistics</button>} testId="probe" />);
+    const heading = screen.getByRole("heading", { name: "Statistics" });
+    const hide = screen.getByRole("button", { name: "Hide statistics" });
+    expect(heading.parentElement).toContainElement(hide);
+    expect(heading.compareDocumentPosition(hide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

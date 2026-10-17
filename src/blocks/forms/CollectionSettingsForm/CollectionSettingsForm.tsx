@@ -45,8 +45,8 @@ export type CollectionSettingsFormProps = {
  * description under the group — and, over them, the type the games look
  * like with an Apply (`TournamentSuggestion`). Presentational: the draft,
  * the games' verdict and the guess are props, a change leaves as a patch,
- * and nothing is written here — the screen
- * (`views/library/CollectionSettingsScreen.tsx`) saves through
+ * and nothing is written here — the collection page's Options tab
+ * (`views/library/CollectionSettingsPanel.tsx`, CTA-231) saves through
  * `updateCollectionSettings`. Its words are the app's (`library.settings.*`).
  */
 function CollectionSettingsForm({
