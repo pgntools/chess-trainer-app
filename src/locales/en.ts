@@ -1173,12 +1173,22 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
-    /** The collections picked (CTA-221) — the header's Merge (two or more) and Delete (CTA-232). */
+    /**
+     * The collections picked (CTA-221) — the header's Merge (two or more) and
+     * Delete (CTA-232); the reader's folders too since CTA-235, a folder's box
+     * standing for everything under it.
+     */
     picks: {
-      selectAll: "Pick every collection shown",
+      selectAll: "Pick every folder and collection shown",
       pick: "Pick {{name}}",
       picked_one: "{{count}} collection picked",
       picked_other: "{{count}} collections picked",
+      /** With folders among the picks: `what` is the folders' and the collections' counts as a list ("1 folder and 3 collections"). */
+      pickedWith: "{{what}} picked",
+      folders_one: "{{count}} folder",
+      folders_other: "{{count}} folders",
+      collections_one: "{{count}} collection",
+      collections_other: "{{count}} collections",
       clear: "Clear the picks",
       merge: "Merge",
       delete: "Delete",
@@ -1186,12 +1196,11 @@ const en = {
     /**
      * **Collections merged** (CTA-232 — a job of the Jobs module before,
      * CTA-220): the `CollectionMergeDialog` block — the collections, the
-     * dedupe mode, the name — from the header's *Merge* and a
-     * collection page's *Merge with…*; the merge kept as a new collection.
+     * dedupe mode, the name — from the lobby header's *Merge* (a collection
+     * page's *Merge with…* gone in CTA-235); the merge kept as a new collection.
      */
     merge: {
       title: "Merge collections",
-      mergeWith: "Merge with…",
       submit: "Merge",
       cancel: "Cancel",
       close: "Close",
@@ -1283,7 +1292,6 @@ const en = {
       moveFolder: "Move folder",
       moveCollection: "Move collection",
       moveTo: "Move to…",
-      deleteFolder: "Delete folder",
       download: "Download everything in this folder as one PGN",
       expand: "Open {{name}}",
       collapse: "Close {{name}}",
@@ -1291,9 +1299,6 @@ const en = {
       name: "Folder name",
       save: "Save",
       cancel: "Cancel",
-      deleteConfirm:
-        "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
-      deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
       /** The folder list's name in the move dialog (CTA-113). */
       picker: "Folders",
       /** New folder's parent (CTA-231): the folder list in its dialog, the top level by default. */
@@ -1301,8 +1306,8 @@ const en = {
     },
     /**
      * The collection page's own panel (CTA-229), in the main menu's place on both
-     * its views: its Close back to the Library, its name, and General, Options and
-     * Jobs (CTA-231).
+     * its views: its Close back to the Library, its name, and General and
+     * Settings (CTA-231; Options until CTA-235).
      */
     /** Where a collection's games come from (CTA-233): their `Source…` tags, the `CollectionSource` card on the collection page's General. */
     collectionSource: {
@@ -1340,7 +1345,7 @@ const en = {
       tabs: {
         label: "Collection details",
         general: "General",
-        options: "Options",
+        settings: "Settings",
       },
       /** General (CTA-231): a collection that is not a tournament — its description and what its index says of it. */
       general: {
@@ -1355,9 +1360,9 @@ const en = {
         elo: "Ratings",
         added: "Added",
       },
-      /** Options of a shipped collection: nothing to change. */
+      /** Settings of a shipped collection: nothing to change. */
       readOnly: "A built-in collection is read-only: its title, description and tournament type cannot be changed.",
-      /** The settings on Options — saved where they are. */
+      /** The settings on the Settings tab — saved where they are. */
       saved: "Saved.",
     },
     /** The table screen — `/library/<collection>`. */
@@ -1452,8 +1457,6 @@ const en = {
       },
       shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Analysis.",
       uploadedNote: "You added this collection; it is kept in this browser only. Changes to a game can update it in place or be saved as a copy next to it.",
-      /** The header's gear, to the collection's settings (CTA-121). */
-      settings: "Collection settings",
     },
     /**
      * A collection's settings — `/library/<collection>/settings` (CTA-121):
@@ -1684,10 +1687,15 @@ const en = {
     /** The header's Delete (CTA-232): the picked uploads — one named, several counted. */
     confirmDelete: {
       title: "Delete {{name}}?",
-      titleMany_one: "Delete {{count}} collection?",
-      titleMany_other: "Delete {{count}} collections?",
+      /** Several things, or a folder's collections with it (CTA-235): `what` is the picks' counts as a list ("2 folders and 5 collections"). */
+      titleWhat: "Delete {{what}}?",
+      /** A folder goes whole (CTA-235): its sub-folders and the uploads under it. */
+      folders_one: "The folder goes with everything in it: its sub-folders and the collections in them.",
+      folders_other: "The folders go with everything in them: their sub-folders and the collections in them.",
       body_one: "{{count}} game is removed from this browser. This cannot be undone.",
       body_other: "{{count}} games are removed from this browser. This cannot be undone.",
+      /** Only empty folders go. */
+      noGames: "This cannot be undone.",
       builtInKept_one: "The built-in collection picked is read-only and stays.",
       builtInKept_other: "The {{count}} built-in collections picked are read-only and stay.",
       problem: "Some could not be deleted — this browser's storage is unavailable. Those left are still picked.",

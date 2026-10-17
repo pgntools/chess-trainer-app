@@ -180,3 +180,18 @@ export const removeLibraryFolder = async (
   if (parentId !== undefined) await refileCollectionsIn(id, parentId);
   return problem;
 };
+
+/**
+ * **Delete folders whole** (CTA-235, the lobby's picks): each folder and
+ * every sub-folder under it, in one write. The collections filed in them are
+ * the caller's to delete first — one left behind names a folder that is gone,
+ * which reads as the top level. Unknown ids are no-ops.
+ */
+export const removeLibraryFoldersDeep = (ids: readonly string[]): Promise<LibraryFolderProblem | undefined> =>
+  write((current) => {
+    const gone = new Set<string>();
+    for (const id of ids) {
+      if (current.some((folder) => folder.id === id)) for (const each of gameFolderSubtree(current, id)) gone.add(each);
+    }
+    return gone.size === 0 ? current : current.filter((folder) => !gone.has(folder.id));
+  });

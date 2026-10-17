@@ -8,7 +8,7 @@ import type { DataTableSort } from "../../../design-system/patterns/tables";
 import type { BlockFamilyId } from "../../families";
 import { isPotentialTournament, readsAsTournament } from "../../../lib/libraryCollections";
 import CollectionsTreeTable from "./CollectionsTreeTable";
-import { BUILT_IN, rowsOpen } from "./fixtures";
+import { BUILT_IN, picksOver, rowsOpen } from "./fixtures";
 import {
   libraryTreeFirstDirection,
   type LibraryTreeColumn,
@@ -18,12 +18,12 @@ type State = { open: Set<string>; sort: DataTableSort<LibraryTreeColumn>; picked
 
 const noop = () => {};
 
-const demo = (initialOpen: string[], { picks = false }: { picks?: boolean } = {}) => (
+const demo = (initialOpen: string[], { picked = [] as string[], picks = picked.length > 0 }: { picks?: boolean; picked?: string[] } = {}) => (
   <WithState<State>
     initial={{
       open: new Set(initialOpen),
       sort: { column: "name", direction: "asc" },
-      picked: new Set(picks ? ["tal"] : []),
+      picked: new Set(picked),
     }}
   >
     {(state, set) => (
@@ -65,22 +65,19 @@ const demo = (initialOpen: string[], { picks = false }: { picks?: boolean } = {}
             onDownloadFolder: noop,
             onRenameFolder: noop,
             onMoveFolder: noop,
-            onDeleteFolder: noop,
             onDownloadCollection: noop,
             onMoveCollection: noop,
             onDeleteCollection: noop,
           }}
           picks={
             picks
-              ? {
-                  picked: state.picked,
-                  onChange: (picked) => set((before) => ({ ...before, picked })),
-                  actions: (
-                    <IconAction label="Merge collections…" onClick={noop} disabled={state.picked.size < 2} testId="gallery-library-tree-merge">
-                      <MergeTypeRoundedIcon fontSize="small" />
-                    </IconAction>
-                  ),
-                }
+              ? picksOver(
+                  state.picked,
+                  (next) => set((before) => ({ ...before, picked: next })),
+                  <IconAction label="Merge collections…" onClick={noop} disabled={state.picked.size < 2} testId="gallery-library-tree-merge">
+                    <MergeTypeRoundedIcon fontSize="small" />
+                  </IconAction>,
+                )
               : undefined
           }
           isTournament={(collection) => readsAsTournament(collection)}
@@ -106,7 +103,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     },
     { name: "All closed", render: () => demo([]) },
     // CTA-221: the collections picked (Merge collections… with two or more).
-    { name: "Collections picked", render: () => demo([BUILT_IN, "gopenings"], { picks: true }) },
+    { name: "Collections picked", render: () => demo([BUILT_IN, "gopenings"], { picked: ["tal"] }) },
+    // CTA-235: a folder ticked stands for all under it; its parent partly ticked.
+    { name: "A folder picked — its parent partly ticked", render: () => demo([BUILT_IN, "gopenings", "gsicilian"], { picked: ["gsicilian", "unajdorf"] }) },
+    { name: "Picks on, nothing picked yet", render: () => demo([BUILT_IN, "gopenings"], { picks: true }) },
   ],
 };
 

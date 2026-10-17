@@ -36,7 +36,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "forms",
   title: "CollectionMergeForm",
   demos: [
-    { name: "One collection — a collection page's Merge with…, the picker to add the rest", render: () => demo(ONE, DEFAULTS) },
+    { name: "One collection — the picker to add the rest (a collection page's Merge with… until CTA-235)", render: () => demo(ONE, DEFAULTS) },
     { name: "Two collections — neither can be removed; the defaults", render: () => demo(TWO, DEFAULTS) },
     { name: "Four collections, reordered and removed down to two", render: () => demo(FOUR, DEFAULTS) },
     { name: "Same-game duplicates, a name of the reader's", render: () => demo(FOUR, EVERYTHING) },

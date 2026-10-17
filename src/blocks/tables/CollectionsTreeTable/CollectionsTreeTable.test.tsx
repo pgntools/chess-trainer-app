@@ -8,14 +8,13 @@ import CollectionsTreeTable, {
   type CollectionsTreeTableProps,
 } from "./CollectionsTreeTable";
 import { isPotentialTournament, readsAsTournament } from "../../../lib/libraryCollections";
-import { BUILT_IN, rowsOpen } from "./fixtures";
+import { BUILT_IN, picksOver, rowsOpen } from "./fixtures";
 
 const mount = (props: Partial<CollectionsTreeTableProps> = {}) => {
   const actions = {
     onDownloadFolder: vi.fn(),
     onRenameFolder: vi.fn(),
     onMoveFolder: vi.fn(),
-    onDeleteFolder: vi.fn(),
     onDownloadCollection: vi.fn(),
     onMoveCollection: vi.fn(),
     onDeleteCollection: vi.fn(),
@@ -66,7 +65,7 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations(screen.getByTestId("probe"));
   });
 
-  it("gives Built-in its download alone, a reader's folder four, a shipped collection its download alone", () => {
+  it("gives Built-in its download alone, a reader's folder three — no delete (CTA-235) —, a shipped collection its download alone", () => {
     mount();
     expect(
       within(screen.getByTestId("library-folder-actions-builtin")).getAllByRole(
@@ -77,17 +76,18 @@ describe("CollectionsTreeTable", () => {
       within(screen.getByTestId("library-folder-actions-gopenings")).getAllByRole(
         "button",
       ),
-    ).toHaveLength(4);
+    ).toHaveLength(3);
     for (const action of [
       "download",
       "rename",
       "move",
-      "delete",
     ]) {
       expect(
         screen.getByTestId(`library-folder-${action}-gopenings`),
       ).toBeInTheDocument();
     }
+    // CTA-235: a folder is deleted through the picks, whole.
+    expect(screen.queryByTestId("library-folder-delete-gopenings")).toBeNull();
     // CTA-231: no new sub-folder, no upload into a folder — the header's New folder and the upload pick the folder.
     expect(screen.queryByTestId("library-folder-new-gopenings")).toBeNull();
     expect(screen.queryByTestId("library-folder-upload-gopenings")).toBeNull();
@@ -150,23 +150,52 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations(screen.getByTestId("probe"));
   });
 
-  it("picks collections — never a folder — and hands the bar the screen's actions (CTA-221)", async () => {
+  it("picks collections and hands the bar the screen's actions (CTA-221)", async () => {
     const onChange = vi.fn();
-    mount({ picks: { picked: new Set(["tal"]), onChange, actions: <button type="button">Merge collections…</button> } });
+    mount({ picks: picksOver(new Set(["tal"]), onChange, <button type="button">Merge collections…</button>) });
     expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 collection picked");
     expect(screen.getByRole("button", { name: "Merge collections…" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Pick Tal" })).toBeChecked();
     await userEvent.click(screen.getByRole("checkbox", { name: "Pick Club games" }));
     expect(onChange).toHaveBeenLastCalledWith(new Set(["tal", "uclub"]));
-    // A folder has no pick.
-    expect(screen.queryByRole("checkbox", { name: "Pick Openings" })).toBeNull();
     await expectNoAxeViolations();
+  });
+
+  it("gives every reader's folder a box — none on Built-in — standing for all under it, partly ticked while some is (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    mount({ rows: rowsOpen(new Set([BUILT_IN, "gopenings", "gsicilian"])), picks: picksOver(new Set(["unajdorf"]), onChange) });
+    expect(screen.queryByTestId("library-pick-folder-builtin")).toBeNull();
+    expect(within(screen.getByTestId("library-folder-builtin")).queryByRole("checkbox")).toBeNull();
+    // Sicilian holds Najdorf lines alone: ticked through it. Openings holds בליץ too: partly.
+    expect(screen.getByRole("checkbox", { name: "Pick Sicilian" })).toBeChecked();
+    const openings = screen.getByRole("checkbox", { name: "Pick Openings" });
+    expect(openings).not.toBeChecked();
+    expect(openings).toHaveAttribute("data-indeterminate", "true");
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 collection picked");
+    // Ticking a folder ticks it and everything under it.
+    await user.click(openings);
+    expect(onChange).toHaveBeenLastCalledWith(new Set(["unajdorf", "gopenings", "gsicilian", "ublitz"]));
+    // An empty folder has its own box.
+    expect(screen.getByRole("checkbox", { name: "Pick Nothing yet" })).not.toBeChecked();
+    await expectNoAxeViolations();
+  });
+
+  it("counts the folders that go with the picks, and select-all takes every folder and collection (CTA-235)", async () => {
+    const onChange = vi.fn();
+    mount({ picks: picksOver(new Set(["gopenings", "gsicilian", "unajdorf", "ublitz", "uclub"]), onChange) });
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("2 folders and 3 collections picked");
+    expect(screen.getByRole("checkbox", { name: "Pick Openings" })).toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: i18n.t("library.picks.selectAll") }));
+    const all = onChange.mock.lastCall?.[0] as Set<string>;
+    for (const id of ["gopenings", "gsicilian", "gempty", "tal", "capablanca", "uclub", "ucup"]) expect(all.has(id)).toBe(true);
+    expect(all.has(BUILT_IN)).toBe(false);
   });
 
   it("draws no collection's delete without its handler (CTA-232: the Library deletes its picks from its header)", () => {
     const fn = vi.fn();
     mount({
-      actions: { onDownloadFolder: fn, onRenameFolder: fn, onMoveFolder: fn, onDeleteFolder: fn, onDownloadCollection: fn, onMoveCollection: fn },
+      actions: { onDownloadFolder: fn, onRenameFolder: fn, onMoveFolder: fn, onDownloadCollection: fn, onMoveCollection: fn },
     });
     expect(screen.getByTestId("library-collection-download-uclub")).toBeInTheDocument();
     expect(screen.queryByTestId("library-collection-delete-uclub")).toBeNull();

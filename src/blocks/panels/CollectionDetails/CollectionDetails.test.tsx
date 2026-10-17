@@ -28,7 +28,7 @@ function Held({
       tab={tab}
       onTabChange={setTab}
       general={general}
-      options={readOnly ? undefined : <label>Title <input defaultValue={name} /></label>}
+      settings={readOnly ? undefined : <label>Title <input defaultValue={name} /></label>}
       testId="probe"
     />
   );
@@ -38,12 +38,12 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("CollectionDetails (CTA-229, CTA-231, CTA-232)", () => {
+describe("CollectionDetails (CTA-229, CTA-231, CTA-232, CTA-235)", () => {
   it("is headed by the collection's name and opens on General: its description and its facts", async () => {
     const { container } = render(<Held />);
     expect(screen.getByRole("region", { name: `Details of ${NAME}` })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: NAME })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Settings"]);
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
     const general = screen.getByRole("tabpanel", { name: "General" });
     expect(within(general).getByTestId("probe-description")).toHaveTextContent("Every Tuesday at the club");
@@ -130,7 +130,7 @@ describe("CollectionDetails (CTA-229, CTA-231, CTA-232)", () => {
     expect(close.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("holds the screen's settings on Options, reached by the keyboard — no Jobs tab (CTA-232)", async () => {
+  it("holds the screen's settings on Settings (Options until CTA-235), reached by the keyboard — no Jobs tab (CTA-232)", async () => {
     const user = userEvent.setup();
     const { container } = render(<Held />);
     await user.tab();
@@ -138,30 +138,30 @@ describe("CollectionDetails (CTA-229, CTA-231, CTA-232)", () => {
     await user.tab();
     expect(screen.getByRole("tab", { name: "General" })).toHaveFocus();
     await user.keyboard("{ArrowRight}{Enter}");
-    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
-    expect(within(screen.getByRole("tabpanel", { name: "Options" })).getByRole("textbox", { name: "Title" })).toHaveValue(NAME);
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(screen.getByRole("tabpanel", { name: "Settings" })).getByRole("textbox", { name: "Title" })).toHaveValue(NAME);
     await expectNoAxeViolations(container);
     expect(screen.queryByRole("tab", { name: "Jobs" })).toBeNull();
   });
 
-  it("says a shipped collection is read-only on Options", () => {
-    render(<Held general={SHIPPED} readOnly initialTab="options" />);
-    expect(screen.getByTestId("probe-options-read-only")).toHaveTextContent(i18n.t("library.collectionDetails.readOnly"));
+  it("says a shipped collection is read-only on Settings", () => {
+    render(<Held general={SHIPPED} readOnly initialTab="settings" />);
+    expect(screen.getByTestId("probe-settings-read-only")).toHaveTextContent(i18n.t("library.collectionDetails.readOnly"));
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it("hands the open tab back to the screen", async () => {
     const onTabChange = vi.fn();
     render(<CollectionDetails name={NAME} closeLink={CLOSE_LINK} tab="general" onTabChange={onTabChange} general={UPLOADED} testId="probe" />);
-    await userEvent.click(screen.getByRole("tab", { name: "Options" }));
-    expect(onTabChange).toHaveBeenCalledWith("options");
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(onTabChange).toHaveBeenCalledWith("settings");
   });
 
   it("speaks Hebrew under Hebrew", async () => {
     await i18n.changeLanguage("he");
     render(<Held name={HEBREW_NAME} />);
     expect(screen.getByRole("heading", { level: 2, name: HEBREW_NAME })).toHaveAttribute("dir", "auto");
-    expect(screen.getByRole("tab", { name: i18n.t("library.collectionDetails.tabs.options") })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: i18n.t("library.collectionDetails.tabs.settings") })).toBeInTheDocument();
     expect(screen.getByTestId("probe-facts-source")).toHaveTextContent(i18n.t("library.collectionDetails.general.sources.uploaded"));
     expect(screen.getByRole("link", { name: i18n.t("library.collectionDetails.close", { name: HEBREW_NAME }) })).toBeInTheDocument();
   });

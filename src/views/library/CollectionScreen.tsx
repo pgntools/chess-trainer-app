@@ -3,8 +3,6 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
-import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -69,7 +67,6 @@ import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
 import CollectionSettingsPanel from "./CollectionSettingsPanel";
 import { tournamentFactsOf } from "./tournamentFacts";
-import { useCollectionMerge } from "./useCollectionMerge";
 import { useCollectionSettings } from "./useCollectionSettings";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
@@ -164,8 +161,6 @@ function CollectionTable({
   rows,
   tabs,
   detailsToggle,
-  onOpenSettings,
-  onMergeWith,
   filtersFolded,
   onFiltersFoldedChange,
 }: {
@@ -175,10 +170,6 @@ function CollectionTable({
   tabs?: TournamentTabs;
   /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the actions. */
   detailsToggle?: ReactNode;
-  /** The Settings gear's: the page's left panel on Options (CTA-231). */
-  onOpenSettings: () => void;
-  /** *Merge with…* (CTA-232): the merge dialog on this collection, the rest picked in it. */
-  onMergeWith: () => void;
   /** The filters' panel folded to the shell's rail (CTA-230) — the page's state, so a tournament's change of tab keeps it. */
   filtersFolded: boolean;
   onFiltersFoldedChange: (folded: boolean) => void;
@@ -555,16 +546,6 @@ function CollectionTable({
                 clearLabel={t("savedList.clearSelected")}
                 actions={
                   <>
-                    {collection.source === "uploaded" && (
-                      // The collection's settings are its page's left panel's Options (CTA-231).
-                      <IconAction label={t("library.table.settings")} onClick={onOpenSettings} testId="library-table-settings">
-                        <SettingsRoundedIcon fontSize="small" />
-                      </IconAction>
-                    )}
-                    {/* The whole collection merged with others into a new one (CTA-232) — shipped and uploaded alike. */}
-                    <IconAction label={t("library.merge.mergeWith")} onClick={onMergeWith} testId="library-table-merge-with">
-                      <MergeTypeRoundedIcon fontSize="small" />
-                    </IconAction>
                     <IconAction
                       label={t("library.table.picks.download")}
                       disabled={picked.size === 0}
@@ -757,14 +738,14 @@ function CollectionTable({
  *   once, the games' tags — the site, the teams — once read: General reads
  *   the games of a tournament while it is open), any other collection's
  *   description and its index's facts;
- * - **Options** — the collection's settings (`CollectionSettingsPanel`, the
- *   draft held here, `useCollectionSettings`), in place of the
- *   `/library/<c>/settings` screen; the header's gear and a tournament's
- *   *Change the type* open it (and, under the breakpoint, the drawer).
+ * - **Settings** (Options until CTA-235) — the collection's settings
+ *   (`CollectionSettingsPanel`, the draft held here, `useCollectionSettings`),
+ *   in place of the `/library/<c>/settings` screen; a tournament's *Change
+ *   the type* opens it (and, under the breakpoint, the drawer). No gear in
+ *   the header since CTA-235: the tab is the way in.
  *
- * No Jobs tab since CTA-232: the collection's one job was the merge, which
- * is the header's *Merge with…* now (`useCollectionMerge`, this collection
- * first, the rest picked in its dialog).
+ * No Jobs tab since CTA-232, and no *Merge with…* since CTA-235: merging is
+ * the Library lobby's header *Merge*, over the ticked collections.
  *
  * The open tab is held here (above the tournament view's tabs, so a change
  * of tab keeps it) and kept nowhere. Under the shell's breakpoint it is a
@@ -787,19 +768,19 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
   const tournament = isTournamentCollection(collection, rows);
 
   /*
-    The gear and *Change the type* open the settings: the Options tab, in the
-    drawer under the breakpoint — the focus on the tab once it is drawn.
+    A tournament's *Change the type* opens the settings: the Settings tab, in
+    the drawer under the breakpoint — the focus on the tab once it is drawn.
   */
-  const focusOptions = useRef(false);
+  const focusSettings = useRef(false);
   const openSettings = () => {
-    focusOptions.current = true;
-    setDetailsTab("options");
+    focusSettings.current = true;
+    setDetailsTab("settings");
     if (compact) setDetailsOpen(true);
   };
   useEffect(() => {
-    if (!focusOptions.current || detailsTab !== "options") return;
-    focusOptions.current = false;
-    document.querySelector<HTMLElement>('[data-testid="library-collection-details-tab-options"]')?.focus();
+    if (!focusSettings.current || detailsTab !== "settings") return;
+    focusSettings.current = false;
+    document.querySelector<HTMLElement>('[data-testid="library-collection-details-tab-settings"]')?.focus();
   }, [detailsTab, detailsOpen]);
 
   // A tournament's General: its games' own tags (the site, the teams), read while it is open.
@@ -823,10 +804,6 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
     [tournament, collection, rows, headers, sources],
   );
 
-  // *Merge with…* (CTA-232): this collection first, the rest picked in the dialog.
-  const merge = useCollectionMerge("library-collection-merge");
-  const mergeWith = () => merge.open([collection.id]);
-
   // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
   const detailsToggle = compact ? (
     <IconAction
@@ -848,7 +825,6 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           rows={rows}
           detailsToggle={detailsToggle}
           onOpenSettings={openSettings}
-          onMergeWith={mergeWith}
           statisticsFolded={statisticsFolded}
           onStatisticsFoldedChange={setStatisticsFolded}
           games={(tabs) => (
@@ -857,8 +833,6 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
               rows={rows}
               tabs={tabs}
               detailsToggle={detailsToggle}
-              onOpenSettings={openSettings}
-              onMergeWith={mergeWith}
               {...fold}
             />
           )}
@@ -868,8 +842,6 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           collection={collection}
           rows={rows}
           detailsToggle={detailsToggle}
-          onOpenSettings={openSettings}
-          onMergeWith={mergeWith}
           {...fold}
         />
       )}
@@ -887,7 +859,7 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           onTabChange={setDetailsTab}
           general={general}
           // A shipped collection is read-only: no settings.
-          options={
+          settings={
             collection.source === "uploaded" ? (
               <CollectionSettingsPanel collection={collection} canMark={canBeTournament(rows)} settings={settings} />
             ) : undefined
@@ -895,7 +867,6 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           testId="library-collection-details"
         />
       </BoardLeftPanel>
-      {merge.dialog}
     </>
   );
 }

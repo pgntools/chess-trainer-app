@@ -7,7 +7,7 @@ import type { CollectionMergeFormCandidate, CollectionMergeFormSource } from "./
   gallery and its test, and by `CollectionMergeDialog`'s.
 */
 
-/** One collection — a collection page's *Merge with…* as it opens. */
+/** One collection — the form with its picker, as a collection page's *Merge with…* opened it until CTA-235. */
 export const ONE: CollectionMergeFormSource[] = [{ id: "tal", name: "Mikhail Tal", count: 2636 }];
 
 /** Two shipped collections — the fewest a merge takes. */

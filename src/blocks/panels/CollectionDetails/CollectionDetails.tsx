@@ -13,9 +13,9 @@ import type { CollectionMetadata, CollectionSources, CollectionSummary } from ".
 import { CollectionSource, TournamentInfo, type TournamentFacts } from "../../cards";
 
 /** The panel's tabs, in order — no Jobs since CTA-232 (the merge, its one job, is a Library action). */
-export type CollectionDetailsTab = "general" | "options";
+export type CollectionDetailsTab = "general" | "settings";
 
-const COLLECTION_DETAILS_TABS: readonly CollectionDetailsTab[] = ["general", "options"];
+const COLLECTION_DETAILS_TABS: readonly CollectionDetailsTab[] = ["general", "settings"];
 
 /**
  * What General shows (CTA-231): a tournament's event card — the facts its
@@ -53,17 +53,17 @@ export type CollectionDetailsProps = {
   onTabChange: (tab: CollectionDetailsTab) => void;
   general: CollectionDetailsGeneral;
   /**
-   * The Options tab's content — the collection's settings, the screen's
+   * The Settings tab's content — the collection's settings, the screen's
    * (`CollectionSettingsForm` in its frame, the draft and the write its own).
    * Absent — a shipped collection, read-only — a line saying so.
    */
-  options?: ReactNode;
+  settings?: ReactNode;
   /**
    * The root; its parts `-close`, `-title`, `-tabs` (each tab `-tab-<id>`),
    * `-general` (a tournament's card `-tournament`, else the description
    * `-description` and the facts `-facts`, each `-facts-<id>`; under either
-   * the source card `-source`), `-options`
-   * (`-options-read-only` without settings).
+   * the source card `-source`), `-settings`
+   * (`-settings-read-only` without settings).
    */
   testId: string;
 };
@@ -120,9 +120,9 @@ function CollectionFacts({
  *   panel's foot (the rest scrolling above it), where the games come from —
  *   their `Source…` tags (`CollectionSource`, CTA-233), when any game names
  *   one.
- * - **Options** — the collection's settings (the screen's form: the title,
- *   the description, the tournament mark); a shipped collection's a line
- *   saying it is read-only.
+ * - **Settings** (named Options until CTA-235) — the collection's settings
+ *   (the screen's form: the title, the description, the tournament mark); a
+ *   shipped collection's a line saying it is read-only.
  *
  * (A third, Jobs — the collection's jobs and New job — went in CTA-232 with
  * the merge job: merging is the Library's own action now.)
@@ -130,7 +130,7 @@ function CollectionFacts({
  * Presentational: the open tab, the facts and the settings arrive
  * from the screen; its words are `library.collectionDetails.*`.
  */
-function CollectionDetails({ name, closeLink, tab, onTabChange, general, options, testId }: CollectionDetailsProps) {
+function CollectionDetails({ name, closeLink, tab, onTabChange, general, settings, testId }: CollectionDetailsProps) {
   const { t } = useTranslation();
 
   return (
@@ -166,7 +166,7 @@ function CollectionDetails({ name, closeLink, tab, onTabChange, general, options
         />
       </Box>
       {/* The open tab's content scrolls; the head and the tabs stay. The settings' frame scrolls its own fields over its Save, General its facts over the source. */}
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: tab === "general" || (tab === "options" && options !== undefined) ? "hidden" : "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: tab === "general" || (tab === "settings" && settings !== undefined) ? "hidden" : "auto" }}>
         {tab === "general" && (
           <Box {...tabPanelProps(testId, "general")} data-testid={`${testId}-general`} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
             <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", gap: 2, alignContent: "start", px: 1, py: 1 }}>
@@ -194,14 +194,14 @@ function CollectionDetails({ name, closeLink, tab, onTabChange, general, options
             )}
           </Box>
         )}
-        {tab === "options" && (
+        {tab === "settings" && (
           <Box
-            {...tabPanelProps(testId, "options")}
-            data-testid={`${testId}-options`}
-            sx={{ px: 1, py: 1, boxSizing: "border-box", ...(options !== undefined && { height: "100%", display: "flex", flexDirection: "column" }) }}
+            {...tabPanelProps(testId, "settings")}
+            data-testid={`${testId}-settings`}
+            sx={{ px: 1, py: 1, boxSizing: "border-box", ...(settings !== undefined && { height: "100%", display: "flex", flexDirection: "column" }) }}
           >
-            {options ?? (
-              <Typography variant="body2" data-testid={`${testId}-options-read-only`} sx={{ color: "text.secondary" }}>
+            {settings ?? (
+              <Typography variant="body2" data-testid={`${testId}-settings-read-only`} sx={{ color: "text.secondary" }}>
                 {t("library.collectionDetails.readOnly")}
               </Typography>
             )}

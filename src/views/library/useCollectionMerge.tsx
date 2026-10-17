@@ -29,7 +29,7 @@ class MergeRefused extends Error {
   }
 }
 
-/** No collection to add — the dialog without its picker. */
+/** No collection to add — the dialog without its picker: the ticked collections are the merge's (CTA-235). */
 const NO_CANDIDATES: readonly CollectionMergeFormCandidate[] = [];
 
 /** A merge done, with its games kept for Download PGN. */
@@ -39,8 +39,9 @@ type Done = CollectionMergeDone & { pgns: readonly string[] };
  * **Library collections merged — a direct action** (CTA-232; a job of the
  * Jobs module before, CTA-220 / CTA-221). `open(ids)` opens the
  * `CollectionMergeDialog` on those collections, in that order — the
- * Library header's *Merge* (two or more ticked) or a collection page's
- * *Merge with…* (that collection alone, the picker to add the rest). Merge:
+ * Library header's *Merge* (two or more ticked, a ticked folder's among
+ * them), with no picker to add others (a collection page's *Merge with…*,
+ * which had one, went in CTA-235). Merge:
  *
  * 1. reads each source's games as the Library holds them (a shipped
  *    collection's PGN fetched and cut once, an upload's record —
@@ -54,17 +55,11 @@ type Done = CollectionMergeDone & { pgns: readonly string[] };
  *    write, then `addCollection` — a new collection at the Library's top
  *    level, always.
  *
- * `picker: false` leaves the dialog's *Add a collection* out — the lobby's,
- * whose ticked collections (two or more) are the merge's.
- *
  * Done, the dialog says what was made, with **Open collection** and
  * **Download PGN** (the merged games as one `.pgn`). Render `dialog` once
  * in the screen; `testId` prefixes its ids (`<testId>`, `<testId>-progress`).
  */
-export const useCollectionMerge = (
-  testId: string,
-  { picker = true }: { picker?: boolean } = {},
-): { open: (ids: readonly string[]) => void; dialog: ReactNode } => {
+export const useCollectionMerge = (testId: string): { open: (ids: readonly string[]) => void; dialog: ReactNode } => {
   const { t, i18n } = useTranslation();
   const job = useCancellableJob();
   const uploaded = useUploadedCollections();
@@ -74,12 +69,8 @@ export const useCollectionMerge = (
   const [problem, setProblem] = useState<string | undefined>();
   const [done, setDone] = useState<Done | undefined>();
 
-  // The Library as the picker offers it: Built-in, then the reader's own.
+  // The Library's collections the ids are read against: Built-in, then the reader's own.
   const summaries = useMemo<readonly CollectionSummary[]>(() => [...shippedCollections, ...(uploaded ?? [])], [uploaded]);
-  const candidates = useMemo<CollectionMergeFormCandidate[]>(
-    () => summaries.map((summary) => ({ id: summary.id, name: summary.name, count: summary.count, builtIn: summary.source === "shipped" })),
-    [summaries],
-  );
 
   const open = (ids: readonly string[]) => {
     const picked = ids.flatMap((id) => {
@@ -167,7 +158,7 @@ export const useCollectionMerge = (
           setProblem(undefined);
           setSources(next);
         }}
-        candidates={picker ? candidates : NO_CANDIDATES}
+        candidates={NO_CANDIDATES}
         settings={settings}
         onChange={(patch) => {
           setProblem(undefined);
