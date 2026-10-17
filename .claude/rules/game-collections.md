@@ -2,6 +2,7 @@
 paths:
   - "src/views/library/**"
   - "src/lib/libraryCollections*"
+  - "src/lib/pgnTagStamp*"
   - "src/lib/libraryCollectionStore*"
   - "src/lib/libraryDb.ts"
   - "src/lib/libraryFolderStore*"
@@ -60,6 +61,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | Path | What lives there |
 | --- | --- |
 | `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `activeFilterCount` (the folded panel's badge, CTA-230), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127); **the games' sources** (CTA-233): `sourceTagsOf` (a game's `Source…` tags), `KNOWN_SOURCE_TAGS`, `sourceLinkHref` (a `SourceLink` a reader may follow: `http(s)` only), `collectionSourcesOf` / `CollectionSources` (each distinct source with its games, and the games naming none). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, its standings table since CTA-204 — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
+| `src/lib/pgnTagStamp.ts` | **Tags stamped on imported games** (CTA-234, the import popup's TAGS field): `readTagLines` (the field's lines as `PgnTag`s, or each malformed line's number and reason), `stampPgnTags` (one game's text with them on — an own tag overridden in place, a missing one added, a Seven Tag Roster tag in its roster place), `pgnTagLine`, `SEVEN_TAG_ROSTER`. Pure text, no `chess.js`. |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -77,7 +79,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/tables/CollectionsTreeTable/` | The details view itself (CTA-113): `DataTable`'s tree rows over `folderTreeRows` — sticky header, sortable columns, indented rows with named chevrons, the row actions always visible (`FolderActions` for a folder). Presentational. |
 | `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (the picker, the top level by default — no `?folder=` since CTA-231), and `?into=<id>` to add games to an existing one. |
-| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
+| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127, the TAGS field — CTA-234), the typed tags stamped on the kept games, then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
 | `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142); on both, the page's left panel (`CollectionPage`, CTA-229; its General and Options, CTA-231 — §6.4) and the header's *Merge with…* (CTA-232, §6.5.1). |
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts`, `tournamentFacts.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`); the event's facts (`tournamentFactsOf`, the left panel's General since CTA-231). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
@@ -101,7 +103,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, the collection page's panel and its settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board, the panel folded to a rail — CTA-230), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142; the event's card on General, the Participants panel folded — CTA-231), `LibraryMerge.test.tsx` (the merge from the lobby's picks and a collection page's *Merge with…*, a refusal, Cancel — CTA-232) — sharing `libraryTestKit.tsx`, `src/lib/collectionMerge.test.ts`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `pgnTagStamp.test.ts` (CTA-234), `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, the collection page's panel and its settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board, the panel folded to a rail — CTA-230), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142; the event's card on General, the Participants panel folded — CTA-231), `LibraryMerge.test.tsx` (the merge from the lobby's picks and a collection page's *Merge with…*, a refusal, Cancel — CTA-232) — sharing `libraryTestKit.tsx`, `src/lib/collectionMerge.test.ts`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -638,6 +640,29 @@ words box, **the table the one region that scrolls**, its header sticky.
     slider's many changes a second. All go
     through `filteredRows`. A live "N of M games will be imported"; Import is
     off at none. Event / result / opening filters are not offered (yet).
+  - **The TAGS field** (CTA-234, `library-import-tags`, "Tags"): on every
+    Library import that opens the popup — a `.pgn`, a `.zip`, a paste and
+    *Add games* — never Analysis's New project (the block's `tagsField`,
+    which that host does not pass). Each non-blank line is one PGN tag pair,
+    `[Name "Value"]` (`[Site "Warwick ENG"]`, `[Annotator "Stockfish19"]`),
+    the name letters, digits and `_`, the value's escapes the standard's
+    `\"` and `\\` (`readTagLines`, `lib/pgnTagStamp.ts`). A malformed line
+    is said on the field — its number and why (`library.upload.options.tagsProblem.*`:
+    not a tag pair, a bad name, a bad escape) — and Import stays off until
+    it is fixed or removed. **A name typed twice: the last one wins** (in the
+    first one's place). Blank, the import is exactly as before.
+    **Applied at Import only**: the filters, the metadata, *Split by event*,
+    the tournament guess and the collections' names all read the file as it
+    came (a typed `Event` neither renames nor re-splits); the tags are
+    stamped on the kept games (`stampPgnTags`) **just before the index
+    pass**, so the stored games, the index (its Site / Date / Round …
+    columns) and every later download or export carry them. **A typed tag
+    overrides**: a game carrying one of the name gets the typed value in its
+    place (a second of the name in the game goes); one it lacks is added — a
+    Seven Tag Roster tag after the last roster tag before it, any other at
+    the end of its tag section; a game with no tag section is given one.
+    Every other tag and the movetext are untouched (a typed `Result` does not
+    change the movetext's terminator).
   - **Import** runs **one** index pass over the kept games of every file
     (`library-import-indexing`, the progress bar, Cancel), then writes. A
     file keeping no game makes nothing.
