@@ -70,9 +70,8 @@ const en = {
     themeEditor: "Theme editor",
     /** Analysis V2 (CTA-186): its Projects browser — and Jobs V2 beside it (CTA-188). */
     analysisProjects: "Projects",
-    /** The Jobs module (CTA-221): every background job, and the Jobs settings — its own folder. */
+    /** The Jobs module (CTA-221): every background job — its folder drawn as one row (CTA-228), named by `nav.folders.jobs`. */
     jobs: "Jobs",
-    jobsSettings: "Settings",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",

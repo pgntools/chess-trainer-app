@@ -58,8 +58,14 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `src/test/jobsKit.ts` | The kinds' test kit (§6). |
 
 Routes and nav: `/jobs`, `/jobs/settings` and `/jobs/<id>` (full width,
-`pages.jobs`, `pages.jobsSettings`, `pages.job`), the top-level **Jobs**
-sidebar folder (Jobs, Settings). Locale keys: `jobs.*` (`jobs.kinds.<key>.*`
+`pages.jobs`, `pages.jobsSettings`, `pages.job`). The sidebar's **Jobs** is
+one top-level row straight to `/jobs` (CTA-228): the folder `jobs`
+(`nav.folders.jobs`) is `singleEntry`, folded to its one screen (`nav.jobs`,
+declared but not drawn) under its own name and icon, as Analysis is — no
+toggle, no nested *Settings*; active on `/jobs` only. The Jobs settings are
+reached from the Jobs screen's header (its Settings button,
+`JOBS_SETTINGS_PATH`) and return by their *Back to Jobs*; a job's page from
+its row. Locale keys: `jobs.*` (`jobs.kinds.<key>.*`
 a kind's own). `/analysis/jobs` is an unknown route.
 
 ---

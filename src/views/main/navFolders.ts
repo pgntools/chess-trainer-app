@@ -126,7 +126,15 @@ export const navFolders = (): readonly NavFolder[] => [
     computer analysis, a repertoire's evaluation, collections merged — and
     their settings. Its own folder since Jobs left Analysis.
   */
-  { id: "jobs", labelKey: "nav.folders.jobs", icon: WorkHistoryRoundedIcon },
+  {
+    id: "jobs",
+    labelKey: "nav.folders.jobs",
+    icon: WorkHistoryRoundedIcon,
+    // One destination (CTA-228): the folder renders as one clickable row,
+    // "Jobs", to every job — a job's page and the Jobs settings are reached
+    // from the Jobs screen, not from here.
+    singleEntry: true,
+  },
   {
     id: "openings",
     labelKey: "nav.folders.openings",

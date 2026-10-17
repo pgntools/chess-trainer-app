@@ -113,18 +113,28 @@ describe("the shipped nav tree", () => {
     expect(ids).not.toContain("analysis");
   });
 
-  it("files Jobs and the Jobs settings in a top-level Jobs folder of their own, out of Analysis (CTA-221)", () => {
+  it("draws Jobs as one row to every job, after Analysis — the Jobs settings off the sidebar (CTA-221, CTA-228)", () => {
     const ids = navFolders().map((folder) => folder.id);
     expect(ids.indexOf("jobs")).toBe(ids.indexOf("analysis-v2") + 1);
     const jobs = navFolders().find((folder) => folder.id === "jobs");
-    expect(jobs?.singleEntry).toBeFalsy();
+    expect(jobs?.singleEntry).toBe(true);
     expect(jobs?.labelKey).toBe("nav.folders.jobs");
-    expect(navItemsInFolder("jobs").map((item) => [item.to, item.labelKey])).toEqual([
-      ["/jobs", "nav.jobs"],
-      ["/jobs/settings", "nav.jobsSettings"],
-    ]);
-    expect(folderPath("/jobs")).toEqual(["jobs"]);
-    expect(folderPath("/jobs/settings")).toEqual(["jobs"]);
+    expect(navItemsInFolder("jobs").map((item) => [item.to, item.labelKey])).toEqual([["/jobs", "nav.jobs"]]);
+    // Folded to one top-level screen row, named by the folder, with its icon,
+    // right after Analysis's — no folder to open, no nested "Settings".
+    const tree = navTree();
+    const analysis = tree.findIndex((node) => node.to === "/analysis");
+    expect(tree[analysis + 1]).toMatchObject({
+      kind: "screen",
+      to: "/jobs",
+      labelKey: "nav.folders.jobs",
+      icon: jobs?.icon,
+    });
+    expect(tree[analysis + 1].children).toBeUndefined();
+    expect(folderPath("/jobs")).toEqual([]);
+    // The Jobs settings are the Jobs screen's to reach, not a sidebar row's.
+    expect(folderPath("/jobs/settings")).toEqual([]);
+    expect(navItems().map((item) => item.to)).not.toContain("/jobs/settings");
     // Jobs V2's address is no screen's.
     expect(folderPath("/analysis/jobs")).toEqual([]);
   });

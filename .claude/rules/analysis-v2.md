@@ -118,7 +118,7 @@ Jobs tab and its New job).
   screen (`nav.analysisProjects`, declared but not drawn) under its own name
   and icon, as Openings and Repertoires are: no toggle, no nested *Projects*.
   Active on `/analysis` only (an exact match — a Project or a Case lights no
-  row); the Jobs module has its own folder after it.
+  row); the Jobs module has its own row after it (CTA-228).
 - **Export / Import**: the `analysisProjects` category, offered always (§5).
 - **The legal pages** name `chessapp.analysisProjects`, in both languages;
   `legalDocuments.test.ts` holds them to it, and to naming neither retired

@@ -136,13 +136,13 @@ describe("sidebar navigation", () => {
   }, 90000);
 
   it("marks only the current route as the current page", () => {
-    renderAt("/jobs/settings");
+    renderAt("/settings/storage");
 
-    // The Jobs settings (CTA-221) — a screen inside an open folder.
+    // Settings' Storage tab — a screen inside an open folder.
     const active = screen
-      .getAllByRole("link", { name: i18n.t("nav.jobsSettings") })
-      .find((link) => link.getAttribute("href") === "/jobs/settings");
-    if (active === undefined) throw new Error("no Jobs link");
+      .getAllByRole("link", { name: i18n.t("nav.settingsStorage") })
+      .find((link) => link.getAttribute("href") === "/settings/storage");
+    if (active === undefined) throw new Error("no Storage link");
     expect(active).toHaveAttribute("aria-current", "page");
 
     const others = screen.getAllByRole("link").filter((link) => link !== active);
@@ -283,6 +283,21 @@ describe("the folder tree", () => {
     expect(row).toHaveAttribute("aria-current", "page");
     expect(row).not.toHaveAttribute("aria-expanded");
     expect(screen.queryByRole("link", { name: i18n.t("nav.analysisProjects") })).not.toBeInTheDocument();
+  });
+
+  it("draws Jobs as one link to every job, current on it — no folder, no Settings row (CTA-228)", () => {
+    renderAt("/jobs");
+    const jobs = i18n.t("nav.folders.jobs");
+
+    expect(screen.queryByRole("button", { name: jobs })).not.toBeInTheDocument();
+    const row = screen.getByRole("link", { name: jobs });
+    expect(row).toHaveAttribute("href", "/jobs");
+    expect(row).toHaveAttribute("aria-current", "page");
+    expect(row).not.toHaveAttribute("aria-expanded");
+    // The Jobs settings are the Jobs screen's Settings button's, not the sidebar's.
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).not.toHaveAttribute("href", "/jobs/settings");
+    }
   });
 
   it("starts with everything shut on a route that is no screen", () => {
@@ -440,6 +455,7 @@ describe("the tree nests folders to any depth", () => {
     of its own. Nesting is a data edit — this fixture goes through the same
     renderer as `navTree()`, with no change to it.
   */
+  const DEEP_SCREEN = "/settings/storage";
   const nested: NavTreeNode[] = [
     {
       kind: "folder",
@@ -455,10 +471,10 @@ describe("the tree nests folders to any depth", () => {
           children: [
             {
               kind: "screen",
-              id: "/jobs/settings",
-              labelKey: "nav.jobsSettings",
+              id: DEEP_SCREEN,
+              labelKey: "nav.settingsStorage",
               icon: GridViewRoundedIcon,
-              to: "/jobs/settings",
+              to: DEEP_SCREEN,
             },
           ],
         },
@@ -480,7 +496,7 @@ describe("the tree nests folders to any depth", () => {
 
   it("renders a sub-folder as its own collapsible row, inside the level above", () => {
     // The screen two levels down, so the whole chain is the open one.
-    const { container } = renderAt("/jobs/settings", nested);
+    const { container } = renderAt(DEEP_SCREEN, nested);
 
     expect(outer()).toHaveAttribute("aria-expanded", "true");
     expect(inner()).toHaveAttribute("aria-expanded", "true");
@@ -491,12 +507,12 @@ describe("the tree nests folders to any depth", () => {
       within(outerBody).getByRole("button", { name: i18n.t("nav.folders.engine") }),
     ).toBeInTheDocument();
     expect(
-      within(outerBody).getByRole("link", { name: i18n.t("nav.jobsSettings") }),
+      within(outerBody).getByRole("link", { name: i18n.t("nav.settingsStorage") }),
     ).toBeInTheDocument();
   });
 
   it("collapses one level without touching the level above it", async () => {
-    renderAt("/jobs/settings", nested);
+    renderAt(DEEP_SCREEN, nested);
     const user = userEvent.setup();
 
     await user.click(inner());
@@ -508,7 +524,7 @@ describe("the tree nests folders to any depth", () => {
     // The deep screen is gone; the outer folder's own screen stays.
     await waitFor(() =>
       expect(
-        screen.queryByRole("link", { name: i18n.t("nav.jobsSettings") }),
+        screen.queryByRole("link", { name: i18n.t("nav.settingsStorage") }),
       ).toBeNull(),
     );
     expect(
@@ -517,12 +533,12 @@ describe("the tree nests folders to any depth", () => {
   });
 
   it("expands the whole ancestor chain of a screen two levels down", () => {
-    renderAt("/jobs/settings", nested);
+    renderAt(DEEP_SCREEN, nested);
 
     expect(outer()).toHaveAttribute("aria-expanded", "true");
     expect(inner()).toHaveAttribute("aria-expanded", "true");
     expect(
-      screen.getByRole("link", { name: i18n.t("nav.jobsSettings") }),
+      screen.getByRole("link", { name: i18n.t("nav.settingsStorage") }),
     ).toHaveAttribute("aria-current", "page");
   });
 
