@@ -56,17 +56,16 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * rather than kept as a new one, and the reader goes back to its table.
  *
  * **A new collection is filed in a folder** (CTA-88): the picker starts at the
- * top level, or at `?folder=<id>` — a folder row's *Add a collection here*.
- * A folder that is not the reader's (gone, or Built-in) is the top level.
+ * top level (CTA-231: no `?folder=` — no folder row links here any more).
  */
-function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; folder?: string | null }) {
+function LibraryUpload({ into }: { into?: CollectionSummary }) {
   // Its title is the page's `h1`; adding games names the collection (CTA-112).
   useOwnPageHeading();
   usePageTitle(into?.name);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const folders = useLibraryFolders() ?? [];
-  const [folderId, setFolderId] = useState<string | null>(folder);
+  const [folderId, setFolderId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [pasted, setPasted] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -282,26 +281,17 @@ function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; fold
 }
 
 /**
- * The route: a new collection — `?folder=<id>` filed in one of the reader's
- * folders, waiting for them to be read — or, `?into=<collection>`, games
+ * The route: a new collection — or, `?into=<collection>`, games
  * added to one of the reader's own. A shipped collection, or one that is not
  * there, is the miss.
  */
 function LibraryUploadRoute() {
   const [params] = useSearchParams();
   const into = params.get("into");
-  const folder = params.get("folder");
   const state = useCollectionSummary(into ?? undefined);
-  const folders = useLibraryFolders();
   const { t } = useTranslation();
-  const loading = <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
-  if (into === null) {
-    if (folder === null) return <LibraryUpload />;
-    if (folders === undefined) return loading;
-    const known = folders.some((candidate) => candidate.id === folder);
-    return <LibraryUpload key={folder} folder={known ? folder : null} />;
-  }
-  if (state.status === "loading") return loading;
+  if (into === null) return <LibraryUpload />;
+  if (state.status === "loading") return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   if (state.status === "missing" || state.summary.source !== "uploaded") {
     return <LibraryMiss what="collection" />;
   }

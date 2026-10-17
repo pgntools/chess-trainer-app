@@ -37,7 +37,6 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import CollectionScreen from "./CollectionScreen";
-import CollectionSettingsScreen from "./CollectionSettingsScreen";
 import LibraryGameScreen from "./LibraryGameScreen";
 import LibraryHome from "./LibraryHome";
 import LibraryUpload from "./LibraryUpload";
@@ -58,7 +57,6 @@ const mount = (entry: string) =>
               <Route path="/library" element={<LibraryHome />} />
               <Route path="/library/new" element={<LibraryUpload />} />
               <Route path="/library/:collectionId" element={<CollectionScreen />} />
-              <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
               <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
             </Routes>
             <BoardLeftPanelOutlet compact={false} />
@@ -195,12 +193,19 @@ describe("a Library game — accessible", () => {
   });
 });
 
-describe("a collection's settings — accessible (CTA-121)", () => {
-  it("is its page's h1 over its sections' h2s, and passes axe with the mark off", async () => {
+/** The collection page with its left panel on Options (CTA-231 — the settings screen of CTA-121 before). */
+const mountOptions = async (id: string) => {
+  mount(`/library/${id}`);
+  await userEvent.click(await screen.findByRole("tab", { name: "Options" }));
+  await screen.findByTestId("library-settings-form");
+};
+
+describe("a collection's settings — accessible (CTA-121; the page's Options tab since CTA-231)", () => {
+  it("sits under the panel's h2, its sections h2s, and passes axe with the mark off", async () => {
     const club = await keep("Club games");
-    mount(`/library/${club.id}/settings`);
-    expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Collection settings" })).toBeInTheDocument();
+    await mountOptions(club.id);
+    expect(screen.getByRole("heading", { level: 1, name: "Club games" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
     for (const section of ["General", "Tournament"]) {
       expect(screen.getByRole("heading", { level: 2, name: section })).toBeInTheDocument();
     }
@@ -211,7 +216,7 @@ describe("a collection's settings — accessible (CTA-121)", () => {
   it("names the mark by its label and its reason when the games will not allow it, and the types by their names", async () => {
     // GAMES holds two events, so the mark is off with its reason — the message is the switch's description.
     const mixed = await keep("Mixed club");
-    mount(`/library/${mixed.id}/settings`);
+    await mountOptions(mixed.id);
     const blocked = await screen.findByRole("switch", { name: "Mark as tournament" });
     expect(blocked).toBeDisabled();
     expect(blocked).toHaveAccessibleDescription(/only when every game in it shares one Event/);
@@ -223,7 +228,7 @@ describe("a collection's settings — accessible (CTA-121)", () => {
     const one = '[Event "Club"]\n[Date "2023.04.02"]\n[White "Zed"]\n[Black "Amy"]\n[Result "0-1"]\n\n1. e4 e5 0-1';
     const added = await addCollection("One club", [one], [indexedRowOf(one)]);
     if (!("collection" in added)) throw new Error("not added");
-    mount(`/library/${added.collection.id}/settings`);
+    await mountOptions(added.collection.id);
     const mark = await screen.findByRole("switch", { name: "Mark as tournament" });
     mark.focus();
     await userEvent.keyboard(" ");

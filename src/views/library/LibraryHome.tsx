@@ -22,7 +22,7 @@ import {
 } from "../../lib/libraryFolderStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { gameFolderChildren, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
+import { gameFolderChildren, gameFolderPath, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
 import { shippedCollections } from "../../lib/shippedCollections";
 import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
 import {
@@ -65,6 +65,11 @@ import { useOwnPageHeading } from "../main/pageTitle";
  *   folders always come before collections at every level.
  * - **A words box** (`?q=`, history replace) keeps the collections and
  *   folders whose name holds it, with the folders above them opened.
+ * - **One New folder**, the header's (CTA-231): its name and its parent —
+ *   the reader's folders in a picker, the top level by default. A folder's
+ *   row makes no sub-folder and takes no upload (the upload screen picks
+ *   the folder), and a collection's row has no New job: its page's Jobs tab
+ *   has it. The picks' *Merge collections…* is the list's one job.
  *
  * **Listing fetches nothing.** A shipped collection's name and game count are
  * its manifest entry (`src/data/library/manifest.json`); an upload's are its
@@ -243,12 +248,13 @@ function LibraryHome() {
     });
   }, [allFolders, entries, sort, direction, needle, open, turned]);
 
-  const [naming, setNaming] = useState<{ parentId: string | null } | { folder: GameFolder } | null>(null);
+  // The name dialog: a new folder (its parent picked in it, CTA-231), or a folder renamed.
+  const [naming, setNaming] = useState<"new" | { folder: GameFolder } | null>(null);
   const [movingFolder, setMovingFolder] = useState<GameFolder | null>(null);
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
   const [deleting, setDeletingState] = useState<CollectionSummary | null>(null);
-  // The collections picked (CTA-221) — *Merge collections…* with two or more — and New job for one or several.
+  // The collections picked (CTA-221) — *Merge collections…* with two or more.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const newJob = useNewJob("library-new-job");
   // The collection asked about, held past the dialog's close so its closing transition keeps the words.
@@ -303,7 +309,7 @@ function LibraryHome() {
                 size="small"
                 variant="outlined"
                 startIcon={<CreateNewFolderRoundedIcon />}
-                onClick={() => setNaming({ parentId: null })}
+                onClick={() => setNaming("new")}
                 disabled={readerFolders === undefined}
                 data-testid="library-new-folder"
               >
@@ -341,8 +347,6 @@ function LibraryHome() {
           onOpenCollection={(entry) => navigate(hrefOf(entry))}
           builtInFolderId={BUILT_IN_FOLDER_ID}
           actions={{
-            uploadLink: (folder) => ({ component: RouterLink, to: `/library/new?folder=${encodeURIComponent(folder.id)}` }),
-            onNewFolder: (folder) => setNaming({ parentId: folder.id }),
             onDownloadFolder: (folder) => void downloadFolder(folder),
             onRenameFolder: (folder) => setNaming({ folder }),
             onMoveFolder: setMovingFolder,
@@ -350,7 +354,6 @@ function LibraryHome() {
             onDownloadCollection: (collection) => void download(collection),
             onMoveCollection: setMovingCollection,
             onDeleteCollection: setDeleting,
-            onNewJob: (collection) => newJob.open({ type: LIBRARY_COLLECTION_ENTITY, id: collection.id }),
           }}
           picks={{
             picked,
@@ -406,22 +409,32 @@ function LibraryHome() {
       </RightPanel>
       <FolderNameDialog
         open={naming !== null}
-        title={t(naming !== null && "folder" in naming ? "library.folder.renameFolder" : "library.folder.newFolder")}
-        initial={naming !== null && "folder" in naming ? naming.folder.name : ""}
-        onSave={(name) => {
+        title={t(naming !== null && naming !== "new" ? "library.folder.renameFolder" : "library.folder.newFolder")}
+        initial={naming !== null && naming !== "new" ? naming.folder.name : ""}
+        onSave={(name, parentId) => {
           if (naming === null) return;
-          if ("folder" in naming) {
+          if (naming !== "new") {
             void renameLibraryFolder(naming.folder.id, name);
             return;
           }
-          const { parentId } = naming;
           void createLibraryFolder(name, parentId).then((made) => {
-            // Open the parent, so the new folder is in view.
-            if (made !== undefined && parentId !== null) setOpen((current) => new Set(current).add(parentId));
+            // Open the way down to it, so the new folder is in view.
+            if (made === undefined || parentId === null) return;
+            const chain = gameFolderPath(folders, parentId).map((folder) => folder.id);
+            setOpen((current) => new Set([...current, ...chain]));
           });
         }}
         onClose={() => setNaming(null)}
         labels={{ name: t("library.folder.name"), cancel: t("library.folder.cancel"), save: t("library.folder.save") }}
+        // A new folder's parent (CTA-231): the reader's folders, the top level by default — Built-in is not one.
+        parents={
+          naming === "new"
+            ? {
+                folders,
+                labels: { picker: t("library.folder.parent"), none: t("library.folder.topLevel"), untitled: t("library.folder.untitled") },
+              }
+            : undefined
+        }
         testId="library-folder"
       />
       <FolderMoveDialog

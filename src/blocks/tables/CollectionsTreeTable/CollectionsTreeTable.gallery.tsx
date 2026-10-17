@@ -62,8 +62,6 @@ const demo = (initialOpen: string[], { picks = false }: { picks?: boolean } = {}
           onOpenCollection={noop}
           builtInFolderId={BUILT_IN}
           actions={{
-            uploadLink: (folder) => ({ href: `#upload-${folder.id}` }),
-            onNewFolder: noop,
             onDownloadFolder: noop,
             onRenameFolder: noop,
             onMoveFolder: noop,
@@ -71,7 +69,6 @@ const demo = (initialOpen: string[], { picks = false }: { picks?: boolean } = {}
             onDownloadCollection: noop,
             onMoveCollection: noop,
             onDeleteCollection: noop,
-            ...(picks ? { onNewJob: noop } : {}),
           }}
           picks={
             picks
@@ -108,8 +105,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => demo([BUILT_IN, "gopenings", "gsicilian"]),
     },
     { name: "All closed", render: () => demo([]) },
-    // CTA-221: the collections picked (Merge collections… with two or more) and New job on each collection's row.
-    { name: "Collections picked, and New job on each", render: () => demo([BUILT_IN, "gopenings"], { picks: true }) },
+    // CTA-221: the collections picked (Merge collections… with two or more).
+    { name: "Collections picked", render: () => demo([BUILT_IN, "gopenings"], { picks: true }) },
   ],
 };
 

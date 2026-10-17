@@ -12,10 +12,6 @@ import { BUILT_IN, rowsOpen } from "./fixtures";
 
 const mount = (props: Partial<CollectionsTreeTableProps> = {}) => {
   const actions = {
-    uploadLink: (folder: { id: string }) => ({
-      href: `/new?folder=${folder.id}`,
-    }),
-    onNewFolder: vi.fn(),
     onDownloadFolder: vi.fn(),
     onRenameFolder: vi.fn(),
     onMoveFolder: vi.fn(),
@@ -70,16 +66,19 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations(screen.getByTestId("probe"));
   });
 
-  it("gives Built-in its download alone, a reader's folder all six, a shipped collection its download alone", () => {
+  it("gives Built-in its download alone, a reader's folder four, a shipped collection its download alone", () => {
     mount();
     expect(
       within(screen.getByTestId("library-folder-actions-builtin")).getAllByRole(
         "button",
       ),
     ).toHaveLength(1);
+    expect(
+      within(screen.getByTestId("library-folder-actions-gopenings")).getAllByRole(
+        "button",
+      ),
+    ).toHaveLength(4);
     for (const action of [
-      "upload",
-      "new",
       "download",
       "rename",
       "move",
@@ -89,9 +88,9 @@ describe("CollectionsTreeTable", () => {
         screen.getByTestId(`library-folder-${action}-gopenings`),
       ).toBeInTheDocument();
     }
-    expect(
-      screen.getByTestId("library-folder-upload-gopenings"),
-    ).toHaveAttribute("href", "/new?folder=gopenings");
+    // CTA-231: no new sub-folder, no upload into a folder — the header's New folder and the upload pick the folder.
+    expect(screen.queryByTestId("library-folder-new-gopenings")).toBeNull();
+    expect(screen.queryByTestId("library-folder-upload-gopenings")).toBeNull();
     expect(screen.queryByTestId("library-collection-delete-tal")).toBeNull();
     expect(screen.getByRole("button", { name: "Delete Club games" })).toBe(
       screen.getByTestId("library-collection-delete-uclub"),
@@ -164,25 +163,10 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations();
   });
 
-  it("offers New job on every collection's row where the screen gives one, and nowhere else (CTA-221)", async () => {
-    const { actions } = mount();
-    expect(screen.queryByRole("button", { name: "New job for Tal" })).toBeNull();
-    const onNewJob = vi.fn();
-    render(
-      <CollectionsTreeTable
-        rows={rowsOpen(new Set([BUILT_IN]))}
-        sort={{ column: "name", direction: "asc" }}
-        onSort={() => {}}
-        onToggle={() => {}}
-        collectionLink={(entry) => ({ href: `/library/${entry.id}` })}
-        onOpenCollection={() => {}}
-        builtInFolderId={BUILT_IN}
-        actions={{ ...actions, onNewJob }}
-        testId="with-jobs"
-      />,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "New job for Tal" }));
-    expect(onNewJob).toHaveBeenCalledWith(expect.objectContaining({ id: "tal" }));
+  it("offers no New job on a collection's row — its page's Jobs tab has it (CTA-231)", () => {
+    mount();
+    expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();
+    expect(screen.queryByTestId("library-collection-new-job-tal")).toBeNull();
   });
 
   it("marks nothing without the verdict", () => {

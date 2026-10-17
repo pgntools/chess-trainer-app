@@ -1,2 +1,2 @@
 export { default as CollectionDetails } from "./CollectionDetails";
-export type { CollectionDetailsProps, CollectionDetailsTab } from "./CollectionDetails";
+export type { CollectionDetailsGeneral, CollectionDetailsProps, CollectionDetailsTab } from "./CollectionDetails";

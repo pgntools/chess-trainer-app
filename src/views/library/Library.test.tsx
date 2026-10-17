@@ -256,10 +256,15 @@ describe("the Library's folders (CTA-88)", () => {
     expect(screen.getByTestId("library-folder-builtin-toggle")).toHaveAttribute("aria-expanded", "true");
     const actions = screen.getByTestId("library-folder-actions-builtin");
     expect(within(actions).getByTestId("library-folder-download-builtin")).toBeInTheDocument();
-    for (const action of ["upload", "new", "rename", "move", "delete"]) {
+    for (const action of ["rename", "move", "delete"]) {
       expect(screen.queryByTestId(`library-folder-${action}-builtin`)).toBeNull();
       expect(screen.getByTestId(`library-folder-${action}-${box.id}`)).toBeInTheDocument();
     }
+    // CTA-231: no row makes a sub-folder or takes an upload, and no collection's row has New job.
+    for (const action of ["upload", "new"]) {
+      expect(screen.queryByTestId(`library-folder-${action}-${box.id}`)).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();
     // Its collections only download, and have no date.
     expect(screen.getByTestId("library-collection-download-capablanca")).toBeInTheDocument();
     expect(screen.queryByTestId("library-collection-move-capablanca")).toBeNull();
@@ -270,12 +275,16 @@ describe("the Library's folders (CTA-88)", () => {
     expect(screen.queryByTestId("library-folder-picker-builtin")).toBeNull();
   });
 
-  it("creates folders at the top level and inside one, and opens and closes them in place", async () => {
+  it("creates folders from the header's New folder — at the top level by default, or inside the one picked — and opens and closes them in place", async () => {
     const mine = await upload();
     mount("/library");
     await screen.findByTestId(`library-row-${mine.id}`);
 
     fireEvent.click(screen.getByTestId("library-new-folder"));
+    const dialog = await screen.findByRole("dialog", { name: "New folder" });
+    // No folder yet: the top level alone, chosen.
+    expect(within(dialog).getByRole("list", { name: "Make it in" })).toBeInTheDocument();
+    expect(within(dialog).getByTestId("library-folder-name-parent-top")).toHaveAttribute("aria-current", "true");
     nameFolder("Openings");
     await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(1));
     const [openings] = libraryFoldersSnapshot()!;
@@ -284,7 +293,13 @@ describe("the Library's folders (CTA-88)", () => {
     expect(listRows().indexOf(`library-folder-${openings.id}`)).toBeLessThan(listRows().indexOf(`library-row-${mine.id}`));
     expect(within(openingsRow).getByText("Openings")).toHaveAttribute("dir", "auto");
 
-    fireEvent.click(screen.getByTestId(`library-folder-new-${openings.id}`));
+    // Closed, so the new folder's parent opens to show it.
+    expect(screen.getByTestId(`library-folder-${openings.id}-toggle`)).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByTestId("library-new-folder"));
+    const again = await screen.findByRole("dialog", { name: "New folder" });
+    // Built-in is not a folder to make one in.
+    expect(within(again).queryByTestId("library-folder-name-parent-builtin")).toBeNull();
+    fireEvent.click(within(again).getByTestId(`library-folder-name-parent-${openings.id}`));
     nameFolder("Sicilian");
     await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(2));
     const sicilian = libraryFoldersSnapshot()!.find((folder) => folder.name === "Sicilian")!;
@@ -313,21 +328,6 @@ describe("the Library's folders (CTA-88)", () => {
     expect(where()).toBe(`/library/${mine.id}`);
   });
 
-  it("uploads into a folder from its row, the picker starting there", async () => {
-    const box = await made("Box");
-    mount("/library");
-    fireEvent.click(await screen.findByTestId(`library-folder-upload-${box.id}`));
-    expect(where()).toBe(`/library/new?folder=${box.id}`);
-    expect(await screen.findByTestId(`library-upload-folder-picker-${box.id}`)).toHaveClass("Mui-selected");
-
-    // One game: the upload is a real index pass.
-    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES[0] } });
-    fireEvent.click(screen.getByTestId("library-upload-save"));
-    await confirmImport();
-    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
-    expect(await folderOf("Club")).toBe(box.id);
-  });
-
   it("takes a zip of one .pgn like the .pgn itself, and refuses a zip of none or unreadable bytes", async () => {
     mount("/library/new");
     expect(screen.getByTestId("library-upload-input")).toHaveAttribute("accept", expect.stringContaining(".zip"));
@@ -347,8 +347,8 @@ describe("the Library's folders (CTA-88)", () => {
 
   it("makes one collection per .pgn of a zip, each named by its Event or its file, all in the folder picked (CTA-103)", async () => {
     const box = await made("Box");
-    mount(`/library/new?folder=${box.id}`);
-    await screen.findByTestId(`library-upload-folder-picker-${box.id}`);
+    mount("/library/new");
+    fireEvent.click(await screen.findByTestId(`library-upload-folder-picker-${box.id}`));
     // The typed name is a single text's; several files are named by the rule.
     fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Ignored" } });
     const mixed = GAMES[0].replace('[Event "Club"]', '[Event "Other"]');
@@ -371,7 +371,7 @@ describe("the Library's folders (CTA-88)", () => {
     ]);
   });
 
-  it("files an empty collection in the folder picked, and a folder that is not the reader's at the top level", async () => {
+  it("files an empty collection in the folder picked, the top level by default — `?folder=` read no more (CTA-231)", async () => {
     const box = await made("Box");
     mount("/library/new");
     fireEvent.click(await screen.findByTestId(`library-upload-folder-picker-${box.id}`));
@@ -380,7 +380,7 @@ describe("the Library's folders (CTA-88)", () => {
     await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
     expect(await folderOf("Picked")).toBe(box.id);
 
-    for (const folder of ["builtin", "nowhere"]) {
+    for (const folder of [box.id, "builtin"]) {
       cleanupAndMount(`/library/new?folder=${folder}`);
       expect(await screen.findByTestId("library-upload-folder-top")).toHaveClass("Mui-selected");
     }
@@ -606,21 +606,15 @@ const sentCase = () => {
   return { record, project };
 };
 
-describe("a collection page's own panel (CTA-229)", () => {
-  it("is in the main menu's place: its Close back to the Library, the name, General and Options — and no Back in the header", async () => {
+describe("a collection page's own panel (CTA-229; its content CTA-231)", () => {
+  it("is in the main menu's place: its Close back to the Library, the name, General, Options and Jobs — and no Back in the header", async () => {
     const user = userEvent.setup();
     const mine = await upload();
     await mountTable(`/library/${mine.id}`);
     const details = screen.getByRole("region", { name: "Details of Club games" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details);
     expect(within(details).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
-    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
-    expect(within(details).getByRole("tabpanel", { name: "General" })).toHaveTextContent(i18n.t("library.collectionDetails.placeholder"));
-    // The example switch on Options — the screen's state, read by nothing.
-    await user.click(within(details).getByRole("tab", { name: "Options" }));
-    const toggle = within(details).getByRole("switch", { name: "Example option" });
-    await user.click(toggle);
-    expect(toggle).toBeChecked();
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options", "Jobs"]);
     expect(rowNumbers()).toEqual(["1", "2", "3"]);
     // The header's Back is gone: the panel's Close is the way back.
     const header = screen.getByTestId("library-table-header");
@@ -631,6 +625,38 @@ describe("a collection page's own panel (CTA-229)", () => {
     expect(close).toHaveAttribute("href", "/library");
     await user.click(close);
     expect(where()).toBe("/library");
+  });
+
+  it("shows on General what the index says of a collection — and its description once it has one", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    expect(within(general).getByTestId("library-collection-details-description")).toHaveTextContent("No description.");
+    const facts = within(general).getByTestId("library-collection-details-facts");
+    const fact = (id: string) => within(facts).getByTestId(`library-collection-details-facts-${id}`);
+    expect(fact("source")).toHaveTextContent("Your upload");
+    expect(fact("games")).toHaveTextContent("3");
+    expect(fact("players")).toHaveTextContent("3");
+    expect(fact("events")).toHaveTextContent("Club");
+    expect(fact("elo")).toHaveTextContent("1500 – 1900");
+    expect(fact("added")).toBeInTheDocument();
+    await updateCollectionSettings(mine.id, { description: "Every Tuesday." });
+    await waitFor(() => expect(within(general).getByTestId("library-collection-details-description")).toHaveTextContent("Every Tuesday."));
+  });
+
+  it("shows a shipped collection read-only on Options, and its jobs on Jobs", async () => {
+    const user = userEvent.setup();
+    await mountTable("/library/capablanca");
+    const details = screen.getByRole("region", { name: "Details of Capablanca" });
+    expect(within(details).getByTestId("library-collection-details-facts-source")).toHaveTextContent("Built-in");
+    expect(within(details).queryByTestId("library-collection-details-facts-added")).toBeNull();
+    await user.click(within(details).getByRole("tab", { name: "Options" }));
+    expect(within(details).getByRole("tabpanel", { name: "Options" })).toHaveTextContent("read-only");
+    expect(screen.queryByTestId("library-settings-form")).toBeNull();
+    await user.click(within(details).getByRole("tab", { name: "Jobs" }));
+    const jobs = within(details).getByRole("tabpanel", { name: "Jobs" });
+    expect(await within(jobs).findByText("No jobs for this collection yet.")).toBeInTheDocument();
+    expect(within(jobs).getByRole("button", { name: "New job" })).toBeInTheDocument();
   });
 
   it("keeps the filters' right-hand panel as before", async () => {
@@ -929,37 +955,56 @@ describe("a game on its analysis board", () => {
   });
 });
 
-describe("a collection's settings (CTA-121)", () => {
-  /** Mount the settings of the entry's collection, the form waited for. */
-  const mountSettings = async (entry: string) => {
-    mount(entry);
+describe("a collection's settings (CTA-121) — its page's Options tab (CTA-231)", () => {
+  /** Mount the collection's page, its left panel on Options, the form waited for. */
+  const mountSettings = async (id: string, { fresh = false } = {}) => {
+    if (fresh) cleanupAndMount(`/library/${id}`);
+    else mount(`/library/${id}`);
+    fireEvent.click(await screen.findByRole("tab", { name: "Options" }));
     await screen.findByTestId("library-settings-form");
   };
 
-  it("edits the collection's title and description, saving them for the list, the table and the page title", async () => {
+  it("edits the collection's title and description from the header's gear, saving them for the list, the table and the panel", async () => {
     const mine = await upload();
-    // The table's header has the gear for an upload; it goes back to the table as it was.
-    mount(`/library/${mine.id}`);
-    await screen.findByTestId("library-table");
+    await mountTable(`/library/${mine.id}?q=Amy`);
+    // The table's header has the gear for an upload: it opens Options, the table and its filter as they were.
     fireEvent.click(screen.getByTestId("library-table-settings"));
-    expect(where()).toBe(`/library/${mine.id}/settings`);
+    expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Options" })).toHaveFocus());
+    expect(where()).toBe(`/library/${mine.id}?q=Amy`);
+    // Nothing changed yet: nothing to save.
+    expect(screen.getByTestId("library-settings-save")).toBeDisabled();
 
     fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "  Club nights  " } });
     fireEvent.change(screen.getByTestId("library-settings-form-description"), { target: { value: "Every Tuesday." } });
     fireEvent.click(screen.getByTestId("library-settings-save"));
 
-    await screen.findByTestId("library-table");
-    expect(screen.getByTestId("library-table-name")).toHaveTextContent("Club nights");
+    expect(await screen.findByTestId("library-settings-saved")).toHaveTextContent("Saved.");
+    await waitFor(() => expect(screen.getByTestId("library-table-name")).toHaveTextContent("Club nights"));
     expect(screen.getByTestId("library-table-description")).toHaveTextContent("Every Tuesday.");
+    expect(screen.getByRole("heading", { level: 2, name: "Club nights" })).toBeInTheDocument();
     expect(uploadedCollectionsSnapshot()?.[0]).toMatchObject({ name: "Club nights", description: "Every Tuesday." });
-    // The page title follows the record's name through the shell (`usePageTitle`);
-    // outside the shell (this mount) the hook is a no-op, so the header and the
-    // list above are what is asserted.
+    expect(screen.getByTestId("library-settings-form-name")).toHaveValue("Club nights");
+    expect(screen.getByTestId("library-settings-save")).toBeDisabled();
+    expect(where()).toBe(`/library/${mine.id}?q=Amy`);
+  });
+
+  it("takes the draft back on Cancel, and keeps it across the panel's tabs", async () => {
+    const mine = await upload();
+    await mountSettings(mine.id);
+    fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "Renamed" } });
+    fireEvent.click(screen.getByRole("tab", { name: "General" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Options" }));
+    expect(await screen.findByTestId("library-settings-form-name")).toHaveValue("Renamed");
+    fireEvent.click(screen.getByTestId("library-settings-cancel"));
+    expect(screen.getByTestId("library-settings-form-name")).toHaveValue("Club games");
+    expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club games");
   });
 
   it("refuses to save a blank title", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "   " } });
     expect(screen.getByTestId("library-settings-save")).toBeDisabled();
     expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club games");
@@ -967,7 +1012,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("marks a one-event collection as a tournament — Swiss, the default type when first switched on", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     const mark = screen.getByTestId("library-settings-form-tournament-switch");
     expect(mark).toBeEnabled();
     expect(mark).not.toBeChecked();
@@ -985,7 +1030,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("offers every format — Arena among them (CTA-142)", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     fireEvent.click(screen.getByTestId("library-settings-form-tournament-switch"));
     for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
       expect(screen.getByTestId(`library-settings-form-type-${format}`)).toBeEnabled();
@@ -1002,7 +1047,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("keeps the mark off a collection whose games do not share one event, and off an empty one — the reason beside the switch", async () => {
     const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
-    await mountSettings(`/library/${mixed.id}/settings`);
+    await mountSettings(mixed.id);
     const mark = screen.getByTestId("library-settings-form-tournament-switch");
     expect(mark).toBeDisabled();
     expect(mark).not.toBeChecked();
@@ -1011,14 +1056,12 @@ describe("a collection's settings (CTA-121)", () => {
 
     // An empty collection cannot be a tournament either — the same message.
     const empty = await keep("Empty", []);
-    cleanupAndMount(`/library/${empty.id}/settings`);
-    await screen.findByTestId("library-settings-form");
+    await mountSettings(empty.id, { fresh: true });
     expect(screen.getByTestId("library-settings-form-tournament-switch")).toBeDisabled();
 
     // A mark stored under games that stopped sharing one event reads as off — the stored setting kept.
     await updateCollectionSettings(mixed.id, { tournament: { enabled: true, type: "swiss" } });
-    cleanupAndMount(`/library/${mixed.id}/settings`);
-    await screen.findByTestId("library-settings-form");
+    await mountSettings(mixed.id, { fresh: true });
     const kept = screen.getByTestId("library-settings-form-tournament-switch");
     expect(kept).toBeDisabled();
     expect(kept).not.toBeChecked();
@@ -1028,14 +1071,16 @@ describe("a collection's settings (CTA-121)", () => {
     });
   });
 
-  it("gives a shipped collection no settings entry — the table no gear, the URL the miss", async () => {
+  it("gives a shipped collection no settings — the table no gear", async () => {
     mount("/library/capablanca");
     await screen.findByTestId("library-table");
     expect(screen.queryByTestId("library-table-settings")).toBeNull();
+  });
 
-    cleanupAndMount("/library/capablanca/settings");
-    expect(await screen.findByTestId("library-not-found")).toHaveTextContent(
-      i18n.t("library.notFound.collection"),
-    );
+  it("has no settings route any more: /library/<c>/settings is no screen of its own (CTA-231)", async () => {
+    const mine = await upload();
+    mount(`/library/${mine.id}/settings`);
+    expect(await screen.findByTestId("library-not-found")).toHaveTextContent(i18n.t("library.notFound.game"));
+    expect(screen.queryByTestId("library-settings-form")).toBeNull();
   });
 });

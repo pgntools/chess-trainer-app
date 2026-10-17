@@ -247,6 +247,26 @@ describe("Merge collections… from the Library's picks (CTA-221)", () => {
 });
 
 describe("New job from an entity's screen (CTA-221)", () => {
+  it("lists a collection's jobs on its page's Jobs tab and opens New job for it (CTA-231)", async () => {
+    const [a, b] = await keepTwo();
+    const queued = await jobRuntime().enqueue(
+      COLLECTION_MERGE_KIND,
+      { sources: [{ id: a.id, name: a.name }, { id: b.id, name: b.name }], dedupe: "identical-pgn", name: "Merged", outputs: { collection: true } },
+      { runAfter: new Date(Date.now() + 3_600_000) },
+    );
+    if (!("id" in queued)) throw new Error("not queued");
+    mountAt(`/library/${a.id}`);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: "Jobs" }));
+    const jobs = screen.getByRole("tabpanel", { name: "Jobs" });
+    expect(await within(jobs).findByRole("link", { name: "Merged" })).toHaveAttribute("href", `/jobs/${queued.id}`);
+    // No row's New job on the Library's list: the collection's page has it.
+    await user.click(within(jobs).getByRole("button", { name: "New job" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("radio", { name: /Merge collections/ })).toBeChecked();
+  });
+
+
   it("starts a Case's computer analysis from its Jobs tab — the tree on its board — and lists it there", async () => {
     const project = (await createAnalysisProject("Openings", null))!;
     await addAnalysisCases([gameCaseOf({ id: "case", projectId: project.id, name: "Alice – Bob" }, parsePgnTree(PGN))]);

@@ -8,7 +8,6 @@ import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import WorkHistoryOutlinedIcon from "@mui/icons-material/WorkHistoryOutlined";
 import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
@@ -29,11 +28,13 @@ import type { LibraryTreeColumn } from "./libraryTreeColumns";
 /** A collection as the tree files it: its folder resolved (`null` the top level). */
 export type LibraryEntry = CollectionSummary & { folderId: string | null };
 
-/** What a row's actions do — a folder's, and a collection's. */
+/**
+ * What a row's actions do — a folder's, and a collection's. No new
+ * sub-folder or upload into a folder (CTA-231): the header's New folder
+ * picks the parent, the upload screen the folder. No New job on a
+ * collection: its page's Jobs tab has it.
+ */
 export type CollectionsTreeActions = {
-  /** Where "Add a collection here" goes — the upload, filed in the folder. */
-  uploadLink: (folder: GameFolder) => LinkTarget;
-  onNewFolder: (folder: GameFolder) => void;
   onDownloadFolder: (folder: GameFolder) => void;
   onRenameFolder: (folder: GameFolder) => void;
   onMoveFolder: (folder: GameFolder) => void;
@@ -43,8 +44,6 @@ export type CollectionsTreeActions = {
   onDownloadCollection: (collection: LibraryEntry) => void;
   onMoveCollection: (collection: LibraryEntry) => void;
   onDeleteCollection: (collection: LibraryEntry) => void;
-  /** New job for one collection (CTA-221) — an action on every collection's row. Absent, none. */
-  onNewJob?: (collection: LibraryEntry) => void;
 };
 
 export type CollectionsTreeTableProps = {
@@ -105,7 +104,8 @@ const rowKey = (row: Row) =>
  * each folder, a collection's name its real link), Games (a folder's is its
  * whole subtree's), Added (`YYYY-MM-DD`, the tables' one date format), and
  * each row's actions, always visible (the tables' rule) — a reader's folder:
- * add a collection here, new sub-folder, download, rename, move, delete; the
+ * download, rename, move, delete (CTA-231: no new sub-folder or upload into
+ * it — the header's New folder and the upload pick the folder); the
  * **Built-in** folder its download alone; an upload download, move, delete; a
  * shipped collection its download alone. Every action is named for its row.
  * A collection that reads as a tournament (CTA-142) shows a trophy where the
@@ -234,16 +234,12 @@ function CollectionsTreeTable({
             on={{
               download: () => actions.onDownloadFolder(folder),
               ...(own && {
-                new: () => actions.onNewFolder(folder),
                 rename: () => actions.onRenameFolder(folder),
                 move: () => actions.onMoveFolder(folder),
                 delete: () => actions.onDeleteFolder(row),
               }),
             }}
-            links={own ? { upload: actions.uploadLink(folder) } : undefined}
             labels={{
-              upload: t("savedList.folder.uploadNamed", { name }),
-              new: t("savedList.folder.newNamed", { name }),
               download: t("savedList.folder.downloadNamed", { name }),
               rename: t("savedList.folder.renameNamed", { name }),
               move: t("savedList.folder.moveNamed", { name }),
@@ -278,15 +274,6 @@ function CollectionsTreeTable({
         >
           <DownloadRoundedIcon fontSize="small" />
         </IconAction>
-        {actions.onNewJob !== undefined && (
-          <IconAction
-            label={t("library.newJobNamed", { name: item.name })}
-            onClick={() => actions.onNewJob?.(item)}
-            testId={`library-collection-new-job-${item.id}`}
-          >
-            <WorkHistoryOutlinedIcon fontSize="small" />
-          </IconAction>
-        )}
         {own && (
           <IconAction
             label={t("savedList.folder.moveNamed", { name: item.name })}
