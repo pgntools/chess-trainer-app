@@ -1,5 +1,10 @@
 # Analyses — the Analysis Board's panel and Saved analyses
 
+> **Historical.** The legacy Analysis Board, Saved analyses and Jobs were
+> removed in CTA-192, Analysis V2 shipped in their place
+> ([`.claude/rules/analysis-v2.md`](../../.claude/rules/analysis-v2.md)). This
+> file records the components as they were.
+
 `src/views/tools/analysis/` and `saved/`: the Analysis Board's right-hand
 panel (`/tools/analysis`), Saved analyses (`/tools/analysis/saved`, with the
 new-analysis form in its panel) and a saved analysis' settings
@@ -328,7 +333,7 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisSettings
 
-> **Migrated (CTA-113)** — the `AnalysisEngineForm` block (`blocks/forms/`) over `SliderField` and `engineOptionState`; `OptionSlider` is deleted.
+> **Migrated (CTA-113)** — the `AnalysisEngineForm` block (`blocks/forms/`) over `SliderField` and `engineOptionState`; `OptionSlider` is deleted. **Gone with CTA-181**: the search settings are the top bar's Engine menu (the `EngineSearchSettingsForm` block), the engine's on / off and the eval bar the header's (`BoardEngineControls`).
 
 - **Name and location** — `AnalysisSettings` (imported as `AnalysisSettingsPanel`), `src/views/tools/analysis/AnalysisSettings.tsx`
 - **Family** — form / settings group

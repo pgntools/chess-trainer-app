@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation, useSearchParams } from "react-router";
 
 import i18n from "../../../i18n";
+import { addAnalysisCases } from "../../../lib/analysisCaseStore";
+import { gameCaseOf } from "../../../lib/analysisProjects";
+import { parsePgnTree } from "../../../lib/pgn";
 import { readRepertoireText, savedRepertoireOf } from "../../../lib/savedRepertoires";
 import { saveRepertoire } from "../../../lib/savedRepertoireStore";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -15,7 +18,7 @@ import { mdxComponents } from "./index";
   One component, any source (CTA-140): every tournament table and the game
   boards read their games through <EmbedSource> — a PGN of the article's
   own, or an app path: a Library collection or one game of it, a saved
-  analysis, a played game, a repertoire. Only `src` changes.
+  Analysis case, a played game, a repertoire. Only `src` changes.
 */
 
 vi.mock("react-chessboard", async () => {
@@ -78,7 +81,7 @@ describe("a tournament table, from any source (CTA-140)", () => {
     const { unmount } = mount(<SwissStandingsTable src="/library/nowhere" />);
     expect(await screen.findByTestId("tournament-collection-nowhere-missing")).toHaveTextContent("This collection is not in this browser's Library.");
     unmount();
-    mount(<SwissStandingsTable src="/tools/analysis?analysis=nope" />);
+    mount(<SwissStandingsTable src="/analysis/projects/p/cases/nope" />);
     expect(await screen.findByTestId("tournament-standings-missing")).toHaveTextContent("This is not in this browser");
     await expectNoAxeViolations();
   });
@@ -101,6 +104,18 @@ describe("a game board, from any source (CTA-140)", () => {
     mount(<InlinePgnGame src="/repertoires/caro" />);
     expect(await screen.findByRole("group", { name: "The game, from The start to 2... d5" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2. Nc3" })).toBeInTheDocument();
+  });
+
+  it("shows an Analysis case by its address, the analysis on it as the Case holds it (CTA-192)", async () => {
+    await addAnalysisCases([
+      gameCaseOf({ id: "c1", projectId: "p1", name: "" }, parsePgnTree('[White "Kim"]\n[Black "Lee"]\n\n1. e4 e5 (1... c5) 2. Nf3 *')),
+    ]);
+    const { unmount } = mount(<InlinePgnGame src="/analysis/projects/p1/cases/c1" />);
+    expect(await screen.findByRole("group", { name: "The game, from The start to 2. Nf3" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1... c5" })).toBeInTheDocument();
+    unmount();
+    mount(<StoredGameEmbed src="https://chessapp.dev/he/analysis/projects/p1/cases/c1?view=case" />);
+    expect(await screen.findByTestId("home-game-case-p1-c1-players")).toHaveTextContent("Kim – Lee");
   });
 
   it("says when the game is not here, and a stored game's board reads a path too", async () => {

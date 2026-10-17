@@ -408,10 +408,15 @@ describe("the MDX editor's Content and Metadata (CTA-135)", () => {
 const saveDialog = () => screen.getByRole("dialog", { name: "Save the article" });
 
 describe("the MDX editor's Save (CTA-137)", () => {
-  it("always shows Save, and says how to start the service when it is not running, then retries", async () => {
+  it("shows Save, enabled only once the document changed, and says how to start the service when it is not running, then retries", async () => {
     const user = userEvent.setup();
     mount();
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    // Unchanged: the button is there, but it has nothing to save (CTA-161).
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    setSource("## Body");
+    expect(save).toBeEnabled();
+    await user.click(save);
     const down = await screen.findByRole("dialog", { name: "The storage service is not running" });
     expect(down).toHaveTextContent("yarn mdx-editor:start");
     expect(down).toHaveTextContent("http://127.0.0.1:5172");
@@ -518,6 +523,7 @@ describe("the MDX editor's Save (CTA-137)", () => {
     const user = userEvent.setup();
     stubService({});
     mount();
+    setSource("## Body");
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("dialog", { name: "Save the article" });
     const name = within(dialog).getByRole("textbox", { name: "File name" });
@@ -527,6 +533,89 @@ describe("the MDX editor's Save (CTA-137)", () => {
     vi.mocked(fetch).mockImplementationOnce(async () => ({ ok: false, status: 400, json: async () => ({ error: "x.mdx: leaves articles/." }) }) as Response);
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await within(saveDialog()).findByTestId("mdx-editor-save-error")).toHaveTextContent("leaves articles/");
+  });
+});
+
+/*
+  Ctrl+S / Cmd+S (CTA-161): the same save step as the button, from a
+  document-level listener that never leaks past the editor, and never a
+  save behind a dialogue that owns what happens next.
+*/
+describe("the MDX editor's Ctrl+S (CTA-161)", () => {
+  /** The shortcut fired — false once the listener has prevented the browser's own save dialogue. */
+  const ctrlS = () => fireEvent.keyDown(document.body, { key: "s", ctrlKey: true });
+  const cmdS = () => fireEvent.keyDown(document.body, { key: "s", metaKey: true });
+
+  it("saves the changed article — Cmd+S too — and prevents the browser's save dialogue while the editor lives", async () => {
+    const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "old" });
+    const { unmount } = mount(WERNER);
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    setSource("## Rewritten");
+    expect(ctrlS()).toBe(false);
+    expect(await screen.findByText("Saved src/views/blog/articles/tournaments/werner-obermeyer-swiss-2026.mdx.")).toBeInTheDocument();
+    expect(service.writes).toEqual([{ path: "tournaments/werner-obermeyer-swiss-2026.mdx", content: expect.stringContaining("## Rewritten"), overwrite: true }]);
+    expect(screen.getByTestId("mdx-editor-dirty")).toHaveTextContent("No changes");
+
+    // Cmd+S on a Mac saves the same way.
+    setSource("## Rewritten, again");
+    expect(cmdS()).toBe(false);
+    await waitFor(() => expect(service.writes).toHaveLength(2));
+    expect(service.writes[1]).toMatchObject({ path: "tournaments/werner-obermeyer-swiss-2026.mdx", content: expect.stringContaining("again"), overwrite: true });
+
+    // Unmounted, the listener goes with it: the browser's default is back.
+    unmount();
+    expect(ctrlS()).toBe(true);
+  });
+
+  it("does nothing while the document is unchanged — no write, no dialogue — then saves once it is changed", async () => {
+    const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "old" });
+    mount(WERNER);
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    // The browser's own save dialogue is prevented all the same.
+    expect(ctrlS()).toBe(false);
+    expect(service.writes).toEqual([]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    setSource("## Rewritten");
+    ctrlS();
+    await waitFor(() => expect(service.writes).toHaveLength(1));
+  });
+
+  it("opens the Save-as dialogue for a new article with changes, and while it is open does not open it again", async () => {
+    const user = userEvent.setup();
+    stubService({ "tournaments/index.mdx": "x" });
+    mount();
+    // A new article with no changes: nothing.
+    expect(ctrlS()).toBe(false);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    setSource("## Body");
+    ctrlS();
+    const dialog = await screen.findByRole("dialog", { name: "Save the article" });
+    const name = within(dialog).getByRole("textbox", { name: "File name" });
+    await user.clear(name);
+    await user.type(name, "my-name");
+    // The dialogue open takes the key: it is not re-opened behind itself (the name would go back).
+    ctrlS();
+    expect(name).toHaveValue("my-name");
+    expect(screen.getAllByRole("dialog", { name: "Save the article" })).toHaveLength(1);
+  });
+
+  it("does nothing while a section's dialogue is open — then saves once it is closed", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "old" });
+    mount(WERNER);
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    setSource("## Rewritten");
+    await user.click(screen.getByRole("button", { name: "PGNs" }));
+    const dialog = await screen.findByRole("dialog", { name: "PGNs" });
+    ctrlS();
+    expect(service.writes).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    await noDialog();
+
+    ctrlS();
+    expect(await screen.findByText("Saved src/views/blog/articles/tournaments/werner-obermeyer-swiss-2026.mdx.")).toBeInTheDocument();
   });
 });
 

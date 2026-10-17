@@ -3,7 +3,9 @@ import { DEFAULT_POSITION } from "chess.js";
 import {
   EVAL_BAR_MARGIN,
   evalBarFraction,
+  formatEngineCount,
   formatScore,
+  lineMoveSquares,
   pvToSan,
   scoreFromUci,
   variationNumbering,
@@ -150,6 +152,28 @@ describe("pvToSan", () => {
   });
 });
 
+describe("lineMoveSquares (CTA-201)", () => {
+  it("reads a move deep in the line, replayed from the position", () => {
+    const line = ["e4", "e5", "Nf3", "Nc6"];
+    expect(lineMoveSquares(DEFAULT_POSITION, line, 0)).toEqual({ from: "e2", to: "e4" });
+    expect(lineMoveSquares(DEFAULT_POSITION, line, 3)).toEqual({ from: "b8", to: "c6" });
+  });
+
+  it("reads a promotion as its two squares", () => {
+    expect(lineMoveSquares("8/P6k/8/8/8/8/8/K7 w - - 0 1", ["a8=Q"], 0)).toEqual({
+      from: "a7",
+      to: "a8",
+    });
+  });
+
+  it("is null where the line will not play that far", () => {
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4", "e4", "Nf3"], 2)).toBeNull();
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4"], 1)).toBeNull();
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4"], -1)).toBeNull();
+    expect(lineMoveSquares("not a fen", ["e4"], 0)).toBeNull();
+  });
+});
+
 describe("variationNumbering", () => {
   it("numbers a line that starts on White's move", () => {
     expect(variationNumbering(DEFAULT_POSITION, 3)).toStrictEqual([
@@ -172,5 +196,17 @@ describe("variationNumbering", () => {
 
   it("is empty for an empty line", () => {
     expect(variationNumbering(DEFAULT_POSITION, 0)).toStrictEqual([]);
+  });
+});
+
+describe("formatEngineCount (CTA-190)", () => {
+  it("writes a count as it is read at a glance, one decimal, a trailing .0 dropped", () => {
+    expect(formatEngineCount(0)).toBe("0");
+    expect(formatEngineCount(950)).toBe("950");
+    expect(formatEngineCount(1000)).toBe("1k");
+    expect(formatEngineCount(12_345)).toBe("12.3k");
+    expect(formatEngineCount(2_400_000)).toBe("2.4M");
+    expect(formatEngineCount(3_141_592)).toBe("3.1M");
+    expect(formatEngineCount(1_100_000_000)).toBe("1.1G");
   });
 });

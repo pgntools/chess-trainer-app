@@ -115,8 +115,8 @@ function RepertoireItem({ saved, view, controls, pick, openLink, preview, testId
 /**
  * **The repertoires, as rows or cards** (CTA-113) — the body of
  * `/repertoires`: the folders (one level, at the top level only), then the
- * repertoires, in the list or as preview boards — the saved analyses' shape
- * (`SavedAnalysesList`), the same rows, cards and folder actions. A row names
+ * repertoires, in the list or as preview boards (the legacy saved analyses'
+ * shape, CTA-113 — removed in CTA-192). A row names
  * the repertoire and its size (or, for a record of several games saved
  * before the one-game rule, what it needs), its description; Open, the
  * screen's extra actions (the Games menu), the settings gear and a pick — each

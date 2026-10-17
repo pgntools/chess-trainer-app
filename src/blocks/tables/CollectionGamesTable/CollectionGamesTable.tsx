@@ -22,11 +22,13 @@ export type CollectionGamesTableProps = {
   onSort: (column: CollectionColumn, direction: "asc" | "desc") => void;
   /** The page and its size; the pager's words are the table's own. */
   paging: Omit<DataTablePaging, "labelRowsPerPage" | "labelDisplayedRows">;
-  /** The picked games, by number — may hold games the filters hide. */
-  picked: ReadonlySet<number>;
-  onPickedChange: (picked: Set<number>) => void;
-  /** Where a game opens — the White cell's link, and a click anywhere on the row. */
-  gameLink: (row: CollectionRow) => LinkTarget;
+  /** The picked games, by number — may hold games the filters hide. Absent (with `onPickedChange`), no pick column (CTA-208). */
+  picked?: ReadonlySet<number>;
+  onPickedChange?: (picked: Set<number>) => void;
+  /** Where a game opens — the White cell's link, and a click anywhere on the row. Absent, no row is a link (CTA-208: a picker). */
+  gameLink?: (row: CollectionRow) => LinkTarget;
+  /** A click on a row, or Enter / Space on it, where no `gameLink` makes it a link — a picker's toggle or choice (CTA-208). */
+  onRowClick?: (row: CollectionRow) => void;
   /** The collection holds no game at all — rather than the filters leaving none. */
   collectionEmpty?: boolean;
   /** Above the table: the words box. */
@@ -36,8 +38,8 @@ export type CollectionGamesTableProps = {
    * `-unreadable-<n>`, `-sort-<column>`, `-empty`, `-frame-table`, `-pager`.
    */
   testId: string;
-  /** The picks' prefix: `-select-all`, `-row-<n>` (the collection's tests' `library-picks`). */
-  picksTestId: string;
+  /** The picks' prefix: `-select-all`, `-row-<n>` (the collection's tests' `library-picks`). Absent, `<testId>-picks`. */
+  picksTestId?: string;
 };
 
 /**
@@ -69,7 +71,9 @@ function OpeningCell({ value }: { value: string }) {
  * Presentational: the filtered rows, the sort, the page, the picks and the
  * link are props; the order is `lib/libraryCollections.ts`'s own
  * `sortedRows` — missing values last, ties by `#`. Its words are the
- * Library's catalog keys (`library.table.*`), since the Library alone shows it.
+ * Library's catalog keys (`library.table.*`). Analysis's games picker
+ * (`GamesPickerDialog`, CTA-208) shows it too, with no link and a row click
+ * of its own (`onRowClick`) — the picks there, or none.
  */
 function CollectionGamesTable({
   rows,
@@ -79,15 +83,16 @@ function CollectionGamesTable({
   picked,
   onPickedChange,
   gameLink,
+  onRowClick,
   collectionEmpty = false,
   filters,
   testId,
-  picksTestId,
+  picksTestId = `${testId}-picks`,
 }: CollectionGamesTableProps) {
   const { t } = useTranslation();
 
   const ordered = useMemo(() => sortedRows(rows, sort.column, sort.direction), [rows, sort.column, sort.direction]);
-  const pickedIds = useMemo(() => new Set([...picked].map(String)), [picked]);
+  const pickedIds = useMemo(() => new Set([...(picked ?? [])].map(String)), [picked]);
 
   const columns = useMemo<DataTableColumn<CollectionRow, CollectionColumn>[]>(() => {
     const text = (value: string | number | undefined) => value ?? "";
@@ -138,15 +143,20 @@ function CollectionGamesTable({
       sort={sort}
       onSort={onSort}
       paging={{ ...paging, labelRowsPerPage: t("library.table.rowsPerPage") }}
-      picks={{
-        picked: pickedIds,
-        onChange: (next) => onPickedChange(new Set([...next].map(Number))),
-        selectAllLabel: t("library.table.picks.selectAll"),
-        pickLabel: (row) => t("library.table.picks.pick", { title: gameTitleOf(row) }),
-        selectAllTestId: `${picksTestId}-select-all`,
-        pickTestId: (row) => `${picksTestId}-row-${row.number}`,
-      }}
+      picks={
+        picked === undefined || onPickedChange === undefined
+          ? undefined
+          : {
+              picked: pickedIds,
+              onChange: (next) => onPickedChange(new Set([...next].map(Number))),
+              selectAllLabel: t("library.table.picks.selectAll"),
+              pickLabel: (row) => t("library.table.picks.pick", { title: gameTitleOf(row) }),
+              selectAllTestId: `${picksTestId}-select-all`,
+              pickTestId: (row) => `${picksTestId}-row-${row.number}`,
+            }
+      }
       rowLink={gameLink}
+      onRowClick={gameLink === undefined ? onRowClick : undefined}
       linkColumn="white"
       rowLinkLabel={gameTitleOf}
       // The empty row keeps one id, whether the collection is empty or the filters leave nothing.

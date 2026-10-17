@@ -41,14 +41,16 @@ describe("translation catalogs", () => {
       // The Lobby table's own Elo columns, the same two initialisms (CTA-100).
       "playedGames.table.columns.whiteElo",
       "playedGames.table.columns.blackElo",
-      // The Saved analyses table's, the same initialisms (CTA-144).
-      "savedAnalyses.table.columns.whiteElo",
-      "savedAnalyses.table.columns.blackElo",
-      "savedAnalyses.table.columns.eco",
+      // Analysis V2's Cases table's, the same initialisms (CTA-186).
+      "analysisV2.case.columns.whiteElo",
+      "analysisV2.case.columns.blackElo",
+      "analysisV2.case.columns.eco",
+      // Its new-Case dialog's Position sources and FEN field: the initialism is the whole label.
+      "analysisV2.newCase.fromFen",
+      "analysisV2.newCase.fromPgn",
+      "analysisV2.newCase.fen",
       "positionEditor.tabs.fen",
       "positionEditor.tabs.pgn",
-      // The quick-load row's file pick: the initialism is the whole label.
-      "savedAnalyses.newAnalysis.pgnFile",
       // A pairing, "White - Black": only the two names inside it translate.
       "playedGames.players",
       // A knockout's side read aloud, "name score" (CTA-128): nothing in it but the two values.
@@ -63,6 +65,17 @@ describe("translation catalogs", () => {
       "tournament.columns.rank",
       "tournament.columns.buchholz",
       "tournament.columns.sonnebornBerger",
+      // Settings → Engine's heading for the engine server (CTA-198) — the initialism is the whole label.
+      "settings.engine.connectors.api",
+      // An engine's option with no default or range: a dash, in any language.
+      "engineOptionsTable.none",
+      // A preset's option's range, "min–max" (CTA-179): the two values and a dash.
+      "enginePresets.range",
+      // The Hash slider's sizes (CTA-185): a number and its unit, "4GB", "512MB" — the units written the same in Hebrew.
+      "engineMenu.hashGb",
+      "engineMenu.hashMb",
+      // An arena game's words and what made its score (CTA-204): the two values and a comma.
+      "tournament.arena.withNotes",
     ]);
 
     const untranslated = leafKeys(en).filter(

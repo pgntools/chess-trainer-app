@@ -7,7 +7,7 @@ import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import { createSearchParams, Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../../shared/useCurrentOpening";
-import { CurrentOpening, EngineThinking, PlayToggleButton } from "../../../blocks/panels";
+import { BoardEngineControls, CurrentOpening, EngineThinking, PlayToggleButton } from "../../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 import { DEFAULT_POSITION } from "chess.js";
 
@@ -18,16 +18,18 @@ import { BackButton } from "../../../design-system/components/navigation";
 import { IconAction } from "../../../design-system/components/toolbars";
 
 import { isAnyMasked, maskedPieces } from "../../../lib/pieceMask";
-import { PLAY_REFERENCE_KEY } from "../../../lib/gameReference";
+import { findPlayedGame } from "../../../lib/playedGameStore";
 import {
-  PLAYED_GAMES_PATH,
   playedGameResult,
+  playedGameToTree,
   type PlayedGameMask,
 } from "../../../lib/playedGames";
+import { useSendToAnalysis } from "../../analysisV2/useSendToAnalysis";
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
 import EngineSettings from "./EngineSettings";
+import { EngineOptionsChangedPrompt } from "../../shared/EngineOptionsChangedPrompt";
 import { usePlayGame, type PlayGameStart } from "./usePlayGame";
 
 /**
@@ -51,9 +53,14 @@ import { usePlayGame, type PlayGameStart } from "./usePlayGame";
  * the reader's **side** (White / Black — the board's orientation; a change
  * pauses Play), **Play**, **Replay** (start over; the game's saved progress
  * is discarded — asked first) and **Resign** (the reader's side loses —
- * asked first; the board then takes no more moves). **Tabs: Moves ·
- * Engine** — the Engine tab is the strength panel (`EngineSettings.tsx`) —
- * with no Map: a game is one tree on a board, and its lines are in the list.
+ * asked first; the board then takes no more moves), and the engine's
+ * play / pause with its menu (the eval bar — `BoardEngineControls`, CTA-181).
+ * **Tabs: Moves · Engine** — the Engine tab is the strength panel
+ * (`EngineSettings.tsx`, the Elo off while the engine's preset has
+ * `UCI_LimitStrength` off; the search settings are the top bar's Engine
+ * menu, CTA-181) — with no Map: a game is one tree on a board, and its lines
+ * are in the list. A resumed game whose search settings differ from the ones
+ * in effect asks once whether to use them ("Engine options changed").
  *
  * **A game that has ended** (a resignation, or the mainline's final position
  * through `playedGameResult`) shows its result in the footer beside an
@@ -73,8 +80,8 @@ import { usePlayGame, type PlayGameStart } from "./usePlayGame";
  * the engine and the store see the true game.
  *
  * **Its own controls are the design system's** (CTA-109): the header's
- * `BackButton`, `SideToggle`, `IconAction`s and `SwitchField`, the Engine
- * tab's `EngineSettingsForm` block, the footer's `StatusText` lines (the save
+ * `BackButton`, `SideToggle` and `IconAction`s, the `BoardEngineControls`
+ * block, the Engine tab's `EngineSettingsForm` block, the footer's `StatusText` lines (the save
  * problem an `alert`, the result a `status` — both read out as they appear)
  * and the Replay / Resign `ConfirmDialog` with its contained red confirm. The
  * board, the panel and the explorer are the board core's, untouched.
@@ -188,6 +195,17 @@ function PlayScreen({
   */
   const result = playedGameResult(core.tree, state.resigned);
 
+  /*
+    The game just ended, into Analysis as a new Game Case (CTA-192): the
+    record as kept — its tags too — once the autosave has landed it.
+  */
+  const analysis = useSendToAnalysis(`${id}-send`);
+  const openInAnalysis = () => {
+    const saved = findPlayedGame(state.savedId);
+    const tree = (saved === undefined ? undefined : playedGameToTree(saved)) ?? core.tree;
+    analysis.send({ games: [{ tree, orientation: core.orientation }], projectName: t("playEngine.sendTo.projectName") });
+  };
+
   return (
     <>
       <BoardShell
@@ -257,20 +275,19 @@ function PlayScreen({
               >
                 <FlagRoundedIcon fontSize="small" />
               </IconAction>
-              <Box sx={{ flexShrink: 0 }}>
-                <SwitchField
-                  size="small"
-                  label={t("playEngine.settings.engineOn")}
-                  checked={state.engineOn}
-                  onChange={state.setEngineOn}
-                  // The screen's tests reach the input inside the switch.
-                  testIdOn="control"
-                  testId={`${id}-setting-engine`}
-                />
-              </Box>
+              {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
+              <BoardEngineControls
+                engineOn={state.engineOn}
+                onEngineOnChange={state.setEngineOn}
+                showEvalBar={state.showEvalBar}
+                onShowEvalBarChange={state.setShowEvalBar}
+                testId={id}
+              />
             </>
           ),
           analysis: engine.analysis,
+          // The depth chip fills toward where the search stops (CTA-195).
+          searchProgress: engine.searchProgress,
           requestedMultiPv: state.settings.multiPv,
           engineOn: state.engineOn,
           // Present, so the pinned lines are clickable (CTA-55).
@@ -312,8 +329,7 @@ function PlayScreen({
                     settings={state.settings}
                     onChange={state.updateSettings}
                     engineOptions={engine.engineOptions}
-                    showEvalBar={state.showEvalBar}
-                    onShowEvalBarChange={state.setShowEvalBar}
+                    limitStrength={state.limitStrength}
                   />
                 </Box>
               ),
@@ -364,10 +380,7 @@ function PlayScreen({
                   </Box>
                   {state.savedId !== null && (
                     <Button
-                      component={RouterLink}
-                      to={`/tools/analysis?game=${encodeURIComponent(
-                        `${PLAY_REFERENCE_KEY}/${PLAYED_GAMES_PATH}/${state.savedId}`,
-                      )}`}
+                      onClick={openInAnalysis}
                       size="small"
                       variant="contained"
                       data-testid={`${id}-open-analysis`}
@@ -376,6 +389,7 @@ function PlayScreen({
                       {t("playEngine.game.openAnalysis")}
                     </Button>
                   )}
+                  {analysis.dialog}
                 </>
               )}
               {/* Play's status — the engine thinking, or the reader's move. */}
@@ -390,6 +404,13 @@ function PlayScreen({
             </>
           ),
         }}
+      />
+      {/* A resumed game whose search settings differ from the ones in effect, asked once (CTA-181). */}
+      <EngineOptionsChangedPrompt
+        changes={state.optionChanges}
+        record="game"
+        engine={engine.descriptor}
+        testId={`${id}-engine-changed`}
       />
       {/* Both game-ending actions ask first — the contained red confirm (CTA-109). */}
       <ConfirmDialog

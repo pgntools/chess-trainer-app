@@ -14,7 +14,7 @@ import {
   HOVERED_NEXT_MOVE_ARROW_COLOR,
   NEXT_MOVE_ARROW_PALETTES,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 
 // The width of an arrow's shaft, read straight off its tail's two flank points.
 const tailWidthOf = (points: readonly { x: number; y: number }[]) =>
@@ -145,6 +145,23 @@ describe("weightedArrowColors (CTA-98)", () => {
       fill: colorblind.sideline,
       border: colorblind.sideline,
     });
+  });
+
+  it("colours by quality under eval (CTA-180): the best group mainline, every other side line", () => {
+    for (const palette of Object.values(NEXT_MOVE_ARROW_PALETTES)) {
+      // A side line in the best group is the mainline colour…
+      expect(weightedArrowColors(1, 2, false, palette, undefined, true)).toEqual({
+        fill: palette.mainline,
+        border: palette.mainline,
+      });
+      // …and a worse mainline move the side-line colour.
+      expect(weightedArrowColors(0.4, 0, false, palette, undefined, true)).toEqual({
+        fill: palette.sideline,
+        border: palette.sideline,
+      });
+      expect(weightedArrowColors(0.4, 0, true, palette, undefined, true).fill).toBe(palette.hovered);
+      expect(weightedArrowColors(null, 0, false, palette, "#999", true).fill).toBe("#999");
+    }
   });
 
   it("draws an untagged move gray and half-transparent, a hovered one in the hover colour", () => {

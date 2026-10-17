@@ -7,7 +7,12 @@ import { useTranslation } from "react-i18next";
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import { FeedbackStrip } from "../../../design-system/components/feedback";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
-import { formatScore, type Analysis } from "../../../lib/engineAnalysis";
+import {
+  formatScore,
+  type Analysis,
+  type MoveSquares,
+  type SearchProgress,
+} from "../../../lib/engineAnalysis";
 import type { PieceMask } from "../../../lib/pieceMask";
 import BestVariations from "../../shared/BestVariations";
 import BoardControls from "../../shared/BoardControls";
@@ -135,6 +140,19 @@ export type BoardPanelProps = {
    * afterwards. Absent: checked, today's behaviour.
    */
   initialShowLines?: boolean;
+  /**
+   * The search under way and where it stops (CTA-195) — the engine module's
+   * `searchProgress`, which every board passes on: the block's depth chip reads
+   * "Depth 18/24" and fills toward the target while it is present. Absent: the
+   * chip reads "Depth 18", today's behaviour.
+   */
+  searchProgress?: SearchProgress;
+  /**
+   * The first move of the block's hovered or focused line (CTA-201) — its
+   * two squares, `null` when the hover ends — reported to whoever draws it: `BoardShell` passes
+   * its own, so every board draws the arrow. Absent: nothing is reported.
+   */
+  onHoverVariationMove?: (move: MoveSquares | null) => void;
 
   tabs: readonly BoardPanelTab[];
   /**
@@ -170,6 +188,8 @@ function BoardPanel({
   mask,
   showVariations = true,
   initialShowLines,
+  searchProgress,
+  onHoverVariationMove,
   tabs,
   keepMounted,
   activeTab,
@@ -304,6 +324,8 @@ function BoardPanel({
             onSelectMove={onPlayVariation}
             initialShowLines={initialShowLines}
             onShowLinesChange={setLinesShown}
+            progress={searchProgress}
+            onHoverMove={onHoverVariationMove}
           />
         </FeedbackStrip>
       )}

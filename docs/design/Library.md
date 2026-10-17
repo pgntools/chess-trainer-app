@@ -87,6 +87,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 ### Row actions
 
 > **Migrated (CTA-113)** — a folder's are the `FolderActions` block (with its *Add a collection here* link, `links`); a collection's `IconAction`s — in `DataTable`'s always-visible actions column.
+>
+> **Slimmed (CTA-231)** — a folder's row no longer makes a sub-folder or takes an upload (the header's New folder picks the parent; the upload screen picks the folder, `?folder=` gone), and a collection's row has no *New job* (its page's Jobs tab has it).
 
 - **Name and location** — `actionsOf`, `src/views/library/LibraryHome.tsx:342-434`
 - **Family** — toolbar / action bar

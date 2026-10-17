@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -12,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import type { LinkTarget } from "../../../design-system/components/link";
 import { tableDate } from "../../../design-system/components/tables";
-import { IconAction } from "../../../design-system/components/toolbars";
+import { IconAction, SelectionBar } from "../../../design-system/components/toolbars";
 import {
   DataTable,
   type DataTableColumn,
@@ -20,6 +21,7 @@ import {
 } from "../../../design-system/patterns/tables";
 import type { FolderTreeRow } from "../../../lib/folderTreeRows";
 import type { CollectionSummary } from "../../../lib/libraryCollections";
+import type { LibraryPickState } from "../../../lib/libraryPicks";
 import type { GameFolder } from "../../../lib/savedGameFolders";
 import { FolderActions } from "../../lists/FolderActions";
 import type { LibraryTreeColumn } from "./libraryTreeColumns";
@@ -27,20 +29,21 @@ import type { LibraryTreeColumn } from "./libraryTreeColumns";
 /** A collection as the tree files it: its folder resolved (`null` the top level). */
 export type LibraryEntry = CollectionSummary & { folderId: string | null };
 
-/** What a row's actions do — a folder's, and a collection's. */
+/**
+ * What a row's actions do — a folder's, and a collection's. No new
+ * sub-folder or upload into a folder (CTA-231): the header's New folder
+ * picks the parent, the upload screen the folder. No New job on a
+ * collection (CTA-231; no kind applies to one since CTA-232). No delete on
+ * a folder's row (CTA-235): a folder is deleted, whole, through the picks.
+ */
 export type CollectionsTreeActions = {
-  /** Where "Add a collection here" goes — the upload, filed in the folder. */
-  uploadLink: (folder: GameFolder) => LinkTarget;
-  onNewFolder: (folder: GameFolder) => void;
   onDownloadFolder: (folder: GameFolder) => void;
   onRenameFolder: (folder: GameFolder) => void;
   onMoveFolder: (folder: GameFolder) => void;
-  onDeleteFolder: (
-    row: FolderTreeRow<LibraryEntry> & { kind: "folder" },
-  ) => void;
   onDownloadCollection: (collection: LibraryEntry) => void;
   onMoveCollection: (collection: LibraryEntry) => void;
-  onDeleteCollection: (collection: LibraryEntry) => void;
+  /** An upload's row delete — absent, none (the Library deletes its picked collections from its header since CTA-232). */
+  onDeleteCollection?: (collection: LibraryEntry) => void;
 };
 
 export type CollectionsTreeTableProps = {
@@ -79,10 +82,34 @@ export type CollectionsTreeTableProps = {
    * collection's `library-row-<id>` (its link `library-collection-<id>`, its
    * actions `library-collection-actions-<id>` → `library-collection-<action>-<id>`).
    */
+  /**
+   * **The picks** (CTA-221; folders too since CTA-235) — a box on every
+   * collection's row and every reader's folder's (never Built-in's), a
+   * folder's standing for everything under it and partly ticked while some
+   * of it is, select-all in the header, and a bar counting them with the
+   * screen's optional `actions` (the Library passes none since CTA-232: its
+   * Merge and Delete are its header's). Every box and select-all are the
+   * screen's (`lib/libraryPicks.ts`): `pickOf` answers a row's state and
+   * toggle, or `undefined` for a row with no box. Absent, no picks.
+   */
+  picks?: {
+    pickOf: (row: FolderTreeRow<LibraryEntry>) => CollectionsTreePick | undefined;
+    selectAll: { checked: boolean; indeterminate: boolean; onToggleAll: () => void };
+    /** What the bar counts: the collections picked and the folders that go with the picks. */
+    count: { collections: number; folders: number };
+    onClear: () => void;
+    actions?: ReactNode;
+  };
   testId: string;
 };
 
+/** A row's box: its state, and what a click on it does. */
+export type CollectionsTreePick = LibraryPickState & { onToggle: () => void };
+
 type Row = FolderTreeRow<LibraryEntry>;
+
+/** The table's picks are every row's own (`pickOverride`): the set DataTable reads stays empty. */
+const NO_IDS: ReadonlySet<string> = new Set();
 
 const rowKey = (row: Row) =>
   row.kind === "folder" ? `folder-${row.folder.id}` : `item-${row.item.id}`;
@@ -94,7 +121,9 @@ const rowKey = (row: Row) =>
  * each folder, a collection's name its real link), Games (a folder's is its
  * whole subtree's), Added (`YYYY-MM-DD`, the tables' one date format), and
  * each row's actions, always visible (the tables' rule) — a reader's folder:
- * add a collection here, new sub-folder, download, rename, move, delete; the
+ * download, rename, move (CTA-231: no new sub-folder or upload into it — the
+ * header's New folder and the upload pick the folder; CTA-235: no delete —
+ * a ticked folder goes through the picks, whole); the
  * **Built-in** folder its download alone; an upload download, move, delete; a
  * shipped collection its download alone. Every action is named for its row.
  * A collection that reads as a tournament (CTA-142) shows a trophy where the
@@ -117,6 +146,7 @@ function CollectionsTreeTable({
   filtered = false,
   isTournament,
   isPotentialTournament,
+  picks,
   testId,
 }: CollectionsTreeTableProps) {
   const { t, i18n } = useTranslation();
@@ -136,7 +166,8 @@ function CollectionsTreeTable({
         return (
           <Box
             component="span"
-            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+            // `relative` holds the trophy's hidden word inside the table's scroll box, not the page's.
+            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, position: "relative" }}
           >
             <Box
               component="span"
@@ -221,20 +252,14 @@ function CollectionsTreeTable({
             on={{
               download: () => actions.onDownloadFolder(folder),
               ...(own && {
-                new: () => actions.onNewFolder(folder),
                 rename: () => actions.onRenameFolder(folder),
                 move: () => actions.onMoveFolder(folder),
-                delete: () => actions.onDeleteFolder(row),
               }),
             }}
-            links={own ? { upload: actions.uploadLink(folder) } : undefined}
             labels={{
-              upload: t("savedList.folder.uploadNamed", { name }),
-              new: t("savedList.folder.newNamed", { name }),
               download: t("savedList.folder.downloadNamed", { name }),
               rename: t("savedList.folder.renameNamed", { name }),
               move: t("savedList.folder.moveNamed", { name }),
-              delete: t("savedList.folder.deleteNamed", { name }),
             }}
             testId="library-folder"
           />
@@ -274,10 +299,10 @@ function CollectionsTreeTable({
             <DriveFileMoveRoundedIcon fontSize="small" />
           </IconAction>
         )}
-        {own && (
+        {own && actions.onDeleteCollection !== undefined && (
           <IconAction
             label={t("savedList.folder.deleteNamed", { name: item.name })}
-            onClick={() => actions.onDeleteCollection(item)}
+            onClick={() => actions.onDeleteCollection?.(item)}
             testId={`library-collection-delete-${item.id}`}
           >
             <DeleteOutlineRoundedIcon fontSize="small" />
@@ -286,6 +311,18 @@ function CollectionsTreeTable({
       </Box>
     );
   };
+
+  const pickedCount = picks === undefined ? 0 : picks.count.collections + picks.count.folders;
+  // "3 collections picked", or with folders "1 folder and 3 collections picked".
+  const countLabel =
+    picks === undefined || picks.count.folders === 0
+      ? t("library.picks.picked", { count: picks?.count.collections ?? 0 })
+      : t("library.picks.pickedWith", {
+          what: new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format([
+            t("library.picks.folders", { count: picks.count.folders }),
+            ...(picks.count.collections === 0 ? [] : [t("library.picks.collections", { count: picks.count.collections })]),
+          ]),
+        });
 
   return (
     <DataTable<Row, LibraryTreeColumn>
@@ -330,6 +367,34 @@ function CollectionsTreeTable({
       }
       rowActions={rowActions}
       actionsLabel={t("library.columns.actions")}
+      {...(picks === undefined
+        ? {}
+        : {
+            picks: {
+              picked: NO_IDS,
+              onChange: () => {},
+              selectAllLabel: t("library.picks.selectAll"),
+              pickLabel: (row: Row) => t("library.picks.pick", { name: nameOf(row) }),
+              // Every box is the screen's: a folder's stands for all under it; Built-in has none.
+              canPick: (row: Row) => picks.pickOf(row) !== undefined,
+              pickOverride: (row: Row) => picks.pickOf(row),
+              selectAll: picks.selectAll,
+              pickTestId: (row: Row) => (row.kind === "item" ? `library-pick-${row.item.id}` : `library-pick-folder-${row.folder.id}`),
+            },
+          })}
+      toolbar={
+        picks === undefined || pickedCount === 0 ? undefined : (
+          <SelectionBar
+            count={pickedCount}
+            countLabel={countLabel}
+            onClear={picks.onClear}
+            clearLabel={t("library.picks.clear")}
+            actions={picks.actions}
+            testId="library-picks-bar"
+            rootTestId="library-picks-bar"
+          />
+        )
+      }
       density="dense"
       emptyLabel={<span data-testid="library-no-matches">{t("library.noMatches")}</span>}
       filtered={filtered}

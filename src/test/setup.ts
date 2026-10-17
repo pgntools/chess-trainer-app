@@ -7,6 +7,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
 
 import { DEVELOPMENT_NOTICE_KEY, resetDevelopmentNotice } from "../lib/developmentNotice";
+import { resetSearchPreferences } from "../lib/engineSearchSettings";
 
 /*
   How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
@@ -54,60 +55,90 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders] =
+  const [played, repertoires, repertoireFolders, repertoireDb, libraryFolders, presets, projectFolders, projects, cases, projectsDb, jobs, caseLinks] =
     await Promise.all([
       import("../lib/playedGameStore"),
-      import("../lib/savedAnalysisStore"),
-      import("../lib/savedAnalysisFolderStore"),
-      import("../lib/savedAnalysisDb"),
       import("../lib/savedRepertoireStore"),
       import("../lib/savedRepertoireFolderStore"),
       import("../lib/savedRepertoireDb"),
       import("../lib/libraryFolderStore"),
+      import("../lib/enginePresetStore"),
+      // Analysis V2 (CTA-186): its folders, Projects and Cases.
+      import("../lib/analysisProjectFolderStore"),
+      import("../lib/analysisProjectStore"),
+      import("../lib/analysisCaseStore"),
+      import("../lib/analysisProjectsDb"),
+      // The page's job runtime (CTA-221) — its own database, chessapp.backgroundJobs.
+      import("../lib/jobs/runtime"),
+      // The links between Cases (CTA-188), in Analysis's database.
+      import("../lib/analysisCaseLinkStore"),
     ]);
+  // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
+  const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
   return {
+    // The page's job runtime (CTA-221), stopped before the stores settle: its jobs write to them.
+    stop: [jobs.stopJobRuntime],
     settled: [
-      analyses.settledSavedAnalyses,
-      analysisFolders.settledAnalysisFolders,
       played.settledPlayedGames,
       repertoires.settledSavedRepertoires,
       repertoireFolders.settledRepertoireFolders,
       libraryFolders.settledLibraryFolders,
+      presets.settledEnginePresets,
+      presets.settledEnginePresetSelections,
+      projectFolders.settledProjectFolders,
+      projects.settledAnalysisProjects,
+      cases.settledAnalysisCases,
+      caseLinks.settledCaseLinks,
     ],
     reset: [
-      analyses.resetSavedAnalysisStore,
-      analysisFolders.resetAnalysisFolderStore,
       played.resetPlayedGameStore,
       repertoires.resetSavedRepertoireStore,
       repertoireFolders.resetRepertoireFolderStore,
       libraryFolders.resetLibraryFolderStore,
+      presets.resetEnginePresetStore,
+      presets.resetEnginePresetSelectionStore,
+      projectFolders.resetProjectFolderStore,
+      projects.resetAnalysisProjectStore,
+      cases.resetAnalysisCaseStore,
+      caseLinks.resetCaseLinkStore,
+      // A depth or move time still landing goes with the presets.
+      resetEngineSearchSettings,
     ],
-    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb],
+    remove: [played.deleteEngineDb, repertoireDb.deleteRepertoireDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb, jobs.deleteJobsDb],
   };
 };
 
 /*
-  The in-development notice (CTA-155) is a modal that opens on the first load
-  of a session, and a modal hides the rest of the page from a screen reader's
-  queries. So a test starts in a session where it was already dismissed; the
-  notice's own tests remove the key to meet it.
+  The in-development notice (CTA-155) is a modal that opens until it is
+  dismissed (for a month — CTA-210), and a modal hides the rest of the page
+  from a screen reader's queries. So a test starts with it dismissed just now —
+  a fresh time in `localStorage`, written after the last test's
+  `localStorage.clear()` (below); the notice's own tests remove the key to meet it.
 */
 beforeEach(() => {
   resetDevelopmentNotice();
-  sessionStorage.setItem(DEVELOPMENT_NOTICE_KEY, "1");
+  localStorage.setItem(DEVELOPMENT_NOTICE_KEY, String(Date.now()));
 });
 
 afterEach(async () => {
   cleanup();
   localStorage.clear();
+  // The engine's search settings (CTA-181) are a preference: what this visit kept goes with the storage.
+  resetSearchPreferences();
   // Every record store is IndexedDB's: what each store kept, and the
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;
   // its folder store is forgotten here with the others.) First
-  // the writes a screen left in flight land, twice over — a folder's delete
-  // queues its records' unfiling behind it — so none reaches the next test.
+  // the writes a screen left in flight land, five times over — a folder's
+  // delete queues its records' unfiling behind it, and Analysis V2's deep
+  // delete its Projects', their Cases', their unfinished jobs and their links
+  // (CTA-188) — so none reaches the next test.
   const stores = await recordStores();
-  for (let round = 0; round < 2; round += 1) {
+  // The Jobs settings (CTA-193) are a preference too; so are the eval sources' (CTA-196), their status and the boards' back-off with them.
+  (await import("../lib/jobsSettings")).resetJobsSettings();
+  (await import("../lib/evalSources")).resetEvalSources();
+  await Promise.all(stores.stop.map((stop) => stop()));
+  for (let round = 0; round < 5; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));
   }
   for (const reset of stores.reset) reset();

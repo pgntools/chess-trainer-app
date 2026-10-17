@@ -5,8 +5,8 @@ import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
-import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
@@ -14,6 +14,7 @@ import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -84,17 +85,17 @@ export const navItems = (): readonly NavItem[] => [
     folder: "library",
   },
   /*
-    The Analysis Board has no nav entry: the top-level Analysis folder is a
-    single entry (`navFolders.ts`) that renders as the screen below, and the
-    board is reached from the saved list's New button. Every `?fen=`,
-    `?game=` and `?analysis=` hand-off lands on its route, `/tools/analysis`.
+    Analysis V2 (CTA-186, shipped in CTA-192): its Projects browser. A Case's
+    board is reached from its Project's table, and every game handed to
+    Analysis lands on one.
   */
-  {
-    to: "/tools/analysis/saved",
-    labelKey: "nav.savedAnalyses",
-    icon: HistoryRoundedIcon,
-    folder: "analysis",
-  },
+  { to: "/analysis", labelKey: "nav.analysisProjects", icon: FolderSpecialRoundedIcon, folder: "analysis-v2" },
+  /*
+    The Jobs module (CTA-221): every background job — its own folder, out of
+    Analysis, drawn as this one row (CTA-228). A job's own page is reached
+    from the list, the Jobs settings from the screen's Settings button.
+  */
+  { to: "/jobs", labelKey: "nav.jobs", icon: WorkHistoryRoundedIcon, folder: "jobs" },
   /*
     The Openings explorer — the board itself, since nothing on it is
     saved: the top-level Openings folder is a single entry (`navFolders.ts`)

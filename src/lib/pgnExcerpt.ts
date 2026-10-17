@@ -1,5 +1,6 @@
 import { plyOfMoveNumber, sansOfLine } from "./demoTree";
 import { mainline, nodeAtSanPath, pathTo, plyLabel, type GameTree, type VariationNode } from "./gameTree";
+import { readComment } from "./moveAnnotations";
 
 /**
  * **An excerpt of a game** (CTA-126) — what an article's
@@ -124,13 +125,24 @@ export type ExcerptToken =
       /** `"11."` before White's move, `"11..."` before Black's where a line starts or resumes, else `""`. */
       label: string;
     }
-  | { kind: "variation"; tokens: ExcerptToken[] };
+  | { kind: "variation"; tokens: ExcerptToken[] }
+  /** A PGN comment's words, in place (`excerptTokens`' `comments`): after `node`, or before it (`before`) where it opens a side line; `node` `null` the game's opening one. */
+  | { kind: "comment"; node: VariationNode | null; text: string; before?: true };
+
+/** What comments say, the commands (`[%cal]`, `[%eval]`, `prc:` …) taken out — `""` for a comment that only draws. */
+export const commentWords = (comments: readonly string[] | undefined): string =>
+  (comments ?? [])
+    .flatMap((raw) => readComment(raw).paragraphs)
+    .filter((text) => text.trim() !== "")
+    .join("\n\n");
 
 /**
  * A line from `first` on, as PGN writes it: each move numbered where it
  * must be, and after a move, its alternatives as nested variations.
  * `siblings` are `first`'s own alternatives with it (its parent's children);
- * `untilPly` stops the line there.
+ * `untilPly` stops the line there. With `comments`, each move's comments
+ * follow it (a side line's opening ones before its first move), and the move
+ * after a comment is numbered again, as PGN writes it.
  */
 const lineTokens = (
   startFen: string,
@@ -138,6 +150,7 @@ const lineTokens = (
   siblings: readonly VariationNode[],
   variations: boolean,
   untilPly?: number,
+  comments = false,
 ): ExcerptToken[] => {
   const tokens: ExcerptToken[] = [];
   let node: VariationNode | undefined = first;
@@ -145,11 +158,18 @@ const lineTokens = (
   let numbered = true;
   while (node !== undefined) {
     const { number, isWhiteMove } = plyLabel(startFen, node.ply);
+    const before = comments ? commentWords(node.preComments) : "";
+    if (before !== "") tokens.push({ kind: "comment", node, text: before, before: true });
     tokens.push({ kind: "move", node, label: isWhiteMove ? `${number}.` : numbered ? `${number}...` : "" });
     numbered = false;
+    const after = comments ? commentWords(node.comments) : "";
+    if (after !== "") {
+      tokens.push({ kind: "comment", node, text: after });
+      numbered = true;
+    }
     if (variations && alternatives[0] === node && alternatives.length > 1) {
       for (const alternative of alternatives.slice(1)) {
-        tokens.push({ kind: "variation", tokens: lineTokens(startFen, alternative, [], variations) });
+        tokens.push({ kind: "variation", tokens: lineTokens(startFen, alternative, [], variations, undefined, comments) });
       }
       numbered = true;
     }
@@ -160,13 +180,19 @@ const lineTokens = (
   return tokens;
 };
 
-/** The window's moves, side lines nested where they branch — what the move list draws. */
-export const excerptTokens = (tree: GameTree, window: ExcerptWindow): ExcerptToken[] => {
+/**
+ * The window's moves, side lines nested where they branch — what the move
+ * list draws. With `comments`, the PGN's comments too, each where it is
+ * written (the game's opening one first, where the window opens at the start).
+ */
+export const excerptTokens = (tree: GameTree, window: ExcerptWindow, { comments = false }: { comments?: boolean } = {}): ExcerptToken[] => {
   if (window.toPly <= window.fromPly) return [];
   const line = mainline(tree);
   const first = line[window.fromPly];
   const siblings = window.fromPly === 0 ? tree.moves : line[window.fromPly - 1].children;
-  return lineTokens(tree.startFen, first, siblings, window.variations, window.toPly);
+  const tokens = lineTokens(tree.startFen, first, siblings, window.variations, window.toPly, comments);
+  const opening = comments && window.fromPly === 0 ? commentWords(tree.comments) : "";
+  return opening === "" ? tokens : [{ kind: "comment", node: null, text: opening }, ...tokens];
 };
 
 /** `"11. Nxe6"`, `"11... fxe6"` — a move as it is named on its own. */
@@ -178,16 +204,17 @@ export const moveName = (startFen: string, node: VariationNode): string => {
 /* --- the move list in two columns --------------------------------- */
 
 type ExcerptMoveToken = Extract<ExcerptToken, { kind: "move" }>;
-type ExcerptVariationToken = Extract<ExcerptToken, { kind: "variation" }>;
+type ExcerptNoteToken = Extract<ExcerptToken, { kind: "variation" | "comment" }>;
 
-/** One numbered pair of the window's mainline, with the side lines that answer it. */
+/** One numbered pair of the window's mainline, with the side lines and comments that answer it. */
 export type ExcerptRow = {
   number: number;
-  /** `null` where the window opens on Black's move: the pair's White cell is empty. */
+  /** `null` where the window opens on Black's move, or a comment split the pair: the pair's White cell is empty. */
   white: ExcerptMoveToken | null;
+  /** `null` where the window ends on White's move, or a comment split the pair. Both `null`: a row of notes alone (the game's opening comment). */
   black: ExcerptMoveToken | null;
-  /** The side lines branching from this pair's moves — White's first, Black's after — spanning the row's width. */
-  variations: ExcerptVariationToken[];
+  /** In order, spanning the row's width: the side lines branching from this pair's moves — White's first, Black's after — and the comments. */
+  notes: ExcerptNoteToken[];
 };
 
 /**
@@ -195,21 +222,35 @@ export type ExcerptRow = {
  * list's rows (`moveRowsOf`), over the tokens `excerptTokens` writes: a pair
  * per move number, a window that opens on Black's move starting with an empty
  * White cell, each side line (with its own, nested ones — they stay a run)
- * hung on the pair holding the move it answers. Pure.
+ * hung on the pair holding the move it answers. A **comment** (the tokens'
+ * `comments`) is a note in place: after Black's move under the pair, after
+ * White's it **splits** the pair — White's move and an empty Black cell, the
+ * comment (and White's side lines), then an empty White cell and Black's
+ * move — as lichess's list does; the game's opening one a row of its own. Pure.
  */
 export const excerptRows = (startFen: string, tokens: readonly ExcerptToken[]): ExcerptRow[] => {
   const rows: ExcerptRow[] = [];
+  /** A comment after White's move closed its pair: Black's move opens another. */
+  let split = false;
   for (const token of tokens) {
-    if (token.kind === "variation") {
-      // A side line always follows a move, so a row exists; a stray one is dropped.
-      rows.at(-1)?.variations.push(token);
+    if (token.kind === "comment" && token.node === null) {
+      rows.push({ number: 0, white: null, black: null, notes: [token] });
+      split = true;
+      continue;
+    }
+    if (token.kind !== "move") {
+      // A side line or comment always follows a move, so a row exists; a stray one is dropped.
+      const last = rows.at(-1);
+      last?.notes.push(token);
+      if (token.kind === "comment" && last !== undefined && last.white !== null && last.black === null) split = true;
       continue;
     }
     const { number, isWhiteMove } = plyLabel(startFen, token.node.ply);
     let row = rows.at(-1);
-    if (row === undefined || row.number !== number) {
-      row = { number, white: null, black: null, variations: [] };
+    if (row === undefined || row.number !== number || split) {
+      row = { number, white: null, black: null, notes: [] };
       rows.push(row);
+      split = false;
     }
     if (isWhiteMove) row.white = token;
     else row.black = token;

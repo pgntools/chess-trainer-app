@@ -6,6 +6,7 @@ import Checkbox from "@mui/material/Checkbox";
 import Typography from "@mui/material/Typography";
 
 import { linkProps, type LinkTarget } from "../link";
+import { nativeIndeterminate } from "../a11y";
 
 /** The parts `RecordCard` and `FolderCard` share — so both stand the same height in one grid. */
 export type CardShellProps = {
@@ -26,7 +27,11 @@ export type CardShellProps = {
    */
   detail?: ReactNode;
   actions?: ReactNode;
-  pick?: { checked: boolean; onToggle: () => void; label: string };
+  /**
+   * The card's pick. `indeterminate` (CTA-147): some, not all, of what the
+   * card stands for — a folder card whose pick covers its whole subtree.
+   */
+  pick?: { checked: boolean; indeterminate?: boolean; onToggle: () => void; label: string };
   testId: string;
   /** The action area's own test id, for a screen whose tests named it before (CTA-113). Absent, `<testId>-open`. */
   openTestId?: string;
@@ -89,8 +94,9 @@ export function CardShell({
           <Checkbox
             size="small"
             checked={pick.checked}
+            indeterminate={pick.indeterminate}
             onChange={pick.onToggle}
-            slotProps={{ input: { "aria-label": pick.label } }}
+            slotProps={{ input: { "aria-label": pick.label, ref: nativeIndeterminate(pick.indeterminate ?? false) } as object }}
             data-testid={pickTestId}
           />
         )}

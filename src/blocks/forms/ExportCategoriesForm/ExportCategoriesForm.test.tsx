@@ -21,7 +21,9 @@ describe("ExportCategoriesForm", () => {
   it("names each box by its category and its count", () => {
     mount();
     expect(screen.getByRole("checkbox", { name: "Games (128)" })).not.toBeChecked();
-    expect(screen.getByTestId("export-analyses-count")).toHaveTextContent("(42)");
+    expect(screen.getByTestId("export-analysisProjects-count")).toHaveTextContent("(4)");
+    // The legacy saved analyses' category went in CTA-192.
+    expect(screen.queryByTestId("export-analyses-count")).toBeNull();
   });
 
   it("says … while a store is read", () => {

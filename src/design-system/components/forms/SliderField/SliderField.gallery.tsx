@@ -47,6 +47,76 @@ const gallery: GalleryModule = {
         </Box>
       ),
     },
+    {
+      name: "Marked, with a help caption — the marks are the slider's own values, so a drag or a key lands on one (CTA-163)",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <WithState initial={8}>
+            {(slot, setSlot) => (
+              <SliderField
+                label="Hash (MB)"
+                value={slot}
+                onChange={setSlot}
+                min={0}
+                max={8}
+                marks={[
+                  { value: 0, label: "128" },
+                  { value: 2, label: "256" },
+                  { value: 4, label: "512" },
+                  { value: 6, label: "1024" },
+                  { value: 8, label: "2048" },
+                ]}
+                help="Engine memory (RAM)"
+                testId="gallery-slider-marks"
+              />
+            )}
+          </WithState>
+        </Box>
+      ),
+    },
+    {
+      name: "With a number box at its end — a value typed, held to the bounds, the slider and the box in step (CTA-185)",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <WithState initial={20}>
+            {(depth, setDepth) => (
+              <SliderField
+                label="Depth"
+                value={depth}
+                onChange={setDepth}
+                min={1}
+                max={40}
+                input={{ label: "Depth, typed", value: depth, onChange: setDepth, min: 1, max: 40 }}
+                testId="gallery-slider-number"
+              />
+            )}
+          </WithState>
+        </Box>
+      ),
+    },
+    {
+      name: "A number box in a unit of its own, off on its own — the slider on its last mark, which has no number",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <SliderField
+            label="Move time"
+            value={4}
+            onChange={() => {}}
+            min={0}
+            max={4}
+            marks={[
+              { value: 0, label: "0" },
+              { value: 1, label: "5" },
+              { value: 2, label: "10" },
+              { value: 3, label: "30" },
+              { value: 4, label: "∞" },
+            ]}
+            input={{ label: "Move time in seconds", value: undefined, onChange: () => {}, min: 0, max: 30, step: 0.1, unit: "s", emptyText: "∞", disabled: true }}
+            testId="gallery-slider-number-off"
+          />
+        </Box>
+      ),
+    },
   ],
 };
 

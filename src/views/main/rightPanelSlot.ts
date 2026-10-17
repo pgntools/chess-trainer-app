@@ -1,5 +1,12 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
+/**
+ * The aside's width while the registered panel is folded to a rail at the
+ * inline end (CTA-230) — the board's own left panel's rail
+ * (`BOARD_LEFT_PANEL_COLLAPSED_PX`) on the other side.
+ */
+export const RIGHT_PANEL_COLLAPSED_PX = 48;
+
 /*
   The right-hand panel slot's store and context (`rightPanel.tsx` holds its
   components) — apart, so that file exports components only (react-refresh's
@@ -18,6 +25,10 @@ export type PanelSlot = {
     getHiders: () => number;
     hide: () => void;
     unhide: () => void;
+    /** How many mounted panels asked to be folded to a rail (`RightPanel`'s `collapsed`, CTA-230). */
+    getCollapsers: () => number;
+    collapse: () => void;
+    uncollapse: () => void;
     getHost: () => HTMLElement | null;
     setHost: (element: HTMLElement | null) => void;
     acquire: () => void;
@@ -27,6 +38,7 @@ export type PanelSlot = {
 export const createPanelSlot = (): PanelSlot => {
     let occupants = 0;
     let hiders = 0;
+    let collapsers = 0;
     let host: HTMLElement | null = null;
     const listeners = new Set<() => void>();
     const emit = () => listeners.forEach((listener) => listener());
@@ -46,6 +58,15 @@ export const createPanelSlot = (): PanelSlot => {
         },
         unhide: () => {
             hiders -= 1;
+            emit();
+        },
+        getCollapsers: () => collapsers,
+        collapse: () => {
+            collapsers += 1;
+            emit();
+        },
+        uncollapse: () => {
+            collapsers -= 1;
             emit();
         },
         getHost: () => host,
@@ -84,4 +105,13 @@ const none = () => 0;
 export const useRightPanelHidden = (): boolean => {
     const slot = useContext(PanelSlotContext);
     return useSyncExternalStore(slot?.subscribe ?? noSlot, slot?.getHiders ?? none, slot?.getHiders ?? none) > 0;
+};
+
+/**
+ * Whether the registered panel asked to be folded to a rail (`RightPanel`'s
+ * `collapsed`, CTA-230) — the shell's end of it; it draws the rail only wide.
+ */
+export const useRightPanelCollapsed = (): boolean => {
+    const slot = useContext(PanelSlotContext);
+    return useSyncExternalStore(slot?.subscribe ?? noSlot, slot?.getCollapsers ?? none, slot?.getCollapsers ?? none) > 0;
 };

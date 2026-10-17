@@ -23,11 +23,20 @@
  *    fallback, and no page loads a sub-resource from another origin — which
  *    `Cross-Origin-Embedder-Policy: require-corp` would block. GitHub Pages
  *    cannot set headers, writes no config, and is not held to this.
+ * 6. **On Static Web Apps, the host's built-in sign-in is blocked** (CTA-159):
+ *    every route of `scripts/swaBlockedAuth.mjs` answers 404, so no reader is
+ *    given the auth cookie the Cookies Notice says chessapp.dev never sets.
+ * 7. **The legal pages are there or wholly absent** (CTA-182), as the build
+ *    decided (`legalPagesShown`, from its site operator): there, `/privacy`
+ *    and `/cookies` are pages (`check:blog-build` finds no placeholder left);
+ *    absent, no page is written for either and no page links to one — the
+ *    footer, an article — and so neither is in the sitemap.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { CROSS_ORIGIN_ISOLATION_HEADERS } from "./crossOriginIsolation.mjs";
+import { BLOCKED_AUTH_ROUTES } from "./swaBlockedAuth.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
@@ -39,7 +48,7 @@ const fail = (message) => {
 };
 if (!existsSync(join(DIST, "index.html")) || !existsSync(SERVER_ENTRY)) fail("no dist/ or dist-ssr/ — run yarn build first");
 
-const { prerenderedPages, supportedLanguages, defaultLanguage, localizedAppPath } = await import(pathToFileURL(SERVER_ENTRY).href);
+const { prerenderedPages, supportedLanguages, defaultLanguage, localizedAppPath, legalPagesShown: LEGAL_PAGES_SHOWN } = await import(pathToFileURL(SERVER_ENTRY).href);
 const RTL = new Set(["he"]);
 const problems = [];
 const attribute = (html, pattern) => pattern.exec(html)?.[1];
@@ -101,11 +110,15 @@ if (swa) {
   for (const [name, value] of Object.entries(CROSS_ORIGIN_ISOLATION_HEADERS)) {
     if (sent[name.toLowerCase()] !== value) problems.push(`staticwebapp.config.json: globalHeaders has no ${name}: ${value}`);
   }
+  // The host's built-in sign-in, which would set a cookie the Cookies Notice says the App never sets (CTA-159).
+  for (const route of BLOCKED_AUTH_ROUTES) {
+    if (!(config.routes ?? []).some((rule) => rule.route === route && rule.statusCode === 404)) {
+      problems.push(`staticwebapp.config.json: routes do not answer ${route} with 404 (scripts/swaBlockedAuth.mjs)`);
+    }
+  }
   // The worker and its wasm are same-origin files the fallback must not answer for.
   if (!(config.navigationFallback?.exclude ?? []).includes("/stockfish/*")) problems.push("staticwebapp.config.json: navigationFallback does not exclude /stockfish/*");
   for (const file of [
-    "stockfish/stockfish.wasm.js",
-    "stockfish/stockfish.wasm",
     "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.js",
     "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.wasm",
     "stockfish/stockfish-19-lite-multi/stockfish-19-lite.js",
@@ -130,7 +143,31 @@ if (swa) {
   }
 }
 
+// 7. The legal pages: all there, or none of them and nothing pointing to them.
+const LEGAL_PATHS = ["/privacy/", "/cookies/"];
+const LEGAL_LINK = /href="[^"]*\/(?:privacy|cookies)\/?"/;
+const listedPaths = new Set(prerenderedPages().map((page) => page.path));
+for (const path of LEGAL_PATHS) {
+  if (LEGAL_PAGES_SHOWN !== listedPaths.has(path)) problems.push(`${path}: ${LEGAL_PAGES_SHOWN ? "not a page, though the build has the legal pages" : "a page, though the build has no legal pages"}`);
+}
+if (!LEGAL_PAGES_SHOWN) {
+  for (const page of prerenderedPages()) {
+    for (const language of supportedLanguages) {
+      const path = localizedAppPath(page.path, language);
+      const file = join(DIST, `.${path}`, "index.html");
+      const link = existsSync(file) ? LEGAL_LINK.exec(readFileSync(file, "utf8")) : null;
+      if (link !== null) problems.push(`${path}: links to a legal page the build does not have — ${link[0]}`);
+    }
+  }
+  for (const path of LEGAL_PATHS) {
+    for (const language of supportedLanguages) {
+      const localized = localizedAppPath(path, language);
+      if (existsSync(join(DIST, `.${localized}`))) problems.push(`${localized}: written, though the build has no legal pages`);
+    }
+  }
+}
+
 if (problems.length > 0) fail(`\n${problems.join("\n")}`);
 console.log(
-  `check-dist-pages: ${pages} pages, each with its head, its language and its content; 404.html the template${swa ? `; the sitemap's ${ownCanonicals.size} pages and robots.txt; COOP / COEP set, the engine's workers served here, no cross-origin sub-resource` : ""}.`,
+  `check-dist-pages: ${pages} pages, each with its head, its language and its content; the legal pages ${LEGAL_PAGES_SHOWN ? "there" : "absent, and linked from nowhere"}; 404.html the template${swa ? `; the sitemap's ${ownCanonicals.size} pages and robots.txt; COOP / COEP set, the engine's workers served here, no cross-origin sub-resource` : ""}.`,
 );

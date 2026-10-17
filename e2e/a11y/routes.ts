@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 
 import { blogArticleRoutes } from "./blogRoutes";
@@ -94,24 +96,41 @@ export const BLOG_READY: Readonly<Record<string, string>> = {
   "writing-an-article/demo-tables/team-from-a-collection": "tournament-collection-worldrapidteam2026-team",
 };
 
+/** The legal pages' routes — in `src/routes.tsx` behind its site operator (CTA-182). */
+export const LEGAL_PATTERNS: readonly string[] = ["/privacy", "/cookies"];
+
+/**
+ * **Whether the build under test has the legal pages** (CTA-182): only a
+ * build whose site operator is configured does (`SITE_*`, `src/lib/siteOperator.ts`)
+ * — read from what it wrote, which `yarn check:pages` holds to the build's
+ * own decision. Without them the pass neither visits nor misses them.
+ */
+export const LEGAL_PAGES_BUILT = existsSync(resolve("dist/privacy/index.html"));
+
 export const ROUTES: readonly PageRoute[] = [
   // The front page (CTA-126) draws boards: Library games, repertoires, a collection's card.
   { id: "home", pattern: "/", path: "", board: true, ready: byTestId("home-game-library-fischer-52") },
   { id: "lobby", pattern: "/engine/games", path: "engine/games", ready: byTestId("played-games-row-e2e-on") },
   { id: "play-with-engine", pattern: "/engine/play", path: "engine/play", board: true },
   { id: "masked-pieces", pattern: "/engine/masked", path: "engine/masked", board: true },
-  { id: "analysis-board", pattern: "/tools/analysis", path: "tools/analysis", board: true },
+  // Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser, a Project's Cases, a Case's board and Jobs V2.
   {
-    id: "saved-analyses",
-    pattern: "/tools/analysis/saved",
-    path: "tools/analysis/saved",
-    pieces: true,
-    ready: byTestId(`saved-analyses-item-${SEED.analysisId}`),
+    id: "analysis-projects",
+    pattern: "/analysis",
+    path: "analysis",
+    ready: byTestId(`analysis-v2-list-row-${SEED.projectId}`),
   },
   {
-    id: "saved-analysis-settings",
-    pattern: "/tools/analysis/saved/:id/settings",
-    path: `tools/analysis/saved/${SEED.analysisId}/settings`,
+    id: "analysis-project",
+    pattern: "/analysis/projects/:projectId",
+    path: `analysis/projects/${SEED.projectId}`,
+    ready: byTestId(`analysis-v2-cases-row-${SEED.caseId}`),
+  },
+  {
+    id: "analysis-case",
+    pattern: "/analysis/projects/:projectId/cases/:caseId",
+    path: `analysis/projects/${SEED.projectId}/cases/${SEED.caseId}`,
+    board: true,
   },
   { id: "openings", pattern: "/openings", path: "openings", board: true },
   {
@@ -161,16 +180,24 @@ export const ROUTES: readonly PageRoute[] = [
     board: true,
     ready: (page) => page.getByText("Rosen, Anna").first(),
   },
-  {
-    id: "library-collection-settings",
-    pattern: "/library/:collectionId/settings",
-    path: `library/${SEED.collectionId}/settings`,
-  },
   { id: "library-upload", pattern: "/library/new", path: "library/new" },
   { id: "library-game", pattern: "/library/:collectionId/:game", path: `library/${SEED.collectionId}/1`, board: true },
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
+  // The Jobs module (CTA-221): no job in the seed (a job is not in the export zip), so the empty list, and its settings.
+  // A job's own page: the seed cannot carry one, so its miss ("No such job") — a job's page whole is audited with axe in `src/views/jobs/Jobs.test.tsx`.
+  { id: "jobs", pattern: "/jobs", path: "jobs" },
+  { id: "jobs-settings", pattern: "/jobs/settings", path: "jobs/settings" },
+  { id: "job", pattern: "/jobs/:jobId", path: "jobs/none", ready: byTestId("job-missing") },
+  // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer —
+  // in a build that has them (CTA-182).
+  ...(LEGAL_PAGES_BUILT
+    ? [
+        { id: "privacy", pattern: "/privacy", path: "privacy" },
+        { id: "cookies", pattern: "/cookies", path: "cookies" },
+      ]
+    : []),
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },
   { id: "settings-storage", pattern: "/settings/:tab", path: "settings/storage" },

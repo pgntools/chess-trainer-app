@@ -22,11 +22,11 @@ nothing is fetched or compiled in the browser.
 - **The app's components** are available by name, with no `import`
   (`index.ts` maps them). An **address** is the one the screen shows in the
   address bar — copy it from there; the leading slash is optional.
-- **One component, any source** (CTA-140): every table, `<InlinePgnGame>` and `<InlinePgnGameColumns>`
+- **One component, any source** (CTA-140): every table and every `<InlinePgnGame…>`
   read their games from `pgn={games}` — a PGN of the article's own — or
   from `src="<address>"`: a Library collection (`/library/<c>`) or one game
-  of it (`/library/<c>/<n>`), a saved analysis
-  (`/tools/analysis?analysis=<id>`), a played game (`/engine/play?saved=<id>`),
+  of it (`/library/<c>/<n>`), an Analysis case
+  (`/analysis/projects/<p>/cases/<c>`), a played game (`/engine/play?saved=<id>`),
   a repertoire (`/repertoires/<id>`) — pasted as the address bar shows it,
   host and all. A Library source's names and results link into the Library
   (`playerLink`, `gameLink`, `teamLink`, on by default). **Only shipped
@@ -43,7 +43,8 @@ nothing is fetched or compiled in the browser.
 | `<RepertoireBoard />` | `_id="/repertoires/<id>"`, `startMove?`, `fallback?: "e4-white" \| "caro-kann-black"` | a repertoire on a board facing its side, each branch's arrows as wide as the trainer's play chances, with a link to it |
 | `<CollectionCard />` | `_id="/library/<collection>"`, `showGame?` (default 1), `startMove?`, `rows?` (default 8) | a collection across its row: its name and size, a board on game `showGame`, and a short table of its games — the page holding that game, with earlier / later — a row's click putting it on the board |
 | `<InlinePgnGame />` | `pgn={…}` or `src="<address>"` (a game, a collection with `game`, an analysis, a played game, a repertoire's tree), `from?`, `to?`, `start?` (move numbers; `start` also a SAN line, into a side line), `fromPly?` / `toPly?` / `startPly?` (plies, which win), `variations?` (default on), `comments?`, `orientation?`, `caption?`, `game?` (which game of a PGN holding several, 1-based), `shapes?` (the comments' `[%cal]` arrows and `[%csl]` circles, default on) | an excerpt of a PGN — a window of its moves beside a board, side lines nested — one game as many times as a page likes, each board its own id; the Blog's *Games in an article* folder shows every prop |
-| `<InlinePgnGameColumns />` | the same props as `<InlinePgnGame>` | `<InlinePgnGame>` with its moves laid out as the Analysis Board's move list is (CTA-146): numbered pairs, number \| White \| Black, each side line a row under the pair it answers; the list stands no taller than the board and scrolls when the tree is longer, keeping the move on screen in view. A window opening on Black's move starts with an empty White cell. `<InlinePgnGame>` itself is unchanged; the Blog's *Games in an article* folder shows both |
+| `<InlinePgnGame2colH />` | the same props as `<InlinePgnGame>`, `comments` one of `"inline"` (the default) / `"bottom"` (or a bare `comments`) / `"hidden"` (or `{false}`), and `movesWidth?` (`"full"`, the default — the rest of the row; `"board"`; `"dense"` — what the moves need) | `<InlinePgnGame>` with its moves laid out as the Analysis Board's move list is (CTA-146): numbered pairs, number \| White \| Black, each side line a row under the pair it answers, beside the board; the list stands no taller than the board and scrolls when the tree is longer, keeping the move on screen in view. A window opening on Black's move starts with an empty White cell. Inline, each comment stands where it is written — under the pair, after White's move splitting it, inside a side line. `<InlinePgnGame>` itself is unchanged; the Blog's *Games in an article* folder shows them all. `<InlinePgnGameColumns />`, its first name, is its alias (`MDX_ALIASES`) |
+| `<InlinePgnGame2colV />` | the same props as `<InlinePgnGame>`, `comments` as `<InlinePgnGame2colH>`'s, and `movesHeight?` (`"dense"`, the default — half the board's height; `"board"`; `"full"` — the whole window, unscrolled) | the same numbered pairs **under** the board, at every width — the board as wide as its container up to 320 px, the list as wide as the board and no taller than half of it, scrolling — for boards side by side in a `<BoardRow>` |
 | `<StoredGameEmbed />` | `src="<address>"` (a Library game, an analysis, a played game) or `reference="…"`, `startMove?` | any stored game by its `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) |
 | `<SwissStandingsTable />` | `pgn={…}` or `src="/library/<c>"` (+ `playerLink?`, `gameLink?`) (the tournament's games, usually `import games from "./event.pgn?raw"`), `density?: "normal" \| "dense"` | a Swiss's standings (`src/blocks/tables/SwissStandingsTable`): a row per player ranked by points, Buchholz, then Sonneborn-Berger, a cell per round — read from the games' tags alone, named after their `Event`; a file of the top boards only is the standings of those games. The Blog's *Tournaments* folder shows it |
 | `<RoundRobinCrossTable />` | `pgn={…}` or `src="/library/<c>"` (+ `playerLink?`, `gameLink?`), `density?` | a round robin's crosstable (`src/blocks/tables/RoundRobinCrossTable`): a row and a column per player ranked by points, then Sonneborn-Berger, each meeting's games in its cell — two in a double round robin. The Blog's *Tournaments* folder shows it, single and double |
@@ -75,7 +76,7 @@ of one of those shows "not here" to everyone else — except a
 instead, marked as a sample. **The front page's two repertoire addresses are
 placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`, in `get-started.mdx`).
 
-**The keyboard.** Every board on the page steps with ← / → (and Home / End from inside it): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
+**The keyboard.** Every board on the page steps with ← / → (and, from inside it, Home / End to the start and end of the branch on screen — Home again on a side line's first move climbs a level — and PgUp / PgDown to the whole game's, or window's, first and last position, CTA-165): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
 
 **What it costs.** A Library embed reads its collection's PGN (and a card its
 index too) — the Library's own lazy chunks, fetched once: the front page

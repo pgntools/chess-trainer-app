@@ -76,13 +76,13 @@ included — leave it off.
 
 | File (`e2e/a11y/`) | Does |
 | --- | --- |
-| `seedZip.ts` | The data: a played game still on, a mated, a resigned, a masked and an unreadable one; two saved analyses, two repertoires and two uploaded collections (each kind once at the top level, once in a folder). Built by the app's own `buildExport` / `zipExport` — no store, no schema of the suite's own. `SEED` names the ids the routes use. |
+| `seedZip.ts` | The data: a played game still on, a mated, a resigned, a masked and an unreadable one; two Analysis projects with a Case each (a Game, a Position), two repertoires and two uploaded collections (each kind once at the top level, once in a folder). Built by the app's own `buildExport` / `zipExport` — no store, no schema of the suite's own. `SEED` names the ids the routes use. |
 | `seed.setup.ts` | The `setup` project: puts the zip in through **Settings → Import** and saves the browser's storage (localStorage **and IndexedDB**) as the state every test starts from. |
 | `routes.ts` | `ROUTES` — every shipped route (21 pages): its path (**no leading slash**, or the base is dropped), the pattern in `src/routes.tsx` it visits an instance of, what shows it has its data, whether it draws a `board` or `pieces`. |
 | `blogRoutes.ts` | **The Blog's articles, read from their files** (CTA-135) with the build's own frontmatter reader — one line each in `ROUTES` (`blog-<path, dashed>`, pattern `/blog/*`), `board` from the embeds it uses, drafts left out. By hand in `routes.ts`: `BLOG_READY` (an article's ready test id) and `BLOG_SAMPLE` — the articles checked under the whole matrix; the rest are `oncePerLanguage` (default theme, light, both languages — `visits()` in `matrix.ts`). |
 | `routes.spec.ts` | Holds `ROUTES` to `src/routes.tsx`: a shipped route with no line fails; so does a line for a route that is gone. |
 | `matrix.ts` | `MATRICES.full` (every registered theme — a new theme joins with no edit — × light, dark × en, he: 20) and `reduced` (default, high-contrast × light × en, he: 4). `A11Y_MATRIX` picks; full is the default. |
-| `checks.ts` | `applyPreferences` (the app's own keys: `chessapp.theme`, `mui-mode` — not the language, which is the address's since CTA-136), `open` (at the language's own address — `he/<path>` for Hebrew, `localizedPath` — then heading, data, board, the engine's first line, nothing `aria-busy`), `check`. |
+| `checks.ts` | `applyPreferences` (the app's own keys: `chessapp.theme`, `mui-mode` — not the language, which is the address's since CTA-136), `open` (at the language's own address — `he/<path>` for Hebrew, `localizedPath` — then heading, data, board, the engine's first line, nothing `aria-busy`, every CSS transition ended — a colour mid-fade is measured a hair under its theme), `check`. |
 | `a11y.spec.ts` | Every route × every combination it `visits()`: `check`. |
 | `allowlist.ts` | The known gaps — the only violations let through. |
 | `allowlist.spec.ts` | Each entry's `gap` is a phrase in ACCESSIBILITY.md's Known gaps. |

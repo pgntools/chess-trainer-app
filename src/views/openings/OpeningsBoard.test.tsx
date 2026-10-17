@@ -1,22 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
-import { analysisHandOffOf } from "../../lib/analysisHandOff";
+import { analysisCasesSnapshot } from "../../lib/analysisCaseStore";
+import { caseTree } from "../../lib/analysisProjects";
+import { analysisProjectsSnapshot } from "../../lib/analysisProjectStore";
 import { mainline, treeToPgn } from "../../lib/gameTree";
 import { HOVERED_MOVE_ARROW_COLOR, KNOWN_MOVE_ARROW_COLOR } from "../../lib/openings";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
-import { NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
+import { NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -61,16 +62,12 @@ import OpeningsBoard from "./OpeningsBoard";
   The Openings explorer (CTA-78): a v2 board — its shared square and panel
   are asserted with the other v2 boards (`boards.test.tsx`,
   `panelPropagation.test.tsx`) — with the book beside it, nothing saved,
-  and the whole tree handed on to the Analysis Board.
+  and the whole tree handed on to Analysis as a new Case (CTA-192).
 */
 
-/** Where the router is, and the state it carries — what a hand-off left behind. */
-let lastState: unknown = null;
+/** Where the router is. */
 function Where() {
   const location = useLocation();
-  useEffect(() => {
-    lastState = location.state;
-  }, [location.state]);
   return <div data-testid="where">{`${location.pathname}${location.search}`}</div>;
 }
 const where = () => screen.getByTestId("where").textContent ?? "";
@@ -110,7 +107,6 @@ const arrowTo = (to: string) => boardOptions().arrows?.find((arrow) => arrow.end
 beforeEach(async () => {
   localStorage.clear();
   FakeEngine.reset();
-  lastState = null;
   await i18n.changeLanguage("en");
 });
 
@@ -125,9 +121,11 @@ describe("the Openings explorer — the board", () => {
 
   it("has the Analysis Board's tabs beside the book, and nothing that saves", () => {
     mount();
-    for (const id of ["book", "moves", "map", "load", "export", "engine"]) {
+    for (const id of ["book", "moves", "map", "load", "export"]) {
       expect(screen.getByTestId(`openings-panel-tab-${id}`)).toBeInTheDocument();
     }
+    // No Engine tab: the search settings are the top bar's Engine menu (CTA-181).
+    expect(screen.queryByTestId("openings-panel-tab-engine")).not.toBeInTheDocument();
     expect(screen.getByTestId("openings-play")).toBeInTheDocument();
     expect(screen.queryByTestId("openings-save")).not.toBeInTheDocument();
     expect(screen.queryByTestId("openings-changes")).not.toBeInTheDocument();
@@ -141,6 +139,13 @@ describe("the Openings explorer — the board", () => {
 
     mount("/openings?fen=not-a-fen");
     expect(boardOptions().position).toBe(START);
+  });
+
+  it("opens a ?fen= of the pieces alone, White to move, as lichess does (CTA-200)", () => {
+    const placement = AFTER_E4.split(" ")[0];
+    mount(`/openings?fen=${encodeURIComponent(placement)}`);
+    expect(boardOptions().position).toBe(`${placement} w - - 0 1`);
+    expect(boardOptions().boardOrientation).toBe("white");
   });
 
   it("writes every step back as ?at=, and replays such a link on arrival", () => {
@@ -215,7 +220,7 @@ describe("the Openings explorer — the book", () => {
 });
 
 describe("the Openings explorer — hand-offs", () => {
-  it("hands the whole tree to the Analysis Board, with the position and the side", async () => {
+  it("hands the whole tree to Analysis as a new Case, at the position on screen and facing its side (CTA-192)", async () => {
     mount();
     drag("e2", "e4");
     drag("e7", "e5");
@@ -229,11 +234,18 @@ describe("the Openings explorer — hand-offs", () => {
 
     fireEvent.click(screen.getByTestId("openings-open-analysis"));
 
-    await waitFor(() => expect(where()).toBe("/tools/analysis?at=e4%2Cc5"));
-    const handOff = analysisHandOffOf(lastState);
-    expect(handOff?.orientation).toBe("black");
-    expect(treeToPgn(handOff!.tree)).toContain("1. e4 e5 (1... c5)");
-    expect(mainline(handOff!.tree).map((node) => node.san)).toEqual(["e4", "e5"]);
+    // A new Project offered first, named after the opening on screen — "Openings" where the book names none (this stub's never does).
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue("Openings");
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const [made] = analysisCasesSnapshot() ?? [];
+    expect(analysisProjectsSnapshot()?.map((project) => project.name)).toEqual(["Openings"]);
+    expect(made).toMatchObject({ type: "game", orientation: "black", path: ["e4", "c5"] });
+    const tree = caseTree(made)!;
+    expect(treeToPgn(tree)).toContain("1. e4 e5 (1... c5)");
+    expect(mainline(tree).map((node) => node.san)).toEqual(["e4", "e5"]);
   });
 
   it("hands the position on screen to Play with Engine as ?fen=", async () => {
@@ -281,12 +293,22 @@ describe("the Openings explorer — accessible (CTA-113)", () => {
     const user = userEvent.setup();
     mount();
     expect(screen.getByRole("button", { name: i18n.t("openings.controls.analysis") })).toBeInTheDocument();
-    const engine = screen.getByRole("switch", { name: i18n.t("openings.engineSwitch") });
-    // It starts off (CTA-148).
-    expect(engine).not.toBeChecked();
+    // The engine's play / pause (CTA-181) — it starts off (CTA-148).
+    const engine = screen.getByRole("button", { name: i18n.t("boardEngine.toggle") });
+    expect(engine).toHaveAttribute("aria-pressed", "false");
     engine.focus();
-    await user.keyboard(" ");
-    expect(engine).toBeChecked();
+    await user.keyboard("{Enter}");
+    expect(engine).toHaveAttribute("aria-pressed", "true");
     await expectNoAxeViolations(document.body);
+  });
+
+  it("clears back to the tree's own start from its Load tab — the Engine tab's Clear, moved (CTA-181)", async () => {
+    const user = userEvent.setup();
+    mount(`/openings?fen=${encodeURIComponent(AFTER_E4)}`);
+    drag("c7", "c5");
+    expect(boardOptions().position).toBe(AFTER_E4_C5);
+    await user.click(screen.getByTestId("openings-panel-tab-load"));
+    await user.click(screen.getByRole("button", { name: i18n.t("analysis.settings.clear") }));
+    expect(boardOptions().position).toBe(AFTER_E4);
   });
 });

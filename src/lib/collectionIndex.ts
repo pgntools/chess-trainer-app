@@ -202,7 +202,9 @@ export const textHash = (text: string): string => {
  * `line` (CTA-76) is such a later column: its SAN joined by spaces, and a
  * file from before it reads as games with no line — while one from between
  * CTA-76 and CTA-92 reads as games whose line stops at 30 plies, which the
- * opening tree follows as far as it goes.
+ * opening tree follows as far as it goes. `sourceTags` (CTA-233) is another:
+ * the game's `Source…` tags as one object (`{"SourceTitle": "…"}`, `null`
+ * for none), a file from before it read as games naming no source.
  * ------------------------------------------------------------------ */
 
 const COLLECTION_INDEX_FORMAT = "chessapp.collectionIndex";
@@ -224,9 +226,10 @@ const INDEX_COLUMNS = [
   "moves",
   "unreadable",
   "line",
+  "sourceTags",
 ] as const satisfies readonly (keyof IndexedRow)[];
 
-type Cell = string | number | null;
+type Cell = string | number | Readonly<Record<string, string>> | null;
 
 /** The index as its file's text. */
 export const encodeCollectionIndex = (index: CollectionIndex): string => {
@@ -235,6 +238,7 @@ export const encodeCollectionIndex = (index: CollectionIndex): string => {
       INDEX_COLUMNS.map((column): Cell => {
         if (column === "unreadable") return row.unreadable ? 1 : null;
         if (column === "line") return row.line === undefined ? null : row.line.join(" ");
+        if (column === "sourceTags") return row.sourceTags ?? null;
         return row[column] ?? null;
       }),
     ),
@@ -247,6 +251,16 @@ export const encodeCollectionIndex = (index: CollectionIndex): string => {
     columns: INDEX_COLUMNS,
   });
   return `${head.slice(0, -1)},"rows":[${rows.length === 0 ? "" : `\n${rows.join(",\n")}\n`}]}\n`;
+};
+
+/** A `sourceTags` cell back as its tags — an object of strings, its other entries dropped; anything else (or nothing left) absent. */
+const sourceTagsCell = (value: unknown): Record<string, string> | undefined => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  let tags: Record<string, string> | undefined;
+  for (const [name, text] of Object.entries(value)) {
+    if (name.startsWith("Source") && typeof text === "string" && text !== "") (tags ??= {})[name] = text;
+  }
+  return tags;
 };
 
 /**
@@ -297,6 +311,8 @@ export const decodeCollectionIndex = (value: unknown): CollectionIndex | undefin
     if (cell("unreadable") === 1) row.unreadable = true;
     const line = cell("line");
     if (typeof line === "string" && line.trim() !== "") row.line = line.trim().split(/\s+/);
+    const sourceTags = sourceTagsCell(cell("sourceTags"));
+    if (sourceTags !== undefined) row.sourceTags = sourceTags;
     rows.push(row);
   }
   return { hash: file.hash, rows };

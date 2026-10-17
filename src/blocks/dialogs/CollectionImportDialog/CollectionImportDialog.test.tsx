@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import "../../../i18n";
+import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import type { CollectionImportSource, CollectionRow } from "../../../lib/libraryCollections";
 import CollectionImportDialog from "./CollectionImportDialog";
@@ -175,5 +175,142 @@ describe("CollectionImportDialog — Split by event (CTA-127)", () => {
       await user.click(screen.getByTestId("import-confirm"));
       expect(onImport.mock.calls[1][2]).toEqual({});
     });
+  });
+});
+
+describe("CollectionImportDialog — a plain choice of games (CTA-186)", () => {
+  it("keeps the filters and the count, under the host's title and button, with no split and no mark", async () => {
+    const onImport = vi.fn();
+    render(
+      <CollectionImportDialog
+        source={ONE_EVENT}
+        choiceOnly={{ title: "Choose the games for the project", confirmLabel: "Create project" }}
+        onCancel={() => {}}
+        onImport={onImport}
+        testId="import"
+      />,
+    );
+    expect(screen.getByRole("dialog", { name: "Choose the games for the project" })).toBeInTheDocument();
+    expect(screen.queryByTestId("import-split")).toBeNull();
+    expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
+    expect(onImport).toHaveBeenCalledWith(expect.any(Array), false, {}, []);
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+  });
+
+  it("picks games by hand among those the filters keep — numbered across a zip's files (CTA-208)", async () => {
+    const onImport = vi.fn();
+    render(
+      <CollectionImportDialog
+        source={ZIP}
+        choiceOnly={{
+          title: "Choose the games for the project",
+          confirmLabel: "Create project",
+          selectGames: {
+            select: "Select games…",
+            change: "Change the selection…",
+            clear: "Use every game the filters keep",
+            selected: (count) => `${count} picked.`,
+          },
+        }}
+        onCancel={() => {}}
+        onImport={onImport}
+        testId="import"
+      />,
+    );
+    // The filters first: from May 2023, Carl – Amy, Bob – Dana and the zip's second file's one game.
+    fireEvent.change(screen.getByTestId("import-from"), { target: { value: "2023-05-01" } });
+    expect(screen.getByTestId("import-count")).toHaveTextContent("3 of 4");
+
+    await userEvent.click(screen.getByRole("button", { name: "Select games…" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    // Only the games the filters keep, numbered across the files.
+    const rows = within(within(picker).getByRole("table", { name: "Games" })).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getAllByRole("cell")[1]?.textContent)).toEqual(["2", "3", "4"]);
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select Carl – Amy" }));
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select כהן – לוי" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Select" }));
+    await screen.findByRole("button", { name: "Change the selection…" });
+    expect(screen.getByTestId("import-selected")).toHaveTextContent("2 picked.");
+    expect(screen.getByTestId("import-count")).toHaveTextContent("2 of 4");
+
+    // A pick the filters then leave out is not kept.
+    fireEvent.change(screen.getByTestId("import-from"), { target: { value: "2024-01-01" } });
+    expect(screen.getByTestId("import-count")).toHaveTextContent("1 of 4");
+    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
+    const [[kept]] = onImport.mock.calls;
+    // Each file's own rows, by their own numbers.
+    expect(kept.map((rows: { number: number }[]) => rows.map((row) => row.number))).toEqual([[], [1]]);
+
+    // Back to every game the filters keep.
+    await userEvent.click(screen.getByRole("button", { name: "Use every game the filters keep" }));
+    expect(screen.queryByTestId("import-selected")).toBeNull();
+    expect(screen.getByTestId("import-count")).toHaveTextContent("2 of 4");
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+  });
+});
+
+describe("CollectionImportDialog — the TAGS field (CTA-234)", () => {
+  const TAGS = "Tags";
+
+  it("hands the typed tag pairs to Import, the last of a name winning", async () => {
+    const user = userEvent.setup();
+    const onImport = vi.fn();
+    render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    const field = screen.getByRole("textbox", { name: TAGS });
+    expect(field).toHaveAccessibleDescription(/added to every imported game/i);
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+    await user.click(field);
+    await user.paste('[Site "Warwick ENG"]\n\n[Annotator "Stockfish19"]\n[Site "Leamington"]');
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([
+      { name: "Site", value: "Leamington" },
+      { name: "Annotator", value: "Stockfish19" },
+    ]);
+  });
+
+  it("says which line is wrong and why, and keeps Import off until it is fixed", async () => {
+    const user = userEvent.setup();
+    const onImport = vi.fn();
+    render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    const field = screen.getByRole("textbox", { name: TAGS });
+    await user.click(field);
+    await user.paste('[Site "Warwick"]\nSite Warwick\n[Event "a "b""]');
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/Line 2: not a tag pair.*Line 3: inside the value/);
+    expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+
+    await user.clear(field);
+    await user.paste('[Event "a \\"b\\""]');
+    expect(field).toHaveAttribute("aria-invalid", "false");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([{ name: "Event", value: 'a "b"' }]);
+  });
+
+  it("hands no tags when the field is blank — and is not shown without the prop", async () => {
+    const onImport = vi.fn();
+    const { unmount } = render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([]);
+    unmount();
+    render(<CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={() => {}} testId="import" />);
+    expect(screen.queryByRole("textbox", { name: TAGS })).toBeNull();
+  });
+
+  it("speaks Hebrew, the tags written left to right", async () => {
+    await i18n.changeLanguage("he");
+    try {
+      const user = userEvent.setup();
+      render(<CollectionImportDialog source={ZIP} tagsField onCancel={() => {}} onImport={() => {}} testId="import" />);
+      const field = screen.getByRole("textbox", { name: "תגיות" });
+      expect(field).toHaveAttribute("dir", "ltr");
+      await user.click(field);
+      await user.paste("Site");
+      expect(field).toHaveAccessibleDescription(/שורה 1/);
+      await expectNoAxeViolations(screen.getByRole("dialog"));
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

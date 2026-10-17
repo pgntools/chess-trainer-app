@@ -11,7 +11,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard, type ChessboardOptions, type PieceDropHandlerArgs } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
-import { demoNodeAt, numberedLine, type DemoNode } from "../../lib/demoTree";
+import { demoBranchStart, demoMainline, demoNodeAt, numberedLine, type DemoNode } from "../../lib/demoTree";
 import { IconAction } from "../../design-system/components/toolbars";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
@@ -35,9 +35,10 @@ import { useBoardKeys } from "./useBoardKeys";
  *   A promotion the tree makes more than one way asks which piece, through the
  *   shared picker;
  * - start, back, next (the first continuation — the mainline, or the most
- *   played) and flip, above the board — and ← / → / Home / End from the
- *   keyboard, on whichever board of the page the reader last touched
- *   (`useBoardKeys`), which is ringed.
+ *   played) and flip, above the board — and ← / → from the keyboard, Home /
+ *   End to the start and end of the branch on screen, PgUp / PgDown to the
+ *   tree's start and its mainline's end (CTA-165), on whichever board of the
+ *   page the reader last touched (`useBoardKeys`), which is ringed.
  *
  * Presentational: the tree, the start position and where the board opens
  * (`initialLine`, `initialOrientation`) arrive as props; the line played, the
@@ -124,7 +125,7 @@ function DemoBoard({
   };
   const play = (san: string) => goTo([...line, san]);
 
-  // ← / → / Home / End, when this is the board the reader last touched (`useBoardKeys`).
+  // ← / → / Home / End / PgUp / PgDown, when this is the board the reader last touched (`useBoardKeys`).
   const keys = useBoardKeys({
     back: () => {
       if (line.length > 0) goTo(line.slice(0, -1));
@@ -132,7 +133,9 @@ function DemoBoard({
     next: () => {
       if (continuations.length > 0) play(continuations[0].san);
     },
-    first: () => goTo([]),
+    first: () => goTo(demoBranchStart(root, line)),
+    gameStart: () => goTo([]),
+    gameEnd: () => goTo(demoMainline(root)),
     last: () => {
       // On along the first continuation at every step, to the line's end.
       const end = [...line];

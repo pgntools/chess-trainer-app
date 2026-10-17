@@ -1,6 +1,9 @@
 ---
 paths:
   - "src/views/settings/**"
+  - "src/lib/engineSearchSettings*"
+  - "src/views/main/EngineMenu*"
+  - "src/lib/evalSources/**"
 ---
 
 # Settings — `/settings/<tab>`
@@ -11,7 +14,7 @@ data out as one zip and back in — everything about them, the zip, the
 manifest, the layers, conflicts, caps, migrations, is
 [`import-export.md`](./import-export.md)), **Storage** (how much space the
 app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
-(which engine every board runs, CTA-153) and **Support** (how to reach us, CTA-155). This file is the section.
+(which engine every board runs, CTA-153 — and the eval sources every analysis search asks first, CTA-196) and **Support** (how to reach us, CTA-155). This file is the section.
 
 ## 1. The section
 
@@ -19,9 +22,9 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the `EnginePicker` block), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the Stockfish connectors inner tab — a Browser and an API section: the `EnginePicker` and `EngineServerForm` blocks, CTA-198; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
-| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`. |
+| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
 **Adding a tab**: an entry in `SETTINGS_TABS` (`SettingsScreen.tsx`), a
 `navItems()` entry in the `settings` folder at `/settings/<id>`, and
@@ -39,8 +42,11 @@ device, per the research in `docs/indexed-db.md`:
   label marked as an estimate. A number the browser does not report reads
   "not available", never zero. The quota is not shown; a note says it is in
   the browser's developer tools.
-- **The reader's data, four sections** — one per database's heavy store:
-  Engine games, Analyses, Repertoires, Library games — separated by a bolder
+- **The reader's data, five sections** — one per database: Engine games,
+  Repertoires, Library games, Analysis's Cases (`chessapp.analysisProjects`)
+  and the background jobs (`chessapp.backgroundJobs`, CTA-221 — the jobs'
+  records with the sizes of the files they made; not exported,
+  `import-export.md` §1.1) — separated by a bolder
   line, each with its exact record count and its **estimated payload**
   (`lib/storageDiagnostics.ts`), never presented as a disk or IndexedDB
   size: the browser may compress, deduplicate and add index overhead, so
@@ -86,7 +92,8 @@ choice (preferences are not data).
 registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 
 - **The list is the `EnginePicker` block** (`blocks/forms/`) over
-  `describeEngines()` — a radio per registered engine with its name, version,
+  `describeEngines()` — a radio per shipped engine (Stockfish 19 Lite,
+  single-thread — the default — and multi-thread) with its name, version,
   single- or multi-thread and how its strength is set (Skill Level, Elo, or
   either), each the descriptor's own declaration. An engine **this page
   cannot run** — the multi-thread build where the host does not set COOP /
@@ -97,23 +104,184 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   `localStorage` (`chessapp.engine`, [`database.md`](./database.md) §2), read
   through `views/shared/useEngineChoice.ts` (`useSyncExternalStore`, so every
   mounted board follows). Every board passes it as `useEngineModule({ engine })`
-  — the Analysis Board, the Library's game and the Openings explorer
+  — Analysis's Case board, the Library's game and the Openings explorer
   (`useAnalysisSession`), the repertoire player, Play with Engine and Masked
   Pieces (`usePlayGame`) and the Lobby's new-game form — and so uses it from its
   next search; the old engine is terminated.
 - **The store keeps the raw id; the tab and the boards read the resolved one**
-  (`engineChoiceId()`): a stored id that names no registered engine, or one this
-  page cannot run, reads as the default — and **stays stored**, so the choice
-  returns where the engine can run (another host, a later registration). A write
-  of an unregistered id is ignored, as an unknown theme is. The list follows
-  the registry as it grows (`subscribeEngines`).
+  (`engineChoiceId()`): a stored id that names no shipped engine (the retired
+  2019 build's `stockfish-2019-wasm` among them, CTA-160), or one this page
+  cannot run, reads as the default — and **stays stored**, so the choice
+  returns where the engine can run (another host). A write of an id the app
+  does not ship is ignored, as an unknown theme is.
 - **A game against the engine keeps its engine**: read once as the game begins,
   recorded on it, and a resumed game goes on with its own
   ([`play-with-engine.md`](./play-with-engine.md) §4) — changing the choice
   mid-way never swaps the engine under a game.
 - **The Export zip does not carry it** — a preference is not data
   ([`import-export.md`](./import-export.md)); what a played game carries is the
-  engine that played it.
+  engine that played it. Its **presets** are data, and do travel (§4.1).
+- **The search settings are not here** (CTA-181): lines, depth, move time,
+  Threads and Hash (no infinite analysis since CTA-185 — every search stops)
+  are one set for every board — the depth and move time the chosen engine's
+  preset's (CTA-185, §4.1), the rest a preference — set
+  from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
+  language button — a robot and "Engine", styled as the language switch;
+  under the engine and its preset, **each a select there too** (CTA-185: the
+  same `describeEngines()` list and `setEngineId` as this tab, the engine's
+  presets and `selectEnginePreset` as §4.1's section), with an "Advanced
+  settings" link back here at the popup's foot (CTA-189), and the preset's
+  unsaved changes saved from its title row (§4.1); depth and move time typed
+  as well as slid),
+  `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
+  preference like the choice and likewise not in the zip
+  ([`docs/engine.md`](../../docs/engine.md) §5.2).
+- **Inner tabs** (`PanelTabs`, the tab's own state — it opens on Stockfish
+  connectors unless `?source=<id>` names an eval source's): **Stockfish
+  connectors** (CTA-198), where the engine runs, one engine choice under two
+  `h2` headings, each its `section` — **Browser**, the page's own builds
+  above, then **API**, the engine server below; then **a tab per eval
+  source** (below — today *Lichess evaluation API*).
+- **The engine server on this computer** — the `EngineServerForm` block in
+  the API section ([`docs/engine.md`](../../docs/engine.md) §8): native Stockfish
+  binaries served by `yarn api:start` (`server/engine-api/`). **Off by
+  default, and while off nothing contacts any server** — a deployed site that
+  probed `127.0.0.1` would probe every visitor's machine. On, its address
+  (`chessapp.engineServer`, `lib/engineServer.ts`) is kept and checked
+  (`GET /v1/engines`), the field's text the screen's own until Connect (or
+  Enter) keeps and checks it — **each press answered on the button**: a
+  spinner (at least 0.4 s, `CONNECT_MIN_CHECKING_MS`), then a check mark or a
+  warning for 2 s. A chip beside the
+  switch is the connection at a glance — *Connecting…*, *Connected · N ms*
+  (the last check's round trip), *Not connected* — and the live region; under
+  the field, when it last answered, or what to check with Try again. While it
+  answers, its engines (`hosted:<id>`, `lib/engines/hosted.ts`) are **listed
+  under it** — a second `EnginePicker` ("Engines on this server") on the same
+  choice; the Browser section's list keeps the page's builds. Choosing in
+  either list unselects the other's.
+- **The eval sources** (CTA-196, [`docs/engine.md`](../../docs/engine.md)
+  §10) — **an inner tab per registered source** with settings, after Stockfish
+  connectors, titled by its `titleKey` (`EvalSourceTab.tsx`): a line saying what
+  they are, then the source's own section (`EvalSource.SettingsSection`, lazy,
+  in registry order — the Engine tab names no source). `?source=<id>` opens
+  the tab on it — where the jobs' warning and the Jobs settings' link
+  (`/jobs/settings`, CTA-221 — the Jobs settings' home since, out of
+  Analysis; [`jobs.md`](./jobs.md) §4) go. Today one: **the lichess evaluation API**
+  (`lib/evalSources/lichess/LichessEvalApiSection.tsx`, moved here from the
+  Jobs settings, where CTA-193 put it) — `EngineServerForm` with its words
+  (`evalSources.lichess`): **off by default, and while off the app never
+  contacts it**; on, its address (`http://127.0.0.1:8000`, the reader's own machine, offered first, kept
+  while off), Connect (or Enter) checking `GET /health` — each press answered
+  on the button, as the engine server's — the chip and the reason; under it
+  **Enable evaluations Write API**, **Minimum depth to write** (CTA-202 — a
+  number, 35 by default, disabled while writing is not ticked) and, while
+  ticked, **Test connection** (`write_enabled`, answered on its button and in
+  words). One global setting,
+  `chessapp.lichessEvalApi` ([`database.md`](./database.md) §2; a reader's
+  old `chessapp.jobsSettings.evalApi` moved there on the first read). On,
+  **every analysis search asks it first** — every board's engine lines and
+  every engine job's positions (the engine session, `lib/jobs/engineSession.ts`) — whichever engine runs; an engine choosing its move in a game
+  never does. With writing ticked, every engine search that reached its
+  target depth **and the minimum depth to write** is sent to it (a shallower
+  one is skipped, not refused — so the lichess database is never diluted by
+  quick searches; a target depth below the minimum writes nothing); what it
+  answered never is.
+- **The right-hand panel is the chosen engine's options** (§4.1) — for a
+  page's build or a server's engine alike, in a column that **scrolls on its
+  own** (`engine-panel`: the shell's aside does not scroll). For a server
+  engine, under the form, the depth it allows and that `Threads` and `Hash`
+  are under the server's ceilings. On the Stockfish connectors tab with no
+  server engine chosen, the form has **the Blog's guide** above it
+  (`/blog/guides/local-engine`, *Run a chess engine on your own computer* —
+  the whole setup). Offline, the server's engines are gone, and a choice of
+  one reads as the default — still stored, back when the server is. (The
+  `EngineOptionsTable` block that listed a server engine's declaration here
+  until the form took its place stays in `blocks/tables/`, unused.)
+
+### 4.1 The engine's options, in presets (CTA-179)
+
+In the right-hand panel, whichever list the engine was chosen in, **the
+chosen engine's options** (`EnginePresetsSection.tsx` over the
+`EnginePresetForm` block; [`docs/engine.md`](../../docs/engine.md) §9 is the
+whole design):
+
+- **The preset's search limits** (CTA-185): above the options, a *Search
+  limits* section — the depth and the move time every board searches to with
+  this preset (`SearchLimitsFields`, the same two the top bar's Engine menu
+  shows under the preset select); each preset keeps its own
+  (`EnginePreset.search`, `setEnginePresetSearch`), a preset that never set
+  them reads depth 20 and no time limit, switching the preset or the engine
+  switches them ([`docs/engine.md`](../../docs/engine.md) §5.2, §9). For the
+  chosen engine the section writes through the settings in effect
+  (`lib/engineSearchInEffect.ts`), shown at once.
+- **A shared library of named presets, one selected per engine.** The picker
+  shows the preset this engine runs; New, Rename, Duplicate (named
+  "… (copy)") and Delete — asked first; **Default always exists and cannot be
+  deleted**, and a deleted preset's engines go back to it. A new or
+  duplicated preset is selected for the chosen engine at once; selecting one
+  for an engine never changes another's. Stored in IndexedDB
+  (`chessapp.enginePresets`, `lib/enginePresetStore.ts`) — the reader's data,
+  so **the Export zip carries them** ([`import-export.md`](./import-export.md)).
+- **Every option the engine declares, data-driven**: a page's build from its own
+  `uci` reply (the section builds it through `useEngineModule`, switched off —
+  it never searches; "Reading what … declares…" until it answers), an engine
+  server's engine from the server's list. Each in its UCI type with its type,
+  default and range, and a reset (back to the engine's default) where the
+  preset sets it; a value the preset sets that this engine does not declare is
+  listed as absent, with Remove.
+- **In three tabs** (`OPTION_TABS`, `optionTabOf` — by name, the form's own
+  state, opening on Basic; a tab with nothing on it is not shown): **Basic**
+  (Threads, Hash, MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo),
+  **Advanced** (Move Overhead, nodestime, Ponder, UCI_Chess960, UCI_ShowWDL,
+  the Syzygy tablebases — and any option not named in the lists) and
+  **System** (EvalFile, EvalFileSmall, Debug Log File — a file path outside a
+  group — NumaPolicy, Clear Hash).
+- **An option that acts only while another is on is disabled until it is**
+  (`OPTION_DEPENDENCIES`) — kept in the preset, not sent: `UCI_Elo` while
+  `UCI_LimitStrength` is off, shown at its top (full strength); the Syzygy
+  settings until `SyzygyPath` is set.
+- **A group of options behind one switch** (`OPTION_GROUPS`, a preset's
+  `groups`): **Syzygy tablebases**, off by default, its options shown only
+  while on, none of them sent while off (`presetSentValues`) — their values
+  stay for when it is turned on. Only an engine that declares them (a native
+  one) shows the switch.
+- **Threads and Hash are sliders here too** (CTA-185, `EngineResourceSlider`):
+  the one global request every board sends — not the preset's — edited in
+  the search limits section under the move time (their rows left out of the
+  options) as in the top bar's Engine menu, the slider to the device's top
+  and a number box to the engine's (`searchSettingTypedLimitsOf`; in-browser
+  Hash at most 1024 MB). **Skill Level is a slider** (0–20, every step marked,
+  0, 10 and 20 labelled).
+- **Read-only, each with why**: MultiPV — set for every board in the top
+  bar's Engine menu (CTA-181, the reader's one global set,
+  `lib/engineSearchSettings.ts`, [`docs/engine.md`](../../docs/engine.md)
+  §5.2); a button (Clear Hash) — an action, not a setting, listed on System;
+  a pinned option; a file path (`EvalFile`, `Debug Log File`) on a browser
+  build — no file system there. Hash is offered up to 1024 MB on a browser
+  build. UCI_Elo (and Skill Level on an engine without an Elo) is editable,
+  noted as the Play boards' own there (`playOwnedOptionsOf`).
+- **UCI_LimitStrength is the preset's on every board** (CTA-181 — the Play
+  boards no longer force it on): noted as what **turns Play with Engine's and
+  Masked Pieces' Elo on** (`play-strength`). While the engine's selected
+  preset has it off — the engine's default — the Play boards' Elo slider is
+  off, with a note and a link here, and the engine plays at the preset's
+  strength; on, the slider sets `UCI_Elo` for the game
+  (`presetLimitsStrength`).
+- **Nothing is written as it changes** (CTA-185, `lib/enginePresetDraft.ts`):
+  every change — an option, a group, the depth, the move time, Threads, Hash,
+  here or in the top bar's Engine menu — edits **one unsaved draft** of the
+  chosen engine's selected preset, kept in memory and **in effect at once**
+  (every board takes it from its next search; a background job runs the
+  saved preset). While it differs from what is saved, the `EnginePresetChanges`
+  block offers **Save** — the draft into the preset, Threads and
+  Hash into the global request — and **Save as new preset** — a new preset
+  named in a dialog ("‹preset› (copy)" to start), selected for the engine,
+  the preset edited left as it was: the strip under this section's preset
+  picker here, the actions alone in the Engine menu's title row (CTA-189 —
+  no strip there). A reload drops the draft; so, silently,
+  does choosing another preset or engine; a draft brought back to what is
+  saved is none. The lines (the menu's) are still written at once. A
+  refused save is an `InlineAlert` above the form.
 
 ## 5. Testing
 
@@ -125,9 +293,35 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   the list and each engine's facts, the multi-thread build disabled with its
   reason (and selectable under a stubbed `crossOriginIsolated`), a choice
   applying at once and surviving a remount, a stored id that is gone or cannot
-  run falling back without being discarded, an engine registered while it is
-  open, the keyboard, Hebrew, axe. `src/lib/engineChoice.test.ts` — the store.
-  `blocks/forms/EnginePicker/EnginePicker.test.tsx` — the block.
+  run falling back without being discarded (the 2019 id too), the keyboard,
+  Hebrew, axe — and the engine server (over a fake `GET /v1/engines`): the
+  Stockfish connectors tab (its Browser and API sections, one choice across
+  both pickers), off by default with no request made, turned on (the
+  address kept, the chip, the server's engines listed and chosen), the panel
+  (the chosen engine's options form, scrolling on its own; the guide's link
+  while no server engine is chosen),
+  Connect answered on the button, a bad address refused and a new one kept
+  with Enter, a stored server engine listed checked and falling back
+  when the server is turned off, Hebrew, axe. The top bar's Engine menu
+  choosing the engine and a preset (CTA-185) is
+  `views/main/EngineMenu.test.tsx`. `src/lib/engineChoice.test.ts`
+  — the store; `src/lib/engineServer.test.ts` — the address and the status.
+  The presets (CTA-179, the same file over the real stores and a `FakeEngine`
+  per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the
+  chosen build's options in the panel, in their tabs, the boards' own
+  read-only (their note the top bar's Engine menu, CTA-181) and the Elo disabled, a change kept (Default stored at its first
+  edit, numbers typed through the store), a new preset for the chosen engine
+  alone, an engine server's tablebases turned on and a path kept, Hebrew and
+  axe.
+  `src/lib/enginePresets.test.ts`, `enginePresetStore.test.ts` — the records
+  and the store. The eval sources' section (CTA-196) —
+  `src/lib/evalSources/lichess/LichessEvalApiSection.test.tsx`, over the
+  Settings screen's Engine tab: off asking nothing, on and Connect, writing
+  and Test connection, a reload, an unreachable API, a migrated reader,
+  Hebrew and axe; the rest of the layer is [`docs/engine.md`](../../docs/engine.md) §10.5.
+  `blocks/forms/EnginePicker/EnginePicker.test.tsx`, `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`,
+  `blocks/forms/EngineServerForm/EngineServerForm.test.tsx`,
+  `blocks/tables/EngineOptionsTable/EngineOptionsTable.test.tsx` — the blocks.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second
   theme registered by a mock of the registry: the list and previews, a choice
   applying at once (a board colour probe), surviving a remount, and a bad

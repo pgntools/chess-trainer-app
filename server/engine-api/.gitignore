@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+.pytest_cache/
+# Machine-specific: the engines' paths. engines.example.json is the template.
+engines.local.json

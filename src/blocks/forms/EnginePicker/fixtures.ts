@@ -18,18 +18,11 @@ const descriptor = (
   id,
   name,
   version,
-  kind: "local",
   capabilities,
   ...(requires === undefined ? {} : { requires }),
   create: () => {
     throw new Error("a fixture engine is never run");
   },
-});
-
-export const STOCKFISH_2019 = descriptor("stockfish-2019-wasm", "Stockfish 2019", "2019-08-15", {
-  maxDepth: 24,
-  strength: "skill",
-  multiThread: false,
 });
 
 export const STOCKFISH_19_SINGLE = descriptor("stockfish-19-lite-single", "Stockfish 19 Lite", "19", {
@@ -54,6 +47,12 @@ export const LONG_NAMED = descriptor(
   { maxDepth: 40, strength: "elo", multiThread: true },
 );
 
+/** An engine on the engine server (`lib/engines/hosted.ts`) — the server's address beside its facts. */
+export const ON_ENGINE_SERVER: EngineDescriptor = {
+  ...descriptor("hosted:stockfish-18", "Stockfish 18", "18", { maxDepth: 99, strength: "both", multiThread: true }),
+  server: "http://127.0.0.1:8800",
+};
+
 /** A name in Hebrew, as a reader's own engine might be called. */
 export const HEBREW_NAMED = descriptor("my-engine", "מנוע אישי", "2", {
   maxDepth: 24,
@@ -65,14 +64,12 @@ const available = (engine: EngineDescriptor): EngineEntry => ({ descriptor: engi
 
 /** A host that sets COOP / COEP: every build can run. */
 export const ISOLATED_HOST: readonly EngineEntry[] = [
-  available(STOCKFISH_2019),
   available(STOCKFISH_19_SINGLE),
   available(STOCKFISH_19_MULTI),
 ];
 
 /** GitHub Pages — no headers: the multi-thread build is listed, disabled, with its reason. */
 export const PLAIN_HOST: readonly EngineEntry[] = [
-  available(STOCKFISH_2019),
   available(STOCKFISH_19_SINGLE),
   {
     descriptor: STOCKFISH_19_MULTI,
@@ -81,11 +78,14 @@ export const PLAIN_HOST: readonly EngineEntry[] = [
 ];
 
 /** The default engine alone — what a registry with nothing else offers. */
-export const DEFAULT_ONLY: readonly EngineEntry[] = [available(STOCKFISH_2019)];
+export const DEFAULT_ONLY: readonly EngineEntry[] = [available(STOCKFISH_19_SINGLE)];
 
-/** An engine added at runtime beside the shipped ones, long-named; and one named in Hebrew. */
+/** Engines beside the shipped ones (a hosted engine, one day): long-named, Skill-Level-only, named in Hebrew. */
 export const WITH_ADDED: readonly EngineEntry[] = [
   ...PLAIN_HOST,
   available(LONG_NAMED),
   available(HEBREW_NAMED),
 ];
+
+/** The shipped builds and the engine server's — what a reader who turned the server on sees. */
+export const WITH_ENGINE_SERVER: readonly EngineEntry[] = [...PLAIN_HOST, available(ON_ENGINE_SERVER)];

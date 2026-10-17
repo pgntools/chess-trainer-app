@@ -1,16 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Link as RouterLink, useHref, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { MAX_PROJECT_NAME } from "../../lib/analysisProjects";
 import type { IndexedRow } from "../../lib/collectionIndex";
 import { addCollection, removeCollectionGames, updateCollectionSettings } from "../../lib/libraryCollectionStore";
 import {
@@ -19,6 +19,8 @@ import {
   COLLECTION_COLUMNS,
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
+  collectionMetadataOf,
+  collectionSourcesOf,
   filteredRows,
   isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
@@ -41,30 +43,31 @@ import {
 } from "../../lib/openingTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { batchAnalysesOf, newSavedAnalysisId } from "../../lib/savedAnalyses";
-import {
-  createAnalysisFolder,
-  MAX_ANALYSIS_FOLDER_NAME,
-  MAX_ANALYSIS_FOLDERS,
-  removeAnalysisFolder,
-} from "../../lib/savedAnalysisFolderStore";
-import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
+import type { GameTree } from "../../lib/gameTree";
+import { parsePgnTree, readPgnTags } from "../../lib/pgn";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
+import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
+import { projectPath } from "../analysisV2/paths";
+import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { RightPanel } from "../main/rightPanel";
+import { useShellCompact } from "../main/shellCompact";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
-import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
+import { CollectionFilters, CollectionFiltersRail, TournamentSuggestion } from "../../blocks/forms";
+import { CollectionDetails, type CollectionDetailsGeneral, type CollectionDetailsTab } from "../../blocks/panels";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { useSnackbar } from "../../design-system/components/feedback";
 import { SearchField } from "../../design-system/components/forms";
-import { BackButton } from "../../design-system/components/navigation";
 import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
 import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import OpeningFilterBoard from "./OpeningFilterBoard";
 import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
-import { loadCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
+import { loadCollectionGames, useCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
+import CollectionSettingsPanel from "./CollectionSettingsPanel";
+import { tournamentFactsOf } from "./tournamentFacts";
+import { useCollectionSettings } from "./useCollectionSettings";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -101,17 +104,15 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * the upload screen on this collection (`/library/new?into=<id>`): a file or
  * a paste, checked as an upload is, added at the end.
  *
- * **Analyse** (CTA-77), beside the export bar, hands the picks to **Saved
- * analyses**: one new top-level folder, named after the collection, the
- * count and the filters that are on (`batchFolderNameOf`), and every picked
- * game saved into it as its own analysis, in collection order, all or
- * nothing — the Analysis Board's split (`AnalysisLoad.tsx`) over games
- * already read: the folder first, then the records (`batchAnalysesOf`, the
- * stored PGN as it is), the folder taken back out if they cannot be written.
- * A game the index marks unreadable is **left out, and the notice says how
- * many** — it would open on no board — rather than refusing the whole batch.
- * The app's snackbar (`useSnackbar`) says how many went where, with a link
- * to the folder; the picks stay.
+ * **Analyse** (CTA-77), beside the export bar, hands the picks to
+ * **Analysis** (CTA-192): a Project the reader picks — a new one offered
+ * first, named after the collection, the count and the filters that are on
+ * (`batchFolderNameOf`) — and every picked game a Game Case in it, in
+ * collection order, all or nothing (`useSendToAnalysis`). A game the index
+ * marks unreadable, or that will not parse, is **left out, and the notice
+ * says how many** — it would open on no board — rather than refusing the
+ * whole batch. The app's snackbar (`useSnackbar`) says how many went where,
+ * with a link to the Project; the picks stay.
  *
  * **Save as collection** (CTA-122), the fourth action on the picks, shipped
  * and uploaded collections alike: the picked games written as one **new
@@ -146,9 +147,10 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * (`TournamentCollection.tsx`: Info, Participants, Games); its Games tab is
  * this same table, the tab strip under the header.
  *
- * Built from the design system since CTA-113: a `ListScreenHeader` with a
- * `BackButton`, a `SearchField`, the `CollectionGamesTable` block, a
- * `DeleteManyDialog`.
+ * Built from the design system since CTA-113: a `ListScreenHeader`, a
+ * `SearchField`, the `CollectionGamesTable` block, a `DeleteManyDialog`.
+ * No Back in the header since CTA-229: the page's left panel's Close
+ * (`CollectionDetails`) is the way back to the Library.
  */
 
 const isColumn = (value: string | null): value is CollectionColumn =>
@@ -158,13 +160,23 @@ function CollectionTable({
   collection,
   rows,
   tabs,
+  detailsToggle,
+  filtersFolded,
+  onFiltersFoldedChange,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   /** A tournament collection's Games tab (CTA-142): the strip under the header, the region under it its panel. Absent, today's screen. */
   tabs?: TournamentTabs;
+  /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the actions. */
+  detailsToggle?: ReactNode;
+  /** The filters' panel folded to the shell's rail (CTA-230) — the page's state, so a tournament's change of tab keeps it. */
+  filtersFolded: boolean;
+  onFiltersFoldedChange: (folded: boolean) => void;
 }) {
   const { t } = useTranslation();
+  // Under the shell's breakpoint the panel is stacked under the table: nothing to fold (CTA-230).
+  const compact = useShellCompact();
   const navigate = useNavigate();
   const location = useLocation();
   const { show } = useSnackbar();
@@ -285,7 +297,8 @@ function CollectionTable({
     navigate(`/library/${encodeURIComponent(collection.id)}?tab=info`, { replace: true });
   };
 
-  /** The picks into Saved analyses: a new folder, a record per readable game — or nothing. */
+  /** The picks into Analysis: a Game Case per readable game, in a Project the reader picks. */
+  const sendTo = useSendToAnalysis("library-picks-send");
   const analysePicked = async () => {
     const failure = (message: string) =>
       show({ message, severity: "error", duration: null, testId: "library-picks-analyse-notice" });
@@ -295,60 +308,55 @@ function CollectionTable({
       if (games === null) return failure(t("library.table.picks.problem.read"));
       const unreadable = new Set(rows.filter((row) => row.unreadable).map((row) => row.number));
       const numbers = [...picked].sort((a, b) => a - b);
-      const kept = numbers.filter((number) => games[number - 1] !== undefined && !unreadable.has(number));
-      const skipped = numbers.length - kept.length;
-      if (kept.length === 0) return failure(t("library.table.picks.problem.none"));
-
-      const chunks = kept.map((number) => games[number - 1]);
+      const chunks = numbers.flatMap((number) => {
+        const pgn = games[number - 1];
+        return pgn === undefined || unreadable.has(number) ? [] : [pgn];
+      });
       const names = repertoireGameNamesOf(chunks);
-      const folderName = batchFolderNameOf(
-        collection.name,
-        { text, result, player, color, opening: openingName, event, from, to, line },
-        {
-          games: t("library.games", { count: kept.length }),
-          white: t("library.table.picks.white"),
-          black: t("library.table.picks.black"),
-        },
-        MAX_ANALYSIS_FOLDER_NAME,
-      );
-      const folder = await createAnalysisFolder(folderName, null);
-      if (folder === undefined) {
-        return failure(t("library.table.picks.problem.folder", { max: MAX_ANALYSIS_FOLDERS }));
-      }
-      const failed = await addAnalyses(
-        batchAnalysesOf(
-          newSavedAnalysisId,
-          chunks.map((pgn, index) => ({ pgn, name: names[index] })),
-          folder.id,
-          DEFAULT_ANALYSIS_SETTINGS,
+      const sent = chunks.flatMap((pgn, index): { tree: GameTree; name: string; pgn: string }[] => {
+        try {
+          // The game as stored travels too: past a Project's limit of Cases, a collection of them takes it as it is (CTA-225).
+          return [{ tree: parsePgnTree(pgn), name: names[index], pgn }];
+        } catch {
+          return [];
+        }
+      });
+      const skipped = numbers.length - sent.length;
+      if (sent.length === 0) return failure(t("library.table.picks.problem.none"));
+
+      sendTo.send({
+        games: sent,
+        inLibrary: true,
+        projectName: batchFolderNameOf(
+          collection.name,
+          { text, result, player, color, opening: openingName, event, from, to, line },
+          {
+            games: t("library.games", { count: sent.length }),
+            white: t("library.table.picks.white"),
+            black: t("library.table.picks.black"),
+          },
+          MAX_PROJECT_NAME,
         ),
-      );
-      if (failed !== undefined) {
-        // All or nothing: no empty folder is left behind.
-        await removeAnalysisFolder(folder.id);
-        return failure(
-          failed === "too-many"
-            ? t("library.table.picks.problem.tooMany", { max: MAX_SAVED_ANALYSES })
-            : t("library.table.picks.problem.storage"),
-        );
-      }
-      const folderPath = `/tools/analysis/saved?folder=${encodeURIComponent(folder.id)}`;
-      show({
-        severity: "success",
-        duration: 10_000,
-        testId: "library-picks-analyse-notice",
-        action: {
-          label: t("library.table.picks.openFolder"),
-          onClick: () => navigate(folderPath),
-          href: hrefOf(folderPath),
-          testId: "library-picks-analyse-open",
+        onSent: (project, cases) => {
+          const path = projectPath(project.id);
+          show({
+            severity: "success",
+            duration: 10_000,
+            testId: "library-picks-analyse-notice",
+            action: {
+              label: t("library.table.picks.openProject"),
+              onClick: () => navigate(path),
+              href: hrefOf(path),
+              testId: "library-picks-analyse-open",
+            },
+            message: [
+              t("library.table.picks.done", { count: cases.length, project: project.name }),
+              skipped > 0 ? t("library.table.picks.skipped", { count: skipped }) : "",
+            ]
+              .filter(Boolean)
+              .join(" "),
+          });
         },
-        message: [
-          t("library.table.picks.done", { count: kept.length, folder: folder.name }),
-          skipped > 0 ? t("library.table.picks.skipped", { count: skipped }) : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
       });
     } finally {
       setAnalysing(false);
@@ -475,6 +483,23 @@ function CollectionTable({
   const gamePath = (number: number) => `/library/${encodeURIComponent(collection.id)}/${number}`;
   const cameFrom = `${location.pathname}${location.search}`;
 
+  /*
+    Folding the filters (CTA-230) takes away the button pressed — the panel's
+    Hide, the rail's Show — so the focus goes on to the one that undoes it,
+    once the shell has drawn it.
+  */
+  const focusAfterFold = useRef<string | null>(null);
+  const foldFilters = (folded: boolean) => {
+    focusAfterFold.current = folded ? "library-filters-rail-expand" : "library-filter-collapse";
+    onFiltersFoldedChange(folded);
+  };
+  useEffect(() => {
+    const target = focusAfterFold.current;
+    if (target === null) return;
+    focusAfterFold.current = null;
+    document.querySelector<HTMLElement>(`[data-testid="${target}"]`)?.focus();
+  }, [filtersFolded]);
+
   const confirmDelete = async () => {
     const failed = await removeCollectionGames(collection.id, [...picked]);
     if (failed !== undefined) {
@@ -499,15 +524,9 @@ function CollectionTable({
                 : t("library.table.shown", { shown: shown.length, count: rows.length })}
             </span>
           }
-          back={
-            <BackButton
-              label={t("library.table.back")}
-              link={{ component: RouterLink, to: "/library" }}
-              testId="library-table-back"
-            />
-          }
           actions={
             <>
+              {detailsToggle}
               {collection.source === "uploaded" && (
                 <HintButton
                   hint={t("library.table.addGamesHint")}
@@ -527,20 +546,6 @@ function CollectionTable({
                 clearLabel={t("savedList.clearSelected")}
                 actions={
                   <>
-                    {collection.source === "uploaded" && (
-                      <IconAction
-                        label={t("library.table.settings")}
-                        link={{
-                          component: RouterLink,
-                          // Back to this table, filter and all.
-                          to: `/library/${encodeURIComponent(collection.id)}/settings`,
-                          state: { from: cameFrom },
-                        }}
-                        testId="library-table-settings"
-                      >
-                        <SettingsRoundedIcon fontSize="small" />
-                      </IconAction>
-                    )}
                     <IconAction
                       label={t("library.table.picks.download")}
                       disabled={picked.size === 0}
@@ -655,7 +660,10 @@ function CollectionTable({
           />
         </Box>
       </Box>
-      <RightPanel>
+      <RightPanel
+        collapsed={filtersFolded}
+        rail={<CollectionFiltersRail values={filters} onExpand={() => foldFilters(false)} testId="library-filters-rail" />}
+      >
         {/* The aside does not scroll; the panel is its own scrolling column. */}
         <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
           <CollectionFilters
@@ -674,6 +682,7 @@ function CollectionTable({
                 />
               )
             }
+            onCollapse={compact ? undefined : () => foldFilters(true)}
             testId="library-filter"
             rootTestId="library-filters"
           />
@@ -695,6 +704,7 @@ function CollectionTable({
         confirmTestId="library-picks-delete-confirm"
       />
       {/* CTA-122: the picks as a new collection — the write is all-or-nothing, so the dialog closes on success, not on save. */}
+      {sendTo.dialog}
       <SaveAsCollectionDialog
         open={savingAs}
         initial={saveName}
@@ -717,6 +727,150 @@ function CollectionTable({
   );
 }
 
+/**
+ * **The collection page** — its view (the games table, or a tournament's
+ * view) and **its own panel in the main menu's place** (CTA-229,
+ * `CollectionDetails` in the shell's board left panel, `keepShell`: the
+ * header and footer stay, as on the Project view) — its Close the way back
+ * to the Library — with, since CTA-231, its content (two tabs since CTA-232):
+ *
+ * - **General** — a tournament's event card (its facts from the rows at
+ *   once, the games' tags — the site, the teams — once read: General reads
+ *   the games of a tournament while it is open), any other collection's
+ *   description and its index's facts;
+ * - **Settings** (Options until CTA-235) — the collection's settings
+ *   (`CollectionSettingsPanel`, the draft held here, `useCollectionSettings`),
+ *   in place of the `/library/<c>/settings` screen; a tournament's *Change
+ *   the type* opens it (and, under the breakpoint, the drawer). No gear in
+ *   the header since CTA-235: the tab is the way in.
+ *
+ * No Jobs tab since CTA-232, and no *Merge with…* since CTA-235: merging is
+ * the Library lobby's header *Merge*, over the ticked collections.
+ *
+ * The open tab is held here (above the tournament view's tabs, so a change
+ * of tab keeps it) and kept nowhere. Under the shell's breakpoint it is a
+ * drawer, opened from the header. It holds too, for this visit only, whether
+ * the right-hand panels are **folded to a rail** (CTA-230) — the games
+ * table's filters, and a tournament's Participants statistics (CTA-231) —
+ * so a tournament's change of tab keeps them.
+ */
+function CollectionPage({ collection, rows }: { collection: CollectionSummary; rows: readonly CollectionRow[] }) {
+  const { t } = useTranslation();
+  const compact = useShellCompact();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<CollectionDetailsTab>("general");
+  const settings = useCollectionSettings(collection);
+  // The filters folded to a rail (CTA-230): for this visit only — the page opens with them open.
+  const [filtersFolded, setFiltersFolded] = useState(false);
+  // A tournament's Participants statistics folded to a rail (CTA-231), the same way.
+  const [statisticsFolded, setStatisticsFolded] = useState(false);
+  const fold = { filtersFolded, onFiltersFoldedChange: setFiltersFolded };
+  const tournament = isTournamentCollection(collection, rows);
+
+  /*
+    A tournament's *Change the type* opens the settings: the Settings tab, in
+    the drawer under the breakpoint — the focus on the tab once it is drawn.
+  */
+  const focusSettings = useRef(false);
+  const openSettings = () => {
+    focusSettings.current = true;
+    setDetailsTab("settings");
+    if (compact) setDetailsOpen(true);
+  };
+  useEffect(() => {
+    if (!focusSettings.current || detailsTab !== "settings") return;
+    focusSettings.current = false;
+    document.querySelector<HTMLElement>('[data-testid="library-collection-details-tab-settings"]')?.focus();
+  }, [detailsTab, detailsOpen]);
+
+  // A tournament's General: its games' own tags (the site, the teams), read while it is open.
+  const games = useCollectionGames(tournament && detailsTab === "general" ? collection.id : undefined);
+  const gameTexts = games.status === "ready" ? games.value : undefined;
+  const headers = useMemo(() => gameTexts?.map(readPgnTags), [gameTexts]);
+  // Where the games come from (CTA-233): their `Source…` tags, off the index rows — under either kind's General.
+  const sources = useMemo(() => collectionSourcesOf(rows), [rows]);
+  const general = useMemo<CollectionDetailsGeneral>(
+    () =>
+      tournament
+        ? { kind: "tournament", facts: tournamentFactsOf(collection, rows, headers), description: collection.description, sources }
+        : {
+            kind: "collection",
+            source: collection.source,
+            metadata: collectionMetadataOf(rows),
+            addedAt: collection.addedAt,
+            description: collection.description,
+            sources,
+          },
+    [tournament, collection, rows, headers, sources],
+  );
+
+  // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
+  const detailsToggle = compact ? (
+    <IconAction
+      label={t("library.collectionDetails.toggle")}
+      onClick={() => setDetailsOpen(true)}
+      popupOpen={detailsOpen}
+      popupKind="dialog"
+      testId="library-collection-details-toggle"
+    >
+      <InfoOutlinedIcon fontSize="small" />
+    </IconAction>
+  ) : undefined;
+  return (
+    <>
+      {/* A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table. */}
+      {tournament ? (
+        <TournamentCollection
+          collection={collection}
+          rows={rows}
+          detailsToggle={detailsToggle}
+          onOpenSettings={openSettings}
+          statisticsFolded={statisticsFolded}
+          onStatisticsFoldedChange={setStatisticsFolded}
+          games={(tabs) => (
+            <CollectionTable
+              collection={collection}
+              rows={rows}
+              tabs={tabs}
+              detailsToggle={detailsToggle}
+              {...fold}
+            />
+          )}
+        />
+      ) : (
+        <CollectionTable
+          collection={collection}
+          rows={rows}
+          detailsToggle={detailsToggle}
+          {...fold}
+        />
+      )}
+      <BoardLeftPanel
+        collapsed={false}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        drawerLabel={t("library.collectionDetails.label", { name: collection.name })}
+        keepShell
+      >
+        <CollectionDetails
+          name={collection.name}
+          closeLink={{ component: RouterLink, to: "/library" }}
+          tab={detailsTab}
+          onTabChange={setDetailsTab}
+          general={general}
+          // A shipped collection is read-only: no settings.
+          settings={
+            collection.source === "uploaded" ? (
+              <CollectionSettingsPanel collection={collection} canMark={canBeTournament(rows)} settings={settings} />
+            ) : undefined
+          }
+          testId="library-collection-details"
+        />
+      </BoardLeftPanel>
+    </>
+  );
+}
+
 /** The route: the collection the URL names, or the miss. */
 function CollectionScreen() {
   const { collectionId } = useParams();
@@ -726,18 +880,7 @@ function CollectionScreen() {
     return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   }
   if (state.status === "missing") return <LibraryMiss what="collection" />;
-  // A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table.
-  if (isTournamentCollection(state.summary, state.value)) {
-    return (
-      <TournamentCollection
-        key={state.summary.id}
-        collection={state.summary}
-        rows={state.value}
-        games={(tabs) => <CollectionTable collection={state.summary} rows={state.value} tabs={tabs} />}
-      />
-    );
-  }
-  return <CollectionTable key={state.summary.id} collection={state.summary} rows={state.value} />;
+  return <CollectionPage key={state.summary.id} collection={state.summary} rows={state.value} />;
 }
 
 export default CollectionScreen;

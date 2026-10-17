@@ -5,6 +5,7 @@ import i18n from "../../i18n";
 import {
   addCollection,
   loadUploadedCollections,
+  loadUploadedRows,
   peekUploadedGames,
 } from "../../lib/libraryCollectionStore";
 import { loadLibraryFolders } from "../../lib/libraryFolderStore";
@@ -20,9 +21,9 @@ import {
   resetLibrary,
 } from "./libraryTestKit";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -448,5 +449,86 @@ describe("Split by event (CTA-127)", () => {
     expect(where()).toBe("/library/new");
     expect(await loadUploadedCollections()).toEqual([]);
     expect(await loadLibraryFolders()).toEqual([]);
+  });
+});
+
+describe("the TAGS field (CTA-234)", () => {
+  const tagsField = () => screen.getByRole("textbox", { name: "Tags" });
+  const typeTags = (text: string) => fireEvent.change(tagsField(), { target: { value: text } });
+
+  it("stamps the typed tags on every game a new collection keeps — the games, the index, the name read as the file was", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    typeTags('[Site "Warwick ENG"]\n[Date "2026.08.01"]\n[Round "9"]\n[Annotator "Stockfish19"]');
+    await confirmImport();
+
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
+    const [added] = await loadUploadedCollections();
+    expect(added).toMatchObject({ name: "Club", count: 3 });
+    // The typed Round overrides each game's own; Site and Date go in their roster places; Annotator at the end.
+    expect(peekUploadedGames(added.id)).toEqual([
+      '[Event "Club"]\n[Site "Warwick ENG"]\n[Date "2026.08.01"]\n[Round "9"]\n[White "Zed"]\n[Black "Amy"]\n[Result "0-1"]\n[WhiteElo "1500"]\n[Annotator "Stockfish19"]\n\n1. e4 e5 0-1',
+      '[Event "Club"]\n[Site "Warwick ENG"]\n[Date "2026.08.01"]\n[Round "9"]\n[White "Amy"]\n[Black "Bob"]\n[Result "1-0"]\n[WhiteElo "1900"]\n[Annotator "Stockfish19"]\n\n1. d4 d5 2. c4 1-0',
+      '[Event "Club"]\n[Site "Warwick ENG"]\n[Date "2026.08.01"]\n[Round "9"]\n[White "Bob"]\n[Black "Zed"]\n[Result "1/2-1/2"]\n[Annotator "Stockfish19"]\n\n1. c4 1/2-1/2',
+    ]);
+    // The index carries them: the table's Date and Round columns.
+    const rows = await loadUploadedRows(added.id);
+    expect(rows?.map((row) => [row.date, row.round])).toEqual([
+      ["2026.08.01", "9"],
+      ["2026.08.01", "9"],
+      ["2026.08.01", "9"],
+    ]);
+  });
+
+  it("stamps them on the games Add games appends, the collection's own games untouched", async () => {
+    const mine = await keep("Mine", [GAMES[0]]);
+    mount(`/library/new?into=${mine.id}`);
+    await screen.findByTestId("library-upload-title");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES.slice(1).join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    typeTags('[Annotator "Stockfish19"]');
+    await confirmImport();
+
+    await waitFor(() => expect(where()).toBe(`/library/${mine.id}`), { timeout: 4000 });
+    expect(peekUploadedGames(mine.id)).toEqual([
+      GAMES[0],
+      GAMES[1].replace("\n\n", '\n[Annotator "Stockfish19"]\n\n'),
+      GAMES[2].replace("\n\n", '\n[Annotator "Stockfish19"]\n\n'),
+    ]);
+  });
+
+  it("splits by the file's own events, every collection's games stamped", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), {
+      target: { value: [GAMES[0], GAMES[1].replace("Club", "Spring Open")].join("\n\n") },
+    });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    // A typed Event does not change what the split reads.
+    typeTags('[Event "Typed"]');
+    fireEvent.click(screen.getByTestId("library-import-split"));
+    await confirmImport();
+
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    const collections = await loadUploadedCollections();
+    expect(collections.map((collection) => collection.name).sort()).toEqual(["Club", "Spring Open"]);
+    for (const collection of collections) {
+      expect(peekUploadedGames(collection.id)?.every((game) => game.startsWith('[Event "Typed"]\n[Round'))).toBe(true);
+    }
+  });
+
+  it("keeps Import off while a line is not a tag pair, saying which", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    typeTags('[Site "Warwick"]\nAnnotator Stockfish');
+    expect(tagsField()).toHaveAccessibleDescription(/Line 2/);
+    expect(screen.getByTestId("library-import-confirm")).toBeDisabled();
+    typeTags('[Site "Warwick"]');
+    expect(screen.getByTestId("library-import-confirm")).toBeEnabled();
   });
 });

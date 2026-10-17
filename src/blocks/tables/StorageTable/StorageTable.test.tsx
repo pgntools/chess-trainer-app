@@ -38,21 +38,22 @@ describe("StorageTable", () => {
     expect(data.getAllByRole("columnheader").map((head) => head.textContent)).toEqual(["Category", "Records", "Estimated payload"]);
     expect(screen.getByTestId("storage-collectionGames-records")).toHaveTextContent("12904");
     expect(screen.getByTestId("storage-repertoires-payload")).toHaveTextContent(formatBytes(1_203_455));
-    expect(screen.getByTestId("storage-analyses-records")).toHaveStyle({ textAlign: "end" });
+    expect(screen.getByTestId("storage-analysisCases-records")).toHaveStyle({ textAlign: "end" });
   });
 
   it("closes each database's section with a bolder line, never the last", () => {
     mount();
-    for (const id of ["playedGames", "analyses", "repertoires"]) {
+    // Five databases, five sections (CTA-221: the jobs a database of their own, out of Analysis's).
+    for (const id of ["playedGames", "repertoires", "collectionGames", "analysisCases"]) {
       expect(screen.getByTestId(`storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
-    expect(screen.getByTestId("storage-collectionGames-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    expect(screen.getByTestId("storage-jobs-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
   });
 
   it("says … for every count still being read", () => {
     mount({ categories: READING });
     expect(screen.getByTestId("storage-playedGames-records")).toHaveTextContent("…");
-    expect(screen.getByTestId("storage-analyses-payload")).toHaveTextContent("…");
+    expect(screen.getByTestId("storage-analysisCases-payload")).toHaveTextContent("…");
   });
 
   it("passes axe", async () => {

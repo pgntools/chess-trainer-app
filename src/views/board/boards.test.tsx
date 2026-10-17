@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import type { ReactNode } from "react";
 
 import i18n from "../../i18n";
 import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -22,9 +23,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
   nothing else, and that each board keeps the one thing that is its own.
 */
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("./boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");
@@ -39,16 +40,18 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
+import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 import { storeEngineId } from "../../lib/engineChoice";
-import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
-import { registerEngine } from "../../lib/engines";
+import { storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
+import { EngineMenu } from "../main/EngineMenu";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
-import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
 import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
+import { CaseBoard } from "../analysisV2/CaseWorkspace";
+import { gameCaseOf } from "../../lib/analysisProjects";
 
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
@@ -63,8 +66,16 @@ const LibraryGame = () => (
     collection={LIBRARY_FIXTURE}
     number={1}
     tree={parsePgnTree(LIBRARY_FIXTURE.games[0])}
+    detailsTab="settings"
+    onDetailsTabChange={() => {}}
+    drawerOpen={false}
+    onDrawerOpenChange={() => {}}
   />
 );
+
+/** A Case of Analysis V2 (CTA-186), on its board. */
+const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 const BOARDS: readonly {
   name: string;
   id: string;
@@ -73,27 +84,45 @@ const BOARDS: readonly {
   linesShown?: false;
   /** Whether the engine's switch starts off (CTA-148) — every board on `useAnalysisSession`. */
   engineOff?: true;
+  /**
+   * The board's own Engine tab — the Play boards' strength. Since CTA-181 the
+   * analysis boards have none: the search settings are the top bar's Engine
+   * menu, the eval bar the header's engine menu.
+   */
+  engineTab?: true;
+  /**
+   * The engine's on / off a small switch in its header, its other choices a
+   * Settings tab — Analysis V2's Case board (CTA-186) and the Library's game
+   * board (CTA-209) — not the play / pause and its menu every other board has.
+   */
+  engineSwitch?: true;
+  /** A tab beside Moves, to open in the tab-panel test. */
+  otherTab: string;
 }[] = [
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
-  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true },
   // Play with Engine, a v2 screen since CTA-74.
-  { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine },
-  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true },
+  { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine, engineTab: true, otherTab: "engine" },
+  // The Library's game board (CTA-75) — its engine a header switch since CTA-209.
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, engineSwitch: true, otherTab: "export" },
   // The Openings explorer (CTA-78), in Openings v2's place.
-  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true },
+  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true, otherTab: "map" },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its
   // engine lines wait behind a switch.
-  { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false },
+  { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false, engineTab: true, otherTab: "engine" },
+  // Analysis V2's Case board (CTA-186), composed as the Analysis Board is.
+  { name: "Analysis V2 case", id: "analysis-case", Screen: AnalysisCase, engineOff: true, engineSwitch: true, otherTab: "map" },
 ];
 
 const renderBoard = (Screen: () => ReactNode, entry = "/dev") =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
-        <RightPanelProvider>
-          <Screen />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -166,21 +195,32 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
-  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen }) => {
+  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen, engineTab, engineSwitch }) => {
     const { unmount } = renderBoard(Screen);
 
     // Criterion 4, rendered for real: the pinned variations block, the status
-    // row, the Moves and Engine tabs and the shared board controls.
+    // row, the Moves tab and the shared board controls.
     expect(screen.getByTestId(`${id}-panel`)).toBeInTheDocument();
     expect(screen.getByTestId(`${id}-panel-status`)).toBeInTheDocument();
     expect(screen.getByTestId(`${id}-panel-tab-moves`)).toBeInTheDocument();
-    expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
     expect(screen.getByTestId("board-controls")).toBeInTheDocument();
+    // The Engine tab only where the board has its own (the Play boards' strength) — CTA-181.
+    if (engineTab) expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
+    else expect(screen.queryByTestId(`${id}-panel-tab-engine`)).not.toBeInTheDocument();
+    if (engineSwitch) {
+      // The Case board's and the Library game's engine: a switch in its header, and no menu (CTA-186, CTA-209).
+      expect(screen.getByRole("switch", { name: i18n.t("analysisV2.workspace.engine") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
+      expect(screen.queryByTestId(`${id}-engine-menu`)).not.toBeInTheDocument();
+    } else {
+      // Every other board's engine: a play / pause in its header, and its menu (CTA-181).
+      expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
+      expect(screen.getByRole("button", { name: i18n.t("boardEngine.menu") })).toHaveAttribute("data-testid", `${id}-engine-menu`);
+    }
 
     unmount();
   });
 
-  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen }) => {
+  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen, otherTab }) => {
     const { unmount } = renderBoard(Screen);
     const panel = screen.getByTestId(`${id}-panel`);
     const linked = () => {
@@ -191,8 +231,8 @@ describe("every v2 board, from the same core", () => {
       expect(region).toHaveAccessibleName(tab.textContent ?? "");
     };
     linked();
-    act(() => screen.getByTestId(`${id}-panel-tab-engine`).click());
-    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-engine`));
+    act(() => screen.getByTestId(`${id}-panel-tab-${otherTab}`).click());
+    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-${otherTab}`));
     linked();
     unmount();
   });
@@ -218,6 +258,41 @@ describe("every v2 board, from the same core", () => {
     );
 
     unmount();
+    },
+  );
+
+  it.each(BOARDS.filter((board) => board.linesShown !== false))(
+    "$name draws a hovered line's first move as an arrow over its own, and takes it away after (CTA-201)",
+    ({ id, Screen, engineOff }) => {
+      const { unmount } = renderBoard(Screen);
+      if (engineOff) toggleEngine(id);
+      engineReports({ depth: 14, multipv: 1, cp: 42, pv: "d2d4 d7d5 g1f3" });
+
+      const before = boardOptions().arrows ?? [];
+      const move = within(screen.getByTestId(`${id}-panel-variations`)).getByTestId(
+        "variation-1-move-3",
+      );
+
+      // A move two deep in the line: the arrow is the line's first move, alone.
+      fireEvent.mouseEnter(move);
+      expect(boardOptions().arrows).toEqual([
+        ...before,
+        { startSquare: "d2", endSquare: "d4", color: HOVERED_NEXT_MOVE_ARROW_COLOR },
+      ]);
+      fireEvent.mouseLeave(move);
+      expect(boardOptions().arrows ?? []).toEqual(before);
+
+      // The keyboard's focus shows the same arrow.
+      act(() => move.focus());
+      expect(boardOptions().arrows).toContainEqual({
+        startSquare: "d2",
+        endSquare: "d4",
+        color: HOVERED_NEXT_MOVE_ARROW_COLOR,
+      });
+      act(() => move.blur());
+      expect(boardOptions().arrows ?? []).toEqual(before);
+
+      unmount();
     },
   );
 
@@ -250,19 +325,107 @@ describe("every v2 board, from the same core", () => {
 
   it.each(BOARDS.filter((board) => board.engineOff === true))(
     "$name starts with its engine off — no search runs, Play is disabled — until the reader switches it on (CTA-148)",
-    ({ id, Screen }) => {
+    ({ id, Screen, engineSwitch }) => {
       const { unmount } = renderBoard(Screen);
+      // A play / pause is pressed while on; a switch, checked.
+      const engineOn = () =>
+        engineSwitch
+          ? (screen.getByTestId(`${id}-setting-engine`) as HTMLInputElement).checked
+          : screen.getByTestId(`${id}-setting-engine`).getAttribute("aria-pressed") === "true";
 
-      expect(within(screen.getByTestId(`${id}-setting-engine`)).getByRole("switch")).not.toBeChecked();
+      expect(engineOn()).toBe(false);
       expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
       expect(screen.getByTestId(`${id}-play`)).toBeDisabled();
       toggleEngine(id);
+      expect(engineOn()).toBe(true);
       expect(FakeEngine.latest().searches.length).toBeGreaterThan(0);
       expect(screen.getByTestId(`${id}-play`)).toBeEnabled();
 
       unmount();
     },
   );
+});
+
+/*
+  The search settings are one global set (CTA-181): set in the top bar's
+  Engine menu, read by every board from its next search — depth and move
+  time on `go`, lines, Threads and Hash as options.
+*/
+describe("the global search settings reach every board (CTA-181)", () => {
+  it.each(BOARDS)("$name searches to the top bar's depth and move time, with its lines", ({ id, Screen, engineOff }) => {
+    storeEngineSearchSettings({ depth: 9, moveTimeMs: 5000, multiPv: 4 });
+    const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
+    const engine = FakeEngine.latest();
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 9, movetime: 5000 });
+    expect(engine.setOptions).toContainEqual(["MultiPV", 4]);
+
+    // A change applies from the next search, on the board already open.
+    act(() => storeEngineSearchSettings({ depth: 11 }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 11, movetime: 5000 });
+    unmount();
+  });
+
+  it.each(BOARDS.filter((board) => board.linesShown !== false))(
+    "$name fills its depth chip toward the top bar's depth while it searches (CTA-195)",
+    ({ id, Screen, engineOff }) => {
+      storeEngineSearchSettings({ depth: 20, moveTimeMs: 0 });
+      const { unmount } = renderBoard(Screen);
+      if (engineOff) toggleEngine(id);
+      engineReports({ depth: 15, multipv: 1, cp: 10, pv: "e2e4" });
+
+      const block = screen.getByTestId(`${id}-panel-variations`);
+      const chip = within(block).getByRole("progressbar", { name: "Depth 15 of 20" });
+      expect(chip).toHaveTextContent("Depth 15/20");
+      expect(chip).toHaveAttribute("aria-valuenow", "75");
+
+      // The search answered: the depth reached, no fill — as before.
+      engineFinishes("e2e4");
+      expect(within(block).queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(within(block).getByTestId("analysis-depth")).toHaveTextContent(/^Depth 15$/);
+      unmount();
+    },
+  );
+
+  it.each(BOARDS)("$name tells the top bar what its engine is doing", ({ id, Screen, engineOff }) => {
+    const { unmount } = render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={["/dev"]}>
+          <BoardLeftPanelProvider>
+            <RightPanelProvider>
+              <EngineMenu />
+              <Screen />
+              <RightPanelOutlet />
+            </RightPanelProvider>
+          </BoardLeftPanelProvider>
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    const icon = () => screen.getByTestId("header-engine-icon");
+    if (engineOff) {
+      expect(icon()).toHaveAttribute("data-state", "off");
+      toggleEngine(id);
+    }
+    // On, a search running: the icon breathes.
+    expect(icon()).toHaveAttribute("data-state", "searching");
+    engineReports({ depth: 9, multipv: 1, cp: 10, pv: "e2e4" });
+    act(() => {
+      const engine = FakeEngine.latest();
+      engine.say({ fen: engine.lastSearch, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+    // The search answered: on, still.
+    expect(icon()).toHaveAttribute("data-state", "on");
+    unmount();
+    // Gone with the board: a screen with no board leaves the icon neutral.
+    render(
+      <AppThemeWithLang>
+        <MemoryRouter>
+          <EngineMenu />
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    expect(icon()).toHaveAttribute("data-state", "none");
+  });
 });
 
 describe("reduced motion, on every board (CTA-111)", () => {
@@ -284,9 +447,9 @@ describe("reduced motion, on every board (CTA-111)", () => {
   });
 });
 
-describe("the Analysis Board (Analysis v2, shipped)", () => {
+describe("an Analysis case's board (Analysis V2, CTA-186)", () => {
   it("never moves a piece, whatever the engine says", () => {
-    renderBoard(AnalysisBoard);
+    renderBoard(AnalysisCase);
 
     const before = boardOptions().position;
     engineReports({ depth: 12, cp: 10, pv: "e2e4" });
@@ -297,7 +460,7 @@ describe("the Analysis Board (Analysis v2, shipped)", () => {
   });
 
   it("accepts moves for both colours, from any node", () => {
-    renderBoard(AnalysisBoard);
+    renderBoard(AnalysisCase);
 
     expect(drag("e2", "e4")).toBe(true);
     expect(drag("e7", "e5")).toBe(true);
@@ -360,6 +523,30 @@ describe("Masked Pieces (CTA-79)", () => {
     expect(screen.getByTestId("masked-play-panel-status-score")).toHaveTextContent("+0.42");
   });
 
+  it("draws a hovered line's first move under the costume — squares only (CTA-201)", () => {
+    renderBoard(MaskedPlay);
+    engineReports({ depth: 14, multipv: 1, cp: 42, pv: "g1f3 g8f6" });
+    act(() => {
+      screen.getByTestId("masked-play-panel-tab-masking").click();
+    });
+    act(() => {
+      screen.getByTestId("mask-setting-lines").querySelector("input")!.click();
+    });
+
+    const move = screen.getByTestId("variation-1-move-2");
+    expect(screen.getByTestId("variation-1-line")).not.toHaveTextContent("N");
+    fireEvent.mouseEnter(move);
+    expect(boardOptions().arrows).toContainEqual({
+      startSquare: "g1",
+      endSquare: "f3",
+      color: HOVERED_NEXT_MOVE_ARROW_COLOR,
+    });
+    fireEvent.mouseLeave(move);
+    expect(boardOptions().arrows ?? []).not.toContainEqual(
+      expect.objectContaining({ startSquare: "g1", endSquare: "f3" }),
+    );
+  });
+
   it("saves its game with the engine games, costume and all", async () => {
     renderBoard(MaskedPlay);
 
@@ -396,35 +583,28 @@ describe("the Openings explorer (CTA-78)", () => {
   `RepertoirePlayer.test.tsx`.)
 */
 describe("the reader's engine reaches every board (CTA-153)", () => {
-  class ChosenEngine extends FakeEngine {}
-  const chosen: EngineDescriptor = {
-    id: "test-chosen-engine",
-    name: "Chosen Engine",
-    version: "1",
-    kind: "local",
-    capabilities: { maxDepth: 24, strength: "skill", multiThread: false },
-    create: () => new ChosenEngine() as unknown as EngineHandle,
-  };
-  const removers: (() => void)[] = [];
+  /** The multi-thread build — the other engine a reader can choose, on an isolated page. */
+  const chosen = { id: "stockfish-19-lite-multi" };
+  const isChosen = (engine: FakeEngine) => engine.descriptor?.id === chosen.id;
   beforeEach(() => {
     FakeEngine.reset();
-    removers.push(registerEngine(chosen));
+    vi.stubGlobal("crossOriginIsolated", true);
   });
-  afterEach(() => removers.splice(0).forEach((remove) => remove()));
+  afterEach(() => vi.unstubAllGlobals());
 
   it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the engine the reader chose", (_name, board) => {
     storeEngineId(chosen.id);
 
     renderBoard(board.Screen);
 
-    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(true);
     expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
   });
 
   it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the default engine when none was chosen", (_name, board) => {
     renderBoard(board.Screen);
 
-    expect(FakeEngine.latest()).not.toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(false);
   });
 
   // Every board but the games against the engine, which keep theirs (below).
@@ -435,12 +615,12 @@ describe("the reader's engine reaches every board (CTA-153)", () => {
     (_name, board) => {
       renderBoard(board.Screen);
       const first = FakeEngine.latest();
-      expect(first).not.toBeInstanceOf(ChosenEngine);
+      expect(isChosen(first)).toBe(false);
 
       act(() => storeEngineId(chosen.id));
 
       expect(first.terminated).toBe(true);
-      expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+      expect(isChosen(FakeEngine.latest())).toBe(true);
       expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
     },
   );

@@ -1,4 +1,7 @@
 import Box from "@mui/material/Box";
+import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
+
+import { IconAction } from "../../../design-system/components/toolbars";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { BlockFamilyId } from "../../families";
@@ -19,6 +22,22 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => (
         <Box sx={{ width: 280 }}>
           <TopPlayers top={SPREAD} testId="gallery-top-players-narrow" />
+        </Box>
+      ),
+    },
+    {
+      name: "With the panel's Hide at the heading's end (CTA-231)",
+      render: () => (
+        <Box sx={{ width: 320 }}>
+          <TopPlayers
+            top={SPREAD}
+            action={
+              <IconAction label="Hide statistics" onClick={() => {}} expanded testId="gallery-top-players-hide">
+                <KeyboardDoubleArrowRightRoundedIcon fontSize="small" />
+              </IconAction>
+            }
+            testId="gallery-top-players-action"
+          />
         </Box>
       ),
     },

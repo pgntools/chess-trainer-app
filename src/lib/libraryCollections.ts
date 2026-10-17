@@ -1,5 +1,5 @@
 import type { TournamentKind } from "./tournamentKind";
-import { gameTag } from "./gameModel";
+import { gameTag, type GameHeaders } from "./gameModel";
 import { readPgnParts, splitPgnGames } from "./pgn";
 import { slugify } from "./pgnText";
 
@@ -86,8 +86,9 @@ export type CollectionSummary = {
 
 /**
  * The formats a collection can be marked as (CTA-121; CTA-142 added
- * `doubleElimination`, `teamSwiss` and `teamKnockout`) — every one a table
- * draws, and `arena`, stored but not selectable yet (no table). In the
+ * `doubleElimination`, `teamSwiss` and `teamKnockout`; CTA-204 the arena's
+ * table and `lichessArena`, the same table scored as Lichess arena points) —
+ * every one a table draws. In the
  * order the settings offer them. **Only ever added to**: a stored mark and an
  * export zip are checked against this list, so a value taken out would make
  * an older record unreadable.
@@ -101,25 +102,21 @@ export const TOURNAMENT_FORMATS = [
   "teamSwiss",
   "teamKnockout",
   "arena",
+  // CTA-204: the same pairing, scored Lichess's way (streaks, berserk) — Arena scores game points.
+  "lichessArena",
 ] as const;
 
 export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
 
-/** The formats with a table (CTA-142) — every one but `arena`: what the settings let a reader pick, and the tournament view draws. */
-export type TournamentTableFormat = Exclude<TournamentFormat, "arena">;
-
-/** Whether a format has a table to draw (CTA-142) — every one but `arena`. */
-export const isTableFormat = (format: TournamentFormat): format is TournamentTableFormat => format !== "arena";
-
 /**
  * The format a guessed kind of tournament is marked as (CTA-142,
  * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is
- * a format a collection can be marked as (an arena among them, which has no
- * table yet), which this function's type holds it to.
+ * a format a collection can be marked as (an arena among them, and a
+ * Lichess arena — CTA-204), which this function's type holds it to.
  */
 export const formatOfKind = (kind: TournamentKind): TournamentFormat => kind;
 
-/** A collection marked as a tournament (CTA-121): every format but `arena` is live (CTA-142). */
+/** A collection marked as a tournament (CTA-121): every format live (CTA-142; the arena's table, CTA-204). */
 export type CollectionTournament = {
   enabled: boolean;
   type: TournamentFormat;
@@ -204,6 +201,13 @@ export type CollectionRow = {
    * first 30 plies, which the tree follows as far as they go.
    */
   line?: readonly string[];
+  /**
+   * Where the game comes from (CTA-233): every tag whose name starts
+   * `Source` — `SourceTitle`, `Source`, `SourceDate`, … — as the game writes
+   * it ({@link sourceTagsOf}). Absent for a game that carries none, and for
+   * every game of an index from before the column.
+   */
+  sourceTags?: Readonly<Record<string, string>>;
 };
 
 /** The results a table can be narrowed to — PGN's four. */
@@ -212,9 +216,10 @@ export const RESULTS = ["1-0", "0-1", "1/2-1/2", "*"] as const;
 /**
  * A movetext's **mainline** moves as text: comments, side lines, NAGs, move
  * numbers and the result are dropped and what is left is one token per move.
- * Never throws; a broken movetext yields what it has.
+ * Never throws; a broken movetext yields what it has. (Exported for the
+ * collection merge's same-game identity, CTA-220.)
  */
-const mainlineTokens = (movetext: string): string[] => {
+export const mainlineTokens = (movetext: string): string[] => {
   let depth = 0;
   let text = "";
   let index = 0;
@@ -299,7 +304,24 @@ export const collectionRowOf = (pgn: string, number: number): CollectionRow => {
           ? opening
           : `${opening}, ${variation}`,
     moves: Math.ceil(mainlinePlies(movetext) / 2),
+    sourceTags: sourceTagsOf(headers),
   };
+};
+
+/**
+ * A game's `Source…` tags (CTA-233) — every tag whose name starts `Source`
+ * (PGN's `SourceTitle`, `Source`, `SourceDate`, `SourceVersion`, … and any
+ * other), its value trimmed, a placeholder (`?`, `????.??.??`) or an empty
+ * one left out; `undefined` when none is left.
+ */
+export const sourceTagsOf = (headers: GameHeaders): Record<string, string> | undefined => {
+  let tags: Record<string, string> | undefined;
+  for (const name of Object.keys(headers)) {
+    if (!name.startsWith("Source")) continue;
+    const value = gameTag(headers, name);
+    if (value !== undefined) (tags ??= {})[name] = value;
+  }
+  return tags;
 };
 
 /** Every game's row, in collection order. */
@@ -317,7 +339,7 @@ export type SortDirection = "asc" | "desc";
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
 /** Two present cell values, ascending: numbers numerically, text numeric-aware (`1.10` after `1.9`). */
-export const compareValues = (a: string | number, b: string | number): number =>
+const compareValues = (a: string | number, b: string | number): number =>
   typeof a === "number" && typeof b === "number"
     ? a - b
     : collator.compare(String(a), String(b));
@@ -427,6 +449,26 @@ export const COLLECTION_FILTER_PARAMS = [
   "result",
   "line",
 ] as const satisfies readonly (keyof CollectionFilterValues)[];
+
+/**
+ * **How many of the panel's filters are on** (CTA-230 — the folded panel's
+ * badge): the players (however many names), the side they played (only with
+ * a player, as `filteredRows` reads it), the opening, the event, the date
+ * range (either end), the result and the opening-moves line — the words box
+ * is the table's, not counted.
+ */
+export const activeFilterCount = (values: CollectionFilterValues): number => {
+  const players = values.player.some((name) => name.trim() !== "");
+  return [
+    players,
+    players && values.color !== "",
+    values.opening.trim() !== "",
+    values.event !== "",
+    values.from !== "" || values.to !== "",
+    values.result !== "",
+    values.line !== "",
+  ].filter(Boolean).length;
+};
 
 const searchTextOf = (row: CollectionRow): string =>
   [
@@ -712,6 +754,91 @@ export const collectionMetadataOf = (rows: readonly CollectionRow[]): Collection
     elo,
     dates: first === undefined || last === undefined ? undefined : { first: first.date, last: last.date },
   };
+};
+
+/**
+ * The `Source…` tags PGN names, in the order a source is read (CTA-233): its
+ * title, who gives it, its date, then its version, edition and quality. A
+ * tag not here follows them, by name.
+ */
+export const KNOWN_SOURCE_TAGS = [
+  "SourceTitle",
+  "Source",
+  "SourceDate",
+  "SourceVersion",
+  "SourceVersionDate",
+  "SourceEdition",
+  "SourceEditionDate",
+  "SourceQuality",
+  "SourceLink",
+] as const;
+
+/**
+ * A `SourceLink` tag's address, when it is one a reader can follow (CTA-233)
+ * — an absolute `http:` or `https:` URL, as written; anything else
+ * (`javascript:`, a bare word, a relative path) is no link and is shown as
+ * text.
+ */
+export const sourceLinkHref = (value: string): string | undefined => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** One source a collection's games come from: its tags in reading order, and how many games carry exactly them. */
+export type CollectionSourceEntry = {
+  tags: readonly { name: string; value: string }[];
+  games: number;
+};
+
+/**
+ * Where a collection's games come from (CTA-233): each distinct set of
+ * `Source…` tags, in the order the collection first meets it, with its
+ * games; and how many games carry none.
+ */
+export type CollectionSources = {
+  entries: CollectionSourceEntry[];
+  /** Games with no `Source…` tag. */
+  untagged: number;
+};
+
+const sourceTagRank = (name: string): number => {
+  const rank = (KNOWN_SOURCE_TAGS as readonly string[]).indexOf(name);
+  return rank === -1 ? KNOWN_SOURCE_TAGS.length : rank;
+};
+
+/**
+ * The sources a collection's rows name (CTA-233) — `undefined` when no game
+ * carries a `Source…` tag (or the index is from before the column), so
+ * nothing is shown. Two games are of one source when their `Source…` tags
+ * are the same, every one.
+ */
+export const collectionSourcesOf = (
+  rows: readonly Pick<CollectionRow, "sourceTags">[],
+): CollectionSources | undefined => {
+  const entries = new Map<string, CollectionSourceEntry>();
+  let untagged = 0;
+  for (const row of rows) {
+    if (row.sourceTags === undefined) {
+      untagged += 1;
+      continue;
+    }
+    const tags = Object.entries(row.sourceTags)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => sourceTagRank(a.name) - sourceTagRank(b.name) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    if (tags.length === 0) {
+      untagged += 1;
+      continue;
+    }
+    const key = JSON.stringify(tags.map(({ name, value }) => [name, value]));
+    const entry = entries.get(key);
+    if (entry === undefined) entries.set(key, { tags, games: 1 });
+    else entry.games += 1;
+  }
+  return entries.size === 0 ? undefined : { entries: [...entries.values()], untagged };
 };
 
 /**

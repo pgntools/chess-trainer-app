@@ -77,14 +77,25 @@ export const CATALOG: readonly CatalogFolder[] = [
         },
       },
       {
-        id: "single-inline-columns",
-        label: "The game, its moves in two columns",
-        summary: "The same, the moves as the Analysis Board lists them — numbered pairs, side lines under their pair — in a box no taller than the board",
+        id: "single-inline-2col-h",
+        label: "The game, its moves in two columns beside it",
+        summary: "The same, the moves as the Analysis Board lists them — numbered pairs, side lines under their pair — beside the board in a box no taller than it",
         code: (source) => {
           const name = pgnOf(source);
-          if (name !== undefined) return `<InlinePgnGameColumns pgn={${name}} game="1" caption="…" />`;
+          if (name !== undefined) return `<InlinePgnGame2colH pgn={${name}} game="1" caption="…" />`;
           const game = oneGameOf(source);
-          return game === undefined ? undefined : `<InlinePgnGameColumns src="${gamePath(game.collection, game.number)}" caption="…" />`;
+          return game === undefined ? undefined : `<InlinePgnGame2colH src="${gamePath(game.collection, game.number)}" caption="…" />`;
+        },
+      },
+      {
+        id: "single-inline-2col-v",
+        label: "The game, its moves in two columns under it",
+        summary: "The same pairs under the board, in a box half its height — for boards side by side in a <BoardRow>",
+        code: (source) => {
+          const name = pgnOf(source);
+          if (name !== undefined) return `<InlinePgnGame2colV pgn={${name}} game="1" caption="…" />`;
+          const game = oneGameOf(source);
+          return game === undefined ? undefined : `<InlinePgnGame2colV src="${gamePath(game.collection, game.number)}" caption="…" />`;
         },
       },
       {
@@ -245,8 +256,9 @@ export const TOURNAMENT_ENTRY: Readonly<Record<TournamentKind, string>> = {
   doubleElimination: "tournament-double-elimination",
   match: "tournament-match",
   teamSwiss: "tournament-team",
-  // An arena has no table of its own (CTA-142): its players ranked by points, the Swiss standings' way, is the nearest.
+  // An arena's own table is the Library's alone (CTA-204), no embed: its players ranked by points, the Swiss standings' way, is the nearest.
   arena: "tournament-swiss",
+  lichessArena: "tournament-swiss",
 };
 
 /** The catalog for one game: each folder with only the entries that show something of it. */

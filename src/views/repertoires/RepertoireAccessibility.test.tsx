@@ -17,9 +17,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
@@ -99,24 +99,26 @@ describe("adding a repertoire — accessible", () => {
 
 describe("the repertoire player — accessible", () => {
   // The Moves tab, the one it opens on, is the browser pass's (`e2e/a11y/`); the others, one mount (CTA-124).
-  it("passes axe on its map and settings tabs", async () => {
+  it("passes axe on its map tab, and on the left panel's settings, games and jobs tabs (CTA-206)", async () => {
     await storeRepertoire("a", CARO, "Caro-Kann");
     await renderSection("/repertoires/a");
     await screen.findByTestId("repertoire-board-panel");
-    for (const tab of ["map", "settings"]) {
-      await userEvent.click(screen.getByTestId(`repertoire-board-panel-tab-${tab}`));
-      await expectNoAxeViolations(screen.getByTestId("repertoire-board-panel"));
+    await userEvent.click(screen.getByTestId("repertoire-board-panel-tab-map"));
+    await expectNoAxeViolations(screen.getByTestId("repertoire-board-panel"));
+    for (const tab of ["settings", "games", "jobs"]) {
+      await userEvent.click(screen.getByTestId(`repertoire-board-details-tab-${tab}`));
+      await expectNoAxeViolations(screen.getByTestId("repertoire-board-details"));
     }
   });
 
-  it("works its settings tab from the keyboard: the side, Autoplay", async () => {
+  it("works its settings tab — the left panel's — from the keyboard: the side, Autoplay", async () => {
     const user = userEvent.setup();
     await storeRepertoire("a", CARO, "Caro-Kann");
     await renderSection("/repertoires/a");
-    await userEvent.click(await screen.findByTestId("repertoire-board-panel-tab-settings"));
-    screen.getByTestId("repertoire-board-side-white").focus();
+    await userEvent.click(await screen.findByTestId("repertoire-board-details-tab-settings"));
+    screen.getByTestId("repertoire-board-details-side-white").focus();
     await user.keyboard("{ArrowRight}{Enter}");
-    expect(screen.getByTestId("repertoire-board-side-black")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("repertoire-board-details-side-black")).toHaveAttribute("aria-pressed", "true");
     const autoplay = screen.getByRole("switch", { name: i18n.t("repertoires.play.autoplay") });
     autoplay.focus();
     await user.keyboard(" ");

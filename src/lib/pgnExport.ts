@@ -11,8 +11,8 @@
  *
  * ## Why a join rather than a re-write
  *
- * A played game and a saved analysis are already stored *as PGN* — that is the
- * whole point of the storage format (`lib/playedGames.ts`, `lib/savedAnalyses.ts`). So exporting is
+ * A played game and an Analysis case are already stored *as PGN* — that is the
+ * whole point of the storage format (`lib/playedGames.ts`, `lib/analysisProjects.ts`). So exporting is
  * concatenation, not serialisation: nothing is re-parsed, nothing can be lost in
  * a second pass through the writer, and a record this build cannot read still
  * exports byte for byte. The separator is one blank line, which is what the PGN
@@ -61,8 +61,9 @@ const pgnFileName = (stem: string, now: Date = new Date()): string =>
  *
  * Non-throwing, like everything else that touches the platform here: a browser
  * that refuses the download reports it rather than taking the screen down.
+ * A job's file (CTA-221, `runtime.readArtifact`) is saved through it too.
  */
-const downloadBlob = (fileName: string, blob: () => Blob): boolean => {
+export const downloadBlob = (fileName: string, blob: () => Blob): boolean => {
   try {
     const url = URL.createObjectURL(blob());
     const anchor = document.createElement("a");

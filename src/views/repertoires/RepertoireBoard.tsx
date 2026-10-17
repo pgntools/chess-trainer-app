@@ -12,40 +12,62 @@ import {
   type RepertoireReading,
   type SavedRepertoire,
 } from "../../lib/savedRepertoires";
+import type { RepertoireDetailsTab } from "../../blocks/panels";
+import { isRepertoireGameId } from "../../lib/repertoireGames";
 import RepertoireMergeSplit from "./RepertoireMergeSplit";
 import RepertoirePlayer from "./RepertoirePlayer";
 import { useSavedRepertoires } from "./useSavedRepertoires";
 import { usePageTitle } from "../main/pageTitle";
 
 /**
- * **A repertoire's own view** (`/repertoires/<id>`) — the route: it resolves
- * the record and hands it to the **player** (`RepertoirePlayer.tsx`, CTA-63),
- * the one screen the repertoire is read, tried, drilled (Autoplay) and — from
- * its Games menu — played on. The same file keeps the two things that are not
- * a board: the miss, and a record saved **before** the one-game rule, which
- * opens on the merge-or-split choice (`RepertoireMergeSplit`) rather than a
- * board, and is replaced by what the reader picks.
+ * **A repertoire's own view** (`/repertoires/<id>`) **and its games**
+ * (`/repertoires/<id>/games/<game>`) — the route of both: it resolves the
+ * record (and the game) and hands it to the **player**
+ * (`RepertoirePlayer.tsx`, CTA-63), the one screen the repertoire is read,
+ * tried, drilled (Autoplay) and played on. The same file keeps the two
+ * things that are not a board: the miss — an id this browser does not hold,
+ * or a game there is no such thing as — and a record saved **before** the
+ * one-game rule, which opens on the merge-or-split choice
+ * (`RepertoireMergeSplit`) rather than a board, and is replaced by what the
+ * reader picks.
+ *
+ * **Both routes render this one component** (`RepertoireGame.tsx` is this,
+ * re-exported — CTA-206), so a step between the repertoire's own view and a
+ * game keeps it mounted: the left panel's open tab and its drawer are held
+ * here, above the keyed player, and outlive a change of game.
  *
  * Before CTA-63 this file was the read-only board; the player took its place
  * and everything it had (the opening line, the description, the settings
  * link, the next-moves bar, the engine), with the engine now off by default.
  */
-
-
-
 function RepertoireBoard() {
-  const { id } = useParams();
+  const { id, game } = useParams();
   const repertoires = useSavedRepertoires();
+  // The left panel's open tab and, under the breakpoint, its drawer (CTA-206).
+  const [detailsTab, setDetailsTab] = useState<RepertoireDetailsTab>("settings");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   if (repertoires === undefined) return <ReadingRepertoires />;
   const saved = repertoires.find((row) => row.id === id);
 
-  if (saved === undefined) return <MissingRepertoire />;
+  // `game` is the game route's alone; there, one there is no such thing as is a miss.
+  if (saved === undefined || (game !== undefined && !isRepertoireGameId(game))) return <MissingRepertoire />;
   // Keyed, so opening another repertoire is a fresh screen rather than this
   // one's state carried over — the "every arrival is initial state" rule.
   if (isMultiGameRepertoire(saved)) {
     return <MultiGameRepertoire key={saved.id} saved={saved} />;
   }
-  return <RepertoirePlayer key={saved.id} saved={saved} />;
+  // Keyed on both: another repertoire, or another game, is a fresh session.
+  return (
+    <RepertoirePlayer
+      key={game === undefined ? saved.id : `${saved.id}/${game}`}
+      saved={saved}
+      game={game}
+      detailsTab={detailsTab}
+      onDetailsTabChange={setDetailsTab}
+      drawerOpen={drawerOpen}
+      onDrawerOpenChange={setDrawerOpen}
+    />
+  );
 }
 
 /**

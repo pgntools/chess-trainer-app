@@ -514,7 +514,7 @@ TWIC collection renders its full table too. Not needed to start.
 ### 10.1 One build, parameterised
 
 The code already reads the base from `import.meta.env.BASE_URL`
-(`App.tsx`'s router `basename`, `lib/engine.ts`'s Stockfish URL); only
+(`App.tsx`'s router `basename`, `lib/engines/builtin.ts`'s Stockfish URLs); only
 `vite.config.ts` hard-codes `base: '/chess-trainer-app/'`. So:
 
 - `vite.config.ts` takes `base` from an env var (`BASE_PATH`), defaulting to

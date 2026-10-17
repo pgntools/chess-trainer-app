@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -104,6 +104,9 @@ import { useScrollSync } from "./useScrollSync";
  *   name), and Save as somewhere else writes a new file, leaving the first
  *   alone. Writing over another file asks first; a service that is not
  *   running is a dialog naming the command. Nothing is moved or deleted.
+ *   The **Save** button is enabled only while the document changed, never
+ *   while a save is in flight (CTA-161) — and **Ctrl+S / ⌘S** takes the same
+ *   step, but never while a dialog is open, which owns what happens next.
  * - **The sections — PGNs, Components, Images** (CTA-137, CTA-139): a
  *   dialog each (`SectionDialog`), the article's items of that kind listed
  *   at the inline start (the one the caret is in chosen first; none, and it
@@ -628,6 +631,37 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     return addPgns(step);
   };
 
+  /** A dialog open somewhere in the editor — a section's, the save dialogue, a confirmation. */
+  const dialogOpen = saveDialog !== undefined || section !== undefined || deleteOpen || gitOpen || down !== undefined || conflict !== undefined;
+
+  /**
+   * **Ctrl+S / ⌘S saves** (CTA-161), as the button does: one document-level
+   * keydown listener, added once and removed on unmount, reading the latest
+   * editor through a ref (`useBoardKeys`'s pattern) so it is never
+   * re-registered. The browser's own save-page behaviour is prevented
+   * whatever state the editor is in; the save itself runs only on a changed
+   * document with no save in flight, and never while a dialog is open —
+   * the dialog owns what happens next, so a key press under one cannot
+   * save twice. (Alt is left out: Ctrl+Alt is another layout's AltGr.)
+   */
+  const saveKey = useRef({ dirty, busy, dialogOpen, run });
+  useLayoutEffect(() => {
+    saveKey.current = { dirty, busy, dialogOpen, run };
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "s" || (!event.ctrlKey && !event.metaKey) || event.altKey) return;
+      // Never the browser's save-page dialogue, whether the save runs or not.
+      event.preventDefault();
+      const { dirty, busy, dialogOpen, run } = saveKey.current;
+      if (!dirty || busy || dialogOpen) return;
+      void run({ kind: "save" });
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const { Content, error, pending, version } = compiled;
   return (
     <Box data-testid="mdx-editor" sx={{ height: { md: "100%" }, minHeight: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -653,7 +687,7 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
             <Button size="small" startIcon={<SaveAsRoundedIcon />} onClick={() => void run({ kind: "save-as" })} disabled={busy} data-testid="mdx-editor-save-as">
               Save as…
             </Button>
-            <Button size="small" variant="contained" disableElevation startIcon={<SaveRoundedIcon />} onClick={() => void run({ kind: "save" })} disabled={busy} data-testid="mdx-editor-save">
+            <Button size="small" variant="contained" disableElevation startIcon={<SaveRoundedIcon />} onClick={() => void run({ kind: "save" })} disabled={busy || !dirty} aria-keyshortcuts="Control+S" data-testid="mdx-editor-save">
               Save
             </Button>
             <IconAction label="More" onClick={(event) => setMoreAnchor(event.currentTarget)} popupOpen={moreAnchor !== null} testId="mdx-editor-more">

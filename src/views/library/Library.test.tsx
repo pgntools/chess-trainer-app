@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
 import {
@@ -8,9 +9,10 @@ import {
   updateCollectionSettings,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
-import { createLibraryFolder, libraryFoldersSnapshot, loadLibraryFolders } from "../../lib/libraryFolderStore";
+import { createLibraryFolder, libraryFoldersSnapshot } from "../../lib/libraryFolderStore";
 import { peekShippedGames, peekShippedRows, shippedCollections } from "../../lib/shippedCollections";
-import { findSavedAnalysis, savedAnalysesSnapshot } from "../../lib/savedAnalysisStore";
+import { analysisCasesSnapshot } from "../../lib/analysisCaseStore";
+import { analysisProjectsSnapshot } from "../../lib/analysisProjectStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { boardOptions } from "../board/boardTestHarness";
 import {
@@ -31,9 +33,9 @@ import {
   resetLibrary,
 } from "./libraryTestKit";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -51,8 +53,12 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
 });
 
+/** Whether the window is under the shell's breakpoint — wide unless a test says otherwise. */
+const shell = vi.hoisted(() => ({ compact: false }));
+vi.mock("../main/shellCompact", () => ({ useShellCompact: () => shell.compact }));
+
 /*
-  The Library (CTA-75), through its screens — here the list (collections and folders), a collection's table, a game on its analysis board — Update / Save as copy in an upload, Save as copy into Saved analyses from a shipped file — and a collection's settings. The other
+  The Library (CTA-75), through its screens — here the list (collections and folders), a collection's table, a game on its analysis board — Update / Save as copy in an upload, Save as copy into Analysis from a shipped file — and a collection's settings. The other
   Library screen tests are `Library.test.tsx`, `LibraryFilters.test.tsx`,
   `LibraryPicks.test.tsx` and `LibraryImport.test.tsx`, one file once,
   split so the suite's shards can share it (CTA-124); what they share is
@@ -60,7 +66,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   with the other v2 boards (`boards.test.tsx`, `panelPropagation.test.tsx`).
 */
 
-beforeEach(resetLibrary);
+beforeEach(async () => {
+  shell.compact = false;
+  await resetLibrary();
+});
 
 describe("the Library's collections", () => {
   it("lists the ten shipped collections, then the reader's uploads", async () => {
@@ -131,7 +140,7 @@ describe("the Library's collections", () => {
     expect(screen.queryByTestId("library-collection-alekhine")).toBeNull();
   });
 
-  it("keeps each row's download and delete in a column beside its link, not inside it", async () => {
+  it("keeps each row's download in a column beside its link, not inside it — and no delete there (CTA-232)", async () => {
     const mine = await upload();
     mount("/library");
     for (const id of ["capablanca", mine.id]) {
@@ -139,21 +148,36 @@ describe("the Library's collections", () => {
       expect(screen.getByTestId(`library-collection-${id}`)).not.toContainElement(actions);
       expect(actions).toContainElement(screen.getByTestId(`library-collection-download-${id}`));
     }
-    expect(screen.getByTestId(`library-collection-actions-${mine.id}`)).toContainElement(
-      screen.getByTestId(`library-collection-delete-${mine.id}`),
-    );
+    expect(screen.queryByTestId(`library-collection-delete-${mine.id}`)).toBeNull();
   });
 
-  it("deletes an uploaded collection from its row, asking first — a shipped one has no delete", async () => {
+  it("deletes the picked uploads from the header's Delete, shown only while some are picked, asking first (CTA-232)", async () => {
+    const user = userEvent.setup();
     const mine = await upload();
+    const other = await keep("Spring open", [GAMES[0]]);
     mount("/library");
-    expect(screen.queryByTestId("library-collection-delete-capablanca")).toBeNull();
-    fireEvent.click(await screen.findByTestId(`library-collection-delete-${mine.id}`));
-    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent("Delete Club games?");
+    await screen.findByTestId(`library-collection-${mine.id}`);
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${mine.name}` }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent("Delete Club games?3 games are removed from this browser.");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Several, and a built-in one picked beside them: the uploads go, Built-in's stays.
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${other.name}` }));
+    await user.click(screen.getByRole("checkbox", { name: "Pick Capablanca" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByTestId("library-delete-dialog");
+    expect(dialog).toHaveTextContent("Delete 2 collections?");
+    expect(dialog).toHaveTextContent("4 games are removed from this browser. This cannot be undone. The built-in collection picked is read-only and stays.");
     fireEvent.click(screen.getByTestId("library-delete-confirm"));
     await waitFor(() => expect(uploadedCollectionsSnapshot()).toEqual([]));
     expect(where()).toBe("/library");
     expect(screen.queryByTestId(`library-collection-${mine.id}`)).toBeNull();
+    // Built-in's alone left picked: Delete has nothing to delete.
+    expect(screen.getByTestId("library-header-delete")).toBeDisabled();
   });
 
   it("downloads a whole collection from its row, reading its games only then", async () => {
@@ -172,6 +196,36 @@ describe("the Library's collections", () => {
 
     fireEvent.click(screen.getByTestId(`library-collection-download-${mine.id}`));
     await waitFor(() => expect(downloadPgn).toHaveBeenLastCalledWith("club-games", GAMES));
+  });
+});
+
+describe("the lobby's About panel folded to a rail (CTA-230)", () => {
+  it("arrives folded, and opens and folds again by its two buttons, the focus going on to the other", async () => {
+    const user = userEvent.setup();
+    mount("/library");
+    const show = await screen.findByRole("button", { name: "Show About the Library" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("library-about")).toBeNull();
+
+    await user.click(show);
+    const about = screen.getByTestId("library-about");
+    expect(within(about).getByRole("heading", { level: 2, name: "About the Library" })).toBeInTheDocument();
+    const hide = within(about).getByRole("button", { name: "Hide About the Library" });
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(hide).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+    const again = screen.getByRole("button", { name: "Show About the Library" });
+    await waitFor(() => expect(again).toHaveFocus());
+    expect(screen.queryByTestId("library-about")).toBeNull();
+  });
+
+  it("has nothing to fold under the shell's breakpoint — the panel stays under the table, open", async () => {
+    shell.compact = true;
+    mount("/library", { compact: true });
+    const about = await screen.findByTestId("library-about");
+    expect(within(about).queryByRole("button", { name: "Hide About the Library" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show About the Library" })).toBeNull();
   });
 });
 
@@ -217,10 +271,15 @@ describe("the Library's folders (CTA-88)", () => {
     expect(screen.getByTestId("library-folder-builtin-toggle")).toHaveAttribute("aria-expanded", "true");
     const actions = screen.getByTestId("library-folder-actions-builtin");
     expect(within(actions).getByTestId("library-folder-download-builtin")).toBeInTheDocument();
-    for (const action of ["upload", "new", "rename", "move", "delete"]) {
+    for (const action of ["rename", "move"]) {
       expect(screen.queryByTestId(`library-folder-${action}-builtin`)).toBeNull();
       expect(screen.getByTestId(`library-folder-${action}-${box.id}`)).toBeInTheDocument();
     }
+    // CTA-231: no row makes a sub-folder or takes an upload, and no collection's row has New job; CTA-235: none deletes a folder.
+    for (const action of ["upload", "new", "delete"]) {
+      expect(screen.queryByTestId(`library-folder-${action}-${box.id}`)).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();
     // Its collections only download, and have no date.
     expect(screen.getByTestId("library-collection-download-capablanca")).toBeInTheDocument();
     expect(screen.queryByTestId("library-collection-move-capablanca")).toBeNull();
@@ -231,12 +290,16 @@ describe("the Library's folders (CTA-88)", () => {
     expect(screen.queryByTestId("library-folder-picker-builtin")).toBeNull();
   });
 
-  it("creates folders at the top level and inside one, and opens and closes them in place", async () => {
+  it("creates folders from the header's New folder — at the top level by default, or inside the one picked — and opens and closes them in place", async () => {
     const mine = await upload();
     mount("/library");
     await screen.findByTestId(`library-row-${mine.id}`);
 
     fireEvent.click(screen.getByTestId("library-new-folder"));
+    const dialog = await screen.findByRole("dialog", { name: "New folder" });
+    // No folder yet: the top level alone, chosen.
+    expect(within(dialog).getByRole("list", { name: "Make it in" })).toBeInTheDocument();
+    expect(within(dialog).getByTestId("library-folder-name-parent-top")).toHaveAttribute("aria-current", "true");
     nameFolder("Openings");
     await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(1));
     const [openings] = libraryFoldersSnapshot()!;
@@ -245,7 +308,13 @@ describe("the Library's folders (CTA-88)", () => {
     expect(listRows().indexOf(`library-folder-${openings.id}`)).toBeLessThan(listRows().indexOf(`library-row-${mine.id}`));
     expect(within(openingsRow).getByText("Openings")).toHaveAttribute("dir", "auto");
 
-    fireEvent.click(screen.getByTestId(`library-folder-new-${openings.id}`));
+    // Closed, so the new folder's parent opens to show it.
+    expect(screen.getByTestId(`library-folder-${openings.id}-toggle`)).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByTestId("library-new-folder"));
+    const again = await screen.findByRole("dialog", { name: "New folder" });
+    // Built-in is not a folder to make one in.
+    expect(within(again).queryByTestId("library-folder-name-parent-builtin")).toBeNull();
+    fireEvent.click(within(again).getByTestId(`library-folder-name-parent-${openings.id}`));
     nameFolder("Sicilian");
     await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(2));
     const sicilian = libraryFoldersSnapshot()!.find((folder) => folder.name === "Sicilian")!;
@@ -274,21 +343,6 @@ describe("the Library's folders (CTA-88)", () => {
     expect(where()).toBe(`/library/${mine.id}`);
   });
 
-  it("uploads into a folder from its row, the picker starting there", async () => {
-    const box = await made("Box");
-    mount("/library");
-    fireEvent.click(await screen.findByTestId(`library-folder-upload-${box.id}`));
-    expect(where()).toBe(`/library/new?folder=${box.id}`);
-    expect(await screen.findByTestId(`library-upload-folder-picker-${box.id}`)).toHaveClass("Mui-selected");
-
-    // One game: the upload is a real index pass.
-    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES[0] } });
-    fireEvent.click(screen.getByTestId("library-upload-save"));
-    await confirmImport();
-    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
-    expect(await folderOf("Club")).toBe(box.id);
-  });
-
   it("takes a zip of one .pgn like the .pgn itself, and refuses a zip of none or unreadable bytes", async () => {
     mount("/library/new");
     expect(screen.getByTestId("library-upload-input")).toHaveAttribute("accept", expect.stringContaining(".zip"));
@@ -308,8 +362,8 @@ describe("the Library's folders (CTA-88)", () => {
 
   it("makes one collection per .pgn of a zip, each named by its Event or its file, all in the folder picked (CTA-103)", async () => {
     const box = await made("Box");
-    mount(`/library/new?folder=${box.id}`);
-    await screen.findByTestId(`library-upload-folder-picker-${box.id}`);
+    mount("/library/new");
+    fireEvent.click(await screen.findByTestId(`library-upload-folder-picker-${box.id}`));
     // The typed name is a single text's; several files are named by the rule.
     fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Ignored" } });
     const mixed = GAMES[0].replace('[Event "Club"]', '[Event "Other"]');
@@ -332,7 +386,7 @@ describe("the Library's folders (CTA-88)", () => {
     ]);
   });
 
-  it("files an empty collection in the folder picked, and a folder that is not the reader's at the top level", async () => {
+  it("files an empty collection in the folder picked, the top level by default — `?folder=` read no more (CTA-231)", async () => {
     const box = await made("Box");
     mount("/library/new");
     fireEvent.click(await screen.findByTestId(`library-upload-folder-picker-${box.id}`));
@@ -341,7 +395,7 @@ describe("the Library's folders (CTA-88)", () => {
     await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
     expect(await folderOf("Picked")).toBe(box.id);
 
-    for (const folder of ["builtin", "nowhere"]) {
+    for (const folder of [box.id, "builtin"]) {
       cleanupAndMount(`/library/new?folder=${folder}`);
       expect(await screen.findByTestId("library-upload-folder-top")).toHaveClass("Mui-selected");
     }
@@ -372,30 +426,68 @@ describe("the Library's folders (CTA-88)", () => {
     await waitFor(() => expect(libraryFoldersSnapshot()?.find((row) => row.id === a.id)?.parentId).toBe(c.id));
   });
 
-  it("renames a folder, and deletes one keeping its contents in its parent — asking first when it holds any", async () => {
+  it("renames a folder — and offers no delete on its row: a folder goes through the picks (CTA-235)", async () => {
     const top = await made("Top");
-    const doomed = await made("Doomed", top.id);
-    const kept = await made("Kept", doomed.id);
-    await keep("Inside", GAMES, doomed.id);
-    const empty = await made("Empty");
     mount("/library");
 
     fireEvent.click(await screen.findByTestId(`library-folder-rename-${top.id}`));
     expect(screen.getByTestId("library-folder-name-input")).toHaveValue("Top");
     nameFolder("Renamed");
     await waitFor(() => expect(screen.getByTestId(`library-folder-${top.id}`)).toHaveTextContent("Renamed"));
+    expect(screen.queryByTestId(`library-folder-delete-${top.id}`)).toBeNull();
+    expect(within(screen.getByTestId(`library-folder-actions-${top.id}`)).queryByRole("button", { name: /^Delete/ })).toBeNull();
+  });
 
-    // An empty folder goes at once.
-    fireEvent.click(screen.getByTestId(`library-folder-delete-${empty.id}`));
-    await waitFor(() => expect(screen.queryByTestId(`library-folder-${empty.id}`)).toBeNull());
+  it("ticks a folder with everything under it — none on Built-in — and deletes the ticked folders whole from the header, after one confirmation (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const top = await made("Top");
+    const doomed = await made("Doomed", top.id);
+    const under = await made("Under", doomed.id);
+    await keep("Inside", GAMES, doomed.id);
+    await keep("Deeper", [GAMES[0]], under.id);
+    await keep("Stays", [GAMES[1]], top.id);
+    const loose = await keep("Loose", [GAMES[2]]);
+    mount("/library");
 
+    await screen.findByTestId(`library-folder-${top.id}`);
+    expect(within(screen.getByTestId("library-folder-builtin")).queryByRole("checkbox")).toBeNull();
     fireEvent.click(screen.getByTestId(`library-folder-${top.id}`));
-    fireEvent.click(await screen.findByTestId(`library-folder-delete-${doomed.id}`));
-    expect(screen.getByTestId("library-folder-delete-counts")).toHaveTextContent("1 collections and 1 sub-folders");
-    expect(screen.getByRole("dialog")).toHaveTextContent(i18n.t("library.folder.deleteConfirm"));
-    fireEvent.click(screen.getByTestId("library-folder-delete-confirm"));
-    await waitFor(async () => expect(await folderOf("Inside")).toBe(top.id));
-    expect((await loadLibraryFolders()).find((row) => row.id === kept.id)?.parentId).toBe(top.id);
+    await user.click(await screen.findByRole("checkbox", { name: "Pick Doomed" }));
+    // Top holds Stays too: partly ticked. Inside Doomed, everything is ticked.
+    expect(screen.getByRole("checkbox", { name: "Pick Top" })).toHaveAttribute("data-indeterminate", "true");
+    fireEvent.click(screen.getByTestId(`library-folder-${doomed.id}`));
+    expect(await screen.findByRole("checkbox", { name: "Pick Inside" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pick Under" })).toBeChecked();
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("2 folders and 2 collections picked");
+
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${loose.name}` }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByTestId("library-delete-dialog");
+    expect(dialog).toHaveTextContent("Delete 2 folders and 3 collections?");
+    expect(dialog).toHaveTextContent(
+      "The folder goes with everything in it: its sub-folders and the collections in them. 5 games are removed from this browser.",
+    );
+    fireEvent.click(screen.getByTestId("library-delete-confirm"));
+    await waitFor(() => expect(uploadedCollectionsSnapshot()?.map((each) => each.name)).toEqual(["Stays"]));
+    await waitFor(() => expect(libraryFoldersSnapshot()?.map((each) => each.name)).toEqual(["Top"]));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Nothing is picked any more: no Delete.
+    expect(screen.queryByTestId("library-header-delete")).toBeNull();
+  });
+
+  it("names a lone ticked folder in the question, and deletes an empty one (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const empty = await made("Empty");
+    mount("/library");
+    await user.click(await screen.findByRole("checkbox", { name: "Pick Empty" }));
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 folder picked");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent(
+      "Delete Empty?The folder goes with everything in it: its sub-folders and the collections in them. This cannot be undone.",
+    );
+    fireEvent.click(screen.getByTestId("library-delete-confirm"));
+    await waitFor(() => expect(screen.queryByTestId(`library-folder-${empty.id}`)).toBeNull());
+    expect(libraryFoldersSnapshot()).toEqual([]);
   });
 
   it("filters by name, opening the folders above a match, and shows a folder whose name matches", async () => {
@@ -520,10 +612,10 @@ describe("a collection's table", () => {
     await mountTable(`/library/${mine.id}`);
     fireEvent.click(screen.getByTestId("library-table-row-2"));
     expect(where()).toBe(`/library/${mine.id}/2`);
-    // The players are plated beside the board (CTA-105); the header's own
-    // line is the caption.
-    expect(await screen.findByTestId("library-game-caption")).toHaveTextContent("Game 2 of 3");
-    expect(screen.queryByTestId("library-game-title")).toBeNull();
+    // The players are plated beside the board (CTA-105), and named as the
+    // left panel's heading, over its caption (CTA-209).
+    expect(await screen.findByTestId("library-game-details-caption")).toHaveTextContent("Game 2 of 3");
+    expect(screen.getByRole("heading", { name: "Amy – Bob" })).toBeInTheDocument();
   });
 
   it("marks a game its index could not read", async () => {
@@ -560,28 +652,162 @@ describe("a collection's table", () => {
   });
 });
 
-describe("a game on its analysis board", () => {
-  it("hands the game to the Analysis Board from its Export tab, at the position on screen", async () => {
+/** The one Case Analysis holds, once the hand-off wrote it — and its Project. */
+const sentCase = () => {
+  const [record] = analysisCasesSnapshot() ?? [];
+  const project = analysisProjectsSnapshot()?.find((candidate) => candidate.id === record?.projectId);
+  return { record, project };
+};
+
+describe("a collection page's own panel (CTA-229; its content CTA-231, CTA-232)", () => {
+  it("is in the main menu's place: its Close back to the Library, the name, General and Settings (no Jobs; Options until CTA-235) — and no Back in the header", async () => {
+    const user = userEvent.setup();
     const mine = await upload();
-    await mountGame(`/library/${mine.id}/1?at=e4`);
-    expect(screen.getByTestId("library-game-arrows")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("library-game-panel-tab-export"));
-    expect(screen.getByTestId("library-game-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=library%2F${mine.id}%2F1&at=e4`,
-    );
+    await mountTable(`/library/${mine.id}`);
+    const details = screen.getByRole("region", { name: "Details of Club games" });
+    expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details);
+    expect(within(details).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Settings"]);
+    expect(rowNumbers()).toEqual(["1", "2", "3"]);
+    // The header's Back is gone: the panel's Close is the way back.
+    const header = screen.getByTestId("library-table-header");
+    expect(within(header).queryByRole("link", { name: "All collections" })).toBeNull();
+    expect(screen.queryByTestId("library-table-back")).toBeNull();
+    expect(screen.queryByTestId("library-collection-details-toggle")).toBeNull();
+    const close = within(details).getByRole("link", { name: "Close Club games" });
+    expect(close).toHaveAttribute("href", "/library");
+    await user.click(close);
+    expect(where()).toBe("/library");
   });
 
-  it("switches the next-move arrows from its Moves tab", async () => {
+  it("shows on General what the index says of a collection — and its description once it has one", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    expect(within(general).getByTestId("library-collection-details-description")).toHaveTextContent("No description.");
+    const facts = within(general).getByTestId("library-collection-details-facts");
+    const fact = (id: string) => within(facts).getByTestId(`library-collection-details-facts-${id}`);
+    expect(fact("source")).toHaveTextContent("Your upload");
+    expect(fact("games")).toHaveTextContent("3");
+    expect(fact("players")).toHaveTextContent("3");
+    expect(fact("events")).toHaveTextContent("Club");
+    expect(fact("elo")).toHaveTextContent("1500 – 1900");
+    expect(fact("added")).toBeInTheDocument();
+    await updateCollectionSettings(mine.id, { description: "Every Tuesday." });
+    await waitFor(() => expect(within(general).getByTestId("library-collection-details-description")).toHaveTextContent("Every Tuesday."));
+  });
+
+  it("shows on General where the games come from, read from their Source tags — none for games naming none (CTA-233)", async () => {
+    const twic = (issue: number, pgn: string) =>
+      `[SourceTitle "The Week in Chess ${issue}"]\n[Source "Mark Crowther"]\n[SourceDate "2026.09.${issue === 1661 ? "07" : "14"}"]\n${pgn}`;
+    const sourced = await keep("TWIC", [twic(1661, GAMES[0]!), twic(1662, GAMES[1]!), GAMES[2]!]);
+    const { unmount } = mount(`/library/${sourced.id}`);
+    await screen.findByTestId("library-table");
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    const card = within(general).getByRole("region", { name: "Sources" });
+    expect(within(card).getByRole("heading", { level: 3, name: "Sources" })).toBeInTheDocument();
+    const items = within(card).getAllByRole("listitem");
+    expect(items.map((item) => within(item).getByText(/^The Week in Chess/).textContent)).toEqual(["The Week in Chess 1661", "The Week in Chess 1662"]);
+    expect(within(items[1]!).getByText("2026.09.14")).toHaveAttribute("dir", "ltr");
+    expect(within(card).getByText("1 game names no source.")).toBeInTheDocument();
+    unmount();
+
+    const plain = await upload();
+    await mountTable(`/library/${plain.id}`);
+    expect(within(screen.getByRole("tabpanel", { name: "General" })).queryByRole("region", { name: /^Sources?$/ })).toBeNull();
+  });
+
+  it("shows a shipped collection read-only on Settings", async () => {
+    const user = userEvent.setup();
+    await mountTable("/library/capablanca");
+    const details = screen.getByRole("region", { name: "Details of Capablanca" });
+    expect(within(details).getByTestId("library-collection-details-facts-source")).toHaveTextContent("Built-in");
+    expect(within(details).queryByTestId("library-collection-details-facts-added")).toBeNull();
+    await user.click(within(details).getByRole("tab", { name: "Settings" }));
+    expect(within(details).getByRole("tabpanel", { name: "Settings" })).toHaveTextContent("read-only");
+    expect(screen.queryByTestId("library-settings-form")).toBeNull();
+  });
+
+  it("keeps the filters' right-hand panel as before", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+    expect(screen.getByTestId("library-table-note")).toBeInTheDocument();
+  });
+
+  it("is a drawer under the breakpoint, opened from the header", async () => {
+    shell.compact = true;
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`, { compact: true });
+    expect(screen.queryByRole("region", { name: "Details of Club games" })).not.toBeInTheDocument();
+    const open = within(screen.getByTestId("library-table-header")).getByRole("button", { name: "The collection's details" });
+    fireEvent.click(open);
+    const drawer = await screen.findByRole("dialog", { name: "Details of Club games" });
+    expect(within(drawer).getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByRole("link", { name: "Close Club games" })).toHaveAttribute("href", "/library");
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Club games" })).not.toBeInTheDocument());
+  });
+});
+
+describe("a game on its analysis board", () => {
+  it("hands the game to Analysis from its Export tab as a new Case, at the position on screen (CTA-192)", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1?at=e4`);
+    fireEvent.click(screen.getByTestId("library-game-panel-tab-export"));
+    fireEvent.click(screen.getByTestId("library-game-open-analysis"));
+
+    // A Project picked: a new one first, named after the collection.
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue(mine.name);
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const { record, project } = sentCase();
+    expect(project?.name).toBe(mine.name);
+    expect(where()).toBe(`/analysis/projects/${project?.id}/cases/${record.id}`);
+    // The game as the collection holds it, opened where the board stood.
+    expect(record).toMatchObject({ type: "game", path: ["e4"], source: { kind: "pgn", pgn: expect.stringContaining("1. e4 e5") } });
+  });
+
+  it("switches the next-move arrows from its left panel's Settings tab (CTA-209)", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1`);
+    // The Moves tab has no switch since CTA-209.
+    expect(within(screen.getByTestId("library-game-panel")).queryByRole("switch", { name: "Next-move arrows" })).toBeNull();
     expect(boardOptions().arrows).toHaveLength(1);
-    fireEvent.click(screen.getByTestId("library-game-arrows"));
+    // A game opens on Info (CTA-212).
+    fireEvent.click(screen.getByTestId("library-game-details-tab-settings"));
+    fireEvent.click(screen.getByTestId("library-game-details-arrows"));
     expect(boardOptions().arrows).toEqual([]);
-    fireEvent.click(screen.getByTestId("library-game-panel-tab-engine"));
-    // The Moves tab stays mounted, hidden; the Engine tab has no switch of its own.
-    expect(screen.getAllByTestId("library-game-arrows")).toHaveLength(1);
-    expect(screen.getByTestId("library-game-arrows")).not.toBeVisible();
+    // Another tab and back: the session's choice holds.
+    fireEvent.click(screen.getByTestId("library-game-details-tab-info"));
+    expect(screen.queryByTestId("library-game-details-arrows")).toBeNull();
+    fireEvent.click(screen.getByTestId("library-game-details-tab-settings"));
+    expect(screen.getByRole("switch", { name: "Next-move arrows" })).not.toBeChecked();
+  });
+
+  it("switches the move marks on the board from its left panel's Settings tab (CTA-168, CTA-209)", async () => {
+    const marked = await keep("Marked", ['[Event "Club"]\n[White "Amy"]\n[Black "Bob"]\n[Result "*"]\n\n1. e4! e5 *']);
+    await mountGame(`/library/${marked.id}/1?at=e4`);
+    expect(screen.getByTestId("library-game-move-glyph")).toHaveAttribute("data-square", "e4");
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
+    expect(screen.queryByTestId("library-game-move-glyph")).toBeNull();
+  });
+
+  it("keeps the move marks switch in a shipped game's copy", async () => {
+    await mountGame("/library/capablanca/1");
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
+    // 1. e4 is the game's own; 1... c5 is the change.
+    drag("e2", "e4");
+    drag("c7", "c5");
+    fireEvent.click(screen.getByTestId("library-game-save"));
+    fireEvent.click(screen.getByTestId("library-game-changes-copy"));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Open in Analysis" })).getByRole("button", { name: "Open" }));
+    await waitFor(() => expect(where()).toContain("/analysis/projects/"));
+    expect(sentCase().record.display.showMoveMarks).toBe(false);
   });
 
   it("is the v2 board, with the explorer's tabs and the engine", async () => {
@@ -589,12 +815,90 @@ describe("a game on its analysis board", () => {
     await mountGame(`/library/${mine.id}/1`);
     expect(screen.getByTestId("library-game-board")).toBeInTheDocument();
     expect(boardOptions().id).toBe("library-game");
-    for (const tab of ["moves", "map", "info", "export", "engine"]) {
-      expect(screen.getByTestId(`library-game-panel-tab-${tab}`)).toBeInTheDocument();
-    }
-    expect(screen.getByTestId("library-game-play")).toBeInTheDocument();
-    expect(screen.getByTestId("library-game-caption")).toHaveTextContent("Game 1 of 3");
-    expect(screen.getByTestId("library-game-previous")).toHaveAttribute("aria-disabled", "true");
+    // Moves · Export — no Map since CTA-212.
+    const tabs = within(screen.getByTestId("library-game-panel")).getAllByRole("tab");
+    expect(tabs.map((tab) => tab.dataset.testid)).toEqual(["library-game-panel-tab-moves", "library-game-panel-tab-export"]);
+    expect(screen.queryByTestId("library-game-panel-tab-map")).not.toBeInTheDocument();
+    // The tags are the left panel's Info tab's since CTA-209.
+    expect(screen.queryByTestId("library-game-panel-tab-info")).not.toBeInTheDocument();
+    // The engine is the header's: an on / off switch, as the Case board's (CTA-209) — no play / pause
+    // and menu; the search settings are the top bar's (CTA-181).
+    expect(screen.queryByTestId("library-game-panel-tab-engine")).not.toBeInTheDocument();
+    const header = within(screen.getByTestId("library-game-panel-header"));
+    expect(header.getByRole("switch", { name: "Engine" })).not.toBeChecked();
+    expect(screen.queryByTestId("library-game-engine-menu")).not.toBeInTheDocument();
+    expect(header.getByTestId("library-game-play")).toBeInTheDocument();
+    expect(header.getByTestId("library-game-save")).toBeInTheDocument();
+    expect(header.getByTestId("library-game-current-opening")).toBeInTheDocument();
+    // Back, the caption and previous / next are the left panel's head's (CTA-209).
+    expect(header.queryByRole("link", { name: /^Back to/ })).toBeNull();
+    expect(header.queryByRole("link", { name: "Next game" })).toBeNull();
+    expect(screen.getByTestId("library-game-details-caption")).toHaveTextContent("Game 1 of 3");
+    expect(screen.getByTestId("library-game-details-previous")).toBeDisabled();
+  });
+
+  it("heads its left panel with Back, the game's title and caption and previous / next, every link keeping the table's URL (CTA-209)", async () => {
+    const mine = await upload();
+    // Arrived from a filtered table, which Back returns to.
+    mount(`/library/${mine.id}`);
+    await screen.findByTestId("library-table");
+    fireEvent.change(screen.getByTestId("library-table-filter"), { target: { value: "Amy" } });
+    fireEvent.click(await screen.findByTestId("library-table-row-2"));
+    const details = await screen.findByRole("region", { name: "Details of Amy – Bob" });
+    expect(within(details).getByRole("heading", { name: "Amy – Bob" })).toBeInTheDocument();
+    expect(within(details).getByTestId("library-game-details-caption")).toHaveTextContent("Game 2 of 3 · Club · 1 · 1-0");
+    expect(within(details).getByRole("link", { name: "Previous game" })).toHaveAttribute("href", `/library/${mine.id}/1`);
+    fireEvent.click(within(details).getByRole("link", { name: "Next game" }));
+    expect(where()).toBe(`/library/${mine.id}/3`);
+    const third = await screen.findByRole("region", { name: "Details of Bob – Zed" });
+    expect(within(third).getByRole("button", { name: "Next game" })).toBeDisabled();
+    // The step kept the route's state: Back still goes to the table as it was left.
+    fireEvent.click(within(third).getByRole("link", { name: `Back to ${mine.name}` }));
+    await screen.findByTestId("library-table");
+    expect(where()).toContain("q=Amy");
+  });
+
+  it("opens its left panel on Info, the game's tags, and keeps the open tab across a step to another game (CTA-209, CTA-212)", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`);
+    const details = screen.getByRole("region", { name: "Details of Zed – Amy" });
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Settings"]);
+    expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(within(details).getByText("Zed")).toBeInTheDocument();
+    fireEvent.click(within(details).getByRole("tab", { name: "Settings" }));
+    fireEvent.click(within(details).getByRole("link", { name: "Next game" }));
+    // A fresh board for game 2, its left panel still on Settings.
+    const next = await screen.findByRole("region", { name: "Details of Amy – Bob" });
+    expect(within(next).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(next).getByRole("switch", { name: "Next-move arrows" })).toBeInTheDocument();
+  });
+
+  it("switches the eval bar from its left panel's Settings tab, while the header's switch has the engine on (CTA-209)", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`);
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "Engine" }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("tab", { name: "Settings" }));
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+  });
+
+  it("puts its left panel in a drawer under the breakpoint, opened from the board's header (CTA-209)", async () => {
+    shell.compact = true;
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`, { compact: true });
+    expect(screen.queryByRole("region", { name: "Details of Zed – Amy" })).not.toBeInTheDocument();
+    const toggle = within(screen.getByTestId("library-game-panel-header")).getByRole("button", { name: "The game's details" });
+    fireEvent.click(toggle);
+    const drawer = await screen.findByRole("dialog", { name: "Details of Zed – Amy" });
+    expect(within(drawer).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByText("Zed")).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "Next game" })).toBeInTheDocument();
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Zed – Amy" })).not.toBeInTheDocument());
   });
 
   it("plates each player's result, Elo and name beside the strips", async () => {
@@ -677,7 +981,7 @@ describe("a game on its analysis board", () => {
     expect(where()).toBe(`/library/${mine.id}/2?at=e4%2Ce5%2CNf3`);
   });
 
-  it("keeps a shipped game read-only: its copy goes to Saved analyses", async () => {
+  it("keeps a shipped game read-only: its copy goes to Analysis as a new Case (CTA-192)", async () => {
     await mountGame("/library/capablanca/1");
     drag("e2", "e4");
     drag("c7", "c5");
@@ -686,12 +990,13 @@ describe("a game on its analysis board", () => {
     expect(screen.getByTestId("library-game-changes-read-only")).toBeInTheDocument();
     expect(screen.queryByTestId("library-game-changes-update")).toBeNull();
     fireEvent.click(screen.getByTestId("library-game-changes-copy"));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Open in Analysis" })).getByRole("button", { name: "Open" }));
 
-    await waitFor(() => expect(where()).toContain("/tools/analysis?analysis="));
-    const [copy] = savedAnalysesSnapshot() ?? [];
-    expect(copy.name).toBe("Capablanca, Jose – Eschevarria, C. (copy)");
-    expect(findSavedAnalysis(copy.id)?.pgn).toContain("1... c5");
-    expect(where()).toBe(`/tools/analysis?analysis=${copy.id}`);
+    await waitFor(() => expect(where()).toContain("/analysis/projects/"));
+    const { record, project } = sentCase();
+    expect(record.name).toBe("Capablanca, Jose – Eschevarria, C. (copy)");
+    expect(record.pgn).toContain("1... c5");
+    expect(where()).toBe(`/analysis/projects/${project?.id}/cases/${record.id}`);
   });
 
   it("discards the changes back to the game as it arrived", async () => {
@@ -719,37 +1024,56 @@ describe("a game on its analysis board", () => {
   });
 });
 
-describe("a collection's settings (CTA-121)", () => {
-  /** Mount the settings of the entry's collection, the form waited for. */
-  const mountSettings = async (entry: string) => {
-    mount(entry);
+describe("a collection's settings (CTA-121) — its page's Settings tab (CTA-231; Options until CTA-235)", () => {
+  /** Mount the collection's page, its left panel on Settings, the form waited for. */
+  const mountSettings = async (id: string, { fresh = false } = {}) => {
+    if (fresh) cleanupAndMount(`/library/${id}`);
+    else mount(`/library/${id}`);
+    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
     await screen.findByTestId("library-settings-form");
   };
 
-  it("edits the collection's title and description, saving them for the list, the table and the page title", async () => {
+  it("edits the collection's title and description on the panel's Settings tab, saving them for the list, the table and the panel", async () => {
     const mine = await upload();
-    // The table's header has the gear for an upload; it goes back to the table as it was.
-    mount(`/library/${mine.id}`);
-    await screen.findByTestId("library-table");
-    fireEvent.click(screen.getByTestId("library-table-settings"));
-    expect(where()).toBe(`/library/${mine.id}/settings`);
+    await mountTable(`/library/${mine.id}?q=Amy`);
+    // No gear in the header (CTA-235): the panel's tab is the way in — the table and its filter as they were.
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(where()).toBe(`/library/${mine.id}?q=Amy`);
+    // Nothing changed yet: nothing to save.
+    expect(screen.getByTestId("library-settings-save")).toBeDisabled();
 
     fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "  Club nights  " } });
     fireEvent.change(screen.getByTestId("library-settings-form-description"), { target: { value: "Every Tuesday." } });
     fireEvent.click(screen.getByTestId("library-settings-save"));
 
-    await screen.findByTestId("library-table");
-    expect(screen.getByTestId("library-table-name")).toHaveTextContent("Club nights");
+    expect(await screen.findByTestId("library-settings-saved")).toHaveTextContent("Saved.");
+    await waitFor(() => expect(screen.getByTestId("library-table-name")).toHaveTextContent("Club nights"));
     expect(screen.getByTestId("library-table-description")).toHaveTextContent("Every Tuesday.");
+    expect(screen.getByRole("heading", { level: 2, name: "Club nights" })).toBeInTheDocument();
     expect(uploadedCollectionsSnapshot()?.[0]).toMatchObject({ name: "Club nights", description: "Every Tuesday." });
-    // The page title follows the record's name through the shell (`usePageTitle`);
-    // outside the shell (this mount) the hook is a no-op, so the header and the
-    // list above are what is asserted.
+    expect(screen.getByTestId("library-settings-form-name")).toHaveValue("Club nights");
+    expect(screen.getByTestId("library-settings-save")).toBeDisabled();
+    expect(where()).toBe(`/library/${mine.id}?q=Amy`);
+  });
+
+  it("takes the draft back on Cancel, and keeps it across the panel's tabs", async () => {
+    const mine = await upload();
+    await mountSettings(mine.id);
+    fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "Renamed" } });
+    fireEvent.click(screen.getByRole("tab", { name: "General" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByTestId("library-settings-form-name")).toHaveValue("Renamed");
+    fireEvent.click(screen.getByTestId("library-settings-cancel"));
+    expect(screen.getByTestId("library-settings-form-name")).toHaveValue("Club games");
+    expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club games");
   });
 
   it("refuses to save a blank title", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "   " } });
     expect(screen.getByTestId("library-settings-save")).toBeDisabled();
     expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club games");
@@ -757,7 +1081,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("marks a one-event collection as a tournament — Swiss, the default type when first switched on", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     const mark = screen.getByTestId("library-settings-form-tournament-switch");
     expect(mark).toBeEnabled();
     expect(mark).not.toBeChecked();
@@ -775,7 +1099,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("offers every format — Arena among them (CTA-142)", async () => {
     const mine = await upload();
-    await mountSettings(`/library/${mine.id}/settings`);
+    await mountSettings(mine.id);
     fireEvent.click(screen.getByTestId("library-settings-form-tournament-switch"));
     for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
       expect(screen.getByTestId(`library-settings-form-type-${format}`)).toBeEnabled();
@@ -792,7 +1116,7 @@ describe("a collection's settings (CTA-121)", () => {
 
   it("keeps the mark off a collection whose games do not share one event, and off an empty one — the reason beside the switch", async () => {
     const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
-    await mountSettings(`/library/${mixed.id}/settings`);
+    await mountSettings(mixed.id);
     const mark = screen.getByTestId("library-settings-form-tournament-switch");
     expect(mark).toBeDisabled();
     expect(mark).not.toBeChecked();
@@ -801,14 +1125,12 @@ describe("a collection's settings (CTA-121)", () => {
 
     // An empty collection cannot be a tournament either — the same message.
     const empty = await keep("Empty", []);
-    cleanupAndMount(`/library/${empty.id}/settings`);
-    await screen.findByTestId("library-settings-form");
+    await mountSettings(empty.id, { fresh: true });
     expect(screen.getByTestId("library-settings-form-tournament-switch")).toBeDisabled();
 
     // A mark stored under games that stopped sharing one event reads as off — the stored setting kept.
     await updateCollectionSettings(mixed.id, { tournament: { enabled: true, type: "swiss" } });
-    cleanupAndMount(`/library/${mixed.id}/settings`);
-    await screen.findByTestId("library-settings-form");
+    await mountSettings(mixed.id, { fresh: true });
     const kept = screen.getByTestId("library-settings-form-tournament-switch");
     expect(kept).toBeDisabled();
     expect(kept).not.toBeChecked();
@@ -818,14 +1140,21 @@ describe("a collection's settings (CTA-121)", () => {
     });
   });
 
-  it("gives a shipped collection no settings entry — the table no gear, the URL the miss", async () => {
+  it("puts no Settings gear in the header — a shipped collection's or an upload's (CTA-235)", async () => {
     mount("/library/capablanca");
     await screen.findByTestId("library-table");
     expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    const mine = await upload();
+    cleanupAndMount(`/library/${mine.id}`);
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    expect(within(screen.getByTestId("library-table-header")).queryByRole("button", { name: "Collection settings" })).toBeNull();
+  });
 
-    cleanupAndMount("/library/capablanca/settings");
-    expect(await screen.findByTestId("library-not-found")).toHaveTextContent(
-      i18n.t("library.notFound.collection"),
-    );
+  it("has no settings route any more: /library/<c>/settings is no screen of its own (CTA-231)", async () => {
+    const mine = await upload();
+    mount(`/library/${mine.id}/settings`);
+    expect(await screen.findByTestId("library-not-found")).toHaveTextContent(i18n.t("library.notFound.game"));
+    expect(screen.queryByTestId("library-settings-form")).toBeNull();
   });
 });

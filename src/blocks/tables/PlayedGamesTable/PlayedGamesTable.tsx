@@ -25,8 +25,8 @@ export type PlayedGamesTableProps = {
   /** The ticked rows' ids — the screen's, for its Delete picked. */
   picked: ReadonlySet<string>;
   onPickedChange: (picked: Set<string>) => void;
-  /** Where a readable game opens on the Analysis Board. */
-  analysisLink: (row: PlayedGameRow) => LinkTarget;
+  /** A readable game sent to Analysis (CTA-192: a Project picked, a Case made). */
+  onAnalyse: (row: PlayedGameRow) => void;
   /** Where a game still on is continued — asked only of a readable row whose result is `*`. */
   continueLink: (row: PlayedGameRow) => LinkTarget;
   /** The store's first read has not landed. */
@@ -67,7 +67,7 @@ function PlayedGamesTable({
   paging,
   picked,
   onPickedChange,
-  analysisLink,
+  onAnalyse,
   continueLink,
   loading = false,
   filtered = false,
@@ -168,7 +168,7 @@ function PlayedGamesTable({
           <>
             <IconAction
               label={t("playedGames.analyseRow", { title: titleOf(row) })}
-              link={analysisLink(row)}
+              onClick={() => onAnalyse(row)}
               testId={`${testId}-analysis-${row.id}`}
             >
               <ScienceOutlinedIcon fontSize="small" />

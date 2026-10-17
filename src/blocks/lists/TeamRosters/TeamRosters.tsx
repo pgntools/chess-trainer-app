@@ -6,8 +6,15 @@ import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
-import { Flag } from "../../../design-system/components/tables";
-import { flagOfFederation, formatPoints } from "../../tables/tournamentTable";
+import { Flag, LabelChip } from "../../../design-system/components/tables";
+import { flagOfFederation, formatPoints, titleBadgeOf } from "../../tables/tournamentTable";
+
+/** A team's player (CTA-164) — their name, and their FIDE title where the games name one. */
+export type TeamMember = {
+  name: string;
+  /** Their title ("GM") — the same chip the Participants table shows, `titleBadgeOf`'s. */
+  title?: string;
+};
 
 /** A team and who played for it (CTA-142) — `teamTournamentOf`'s standing and `teamPlayersOf`'s names. */
 export type TeamRoster = {
@@ -16,8 +23,8 @@ export type TeamRoster = {
   federation?: string;
   matchPoints: number;
   boardPoints: number;
-  /** Every name its games give it, in the order the file first shows them. */
-  players: readonly string[];
+  /** Every member its games give it, in the order the file first shows them. */
+  players: readonly TeamMember[];
 };
 
 export type TeamRostersProps = {
@@ -42,7 +49,9 @@ const linkSx = (theme: Theme) => ({ "&:focus-visible": { ...theme.mixins.focusRi
  * next — its flag where its players share a federation, its name (a link
  * to all its players' games where `teamLink` gives one) and, at the line's
  * end, its match and board points (abbreviated, read in full) — and under
- * it, small, its players, each a link to their games. Narrow enough for a
+ * it, small, its players, each a link to their games, a titled one's title
+ * the same chip before their name as the Participants table shows (CTA-164,
+ * `titleBadgeOf`). Narrow enough for a
  * side panel. Presentational: the rosters arrive worked out
  * (`teamTournamentOf`, `teamPlayersOf`).
  */
@@ -100,11 +109,19 @@ function TeamRosters({ teams, playerLink, teamLink, headingLevel = "h2", testId 
                 aria-label={t("library.tournament.participants.playersOf", { team: roster.team })}
                 sx={{ listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", columnGap: 1, rowGap: 0 }}
               >
-                {roster.players.map((name) => (
-                  <Typography component="li" variant="caption" key={name}>
-                    {linked(playerLink?.(name), name)}
-                  </Typography>
-                ))}
+                {roster.players.map(({ name, title }) => {
+                  const badge = titleBadgeOf(t, title);
+                  return (
+                    <Typography component="li" variant="caption" key={name}>
+                      {badge !== undefined && (
+                        <>
+                          <LabelChip {...badge} />{" "}
+                        </>
+                      )}
+                      {linked(playerLink?.(name), name)}
+                    </Typography>
+                  );
+                })}
               </Box>
             </Box>
           );

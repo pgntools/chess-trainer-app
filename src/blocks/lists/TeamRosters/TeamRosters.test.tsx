@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
+import { readText } from "../../../test/readText";
 import TeamRosters from "./TeamRosters";
 import { OLYMPIAD } from "./fixtures";
 
@@ -34,8 +35,36 @@ describe("TeamRosters", () => {
     await expectNoAxeViolations(screen.getByTestId("probe"));
   });
 
+  it("shows a titled player's title as the Participants table's chip, before their name and outside the link", async () => {
+    render(
+      <TeamRosters
+        teams={OLYMPIAD}
+        playerLink={(name) => ({ href: `/p/${name}` })}
+        teamLink={(roster) => ({ href: `/t/${roster.team}` })}
+        testId="probe"
+      />,
+    );
+    const list = within(within(screen.getByTestId("probe-team-0")).getByRole("list", { name: "Uzbekistan's players" }));
+    const chips = list.getAllByText("GM");
+    expect(chips).toHaveLength(2);
+    // The chip is the first thing in the line; the link is the name alone, so the chip is outside it.
+    const name = list.getByRole("link", { name: "Abdusattorov, Nodirbek" });
+    expect(chips[0].compareDocumentPosition(name)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(name).not.toContainElement(chips[0]);
+    // Read in full ("Grandmaster") and in the Participants table's tone.
+    expect(list.getAllByText("Grandmaster")).toHaveLength(2);
+    expect(chips[0].closest("[data-tone]")).toHaveAttribute("data-tone", "warning");
+    // A reader hears the line as the table reads it.
+    expect(readText(list.getAllByRole("listitem")[0])).toBe("Grandmaster Abdusattorov, Nodirbek");
+    // A player without a title renders unchanged: a plain link, no chip.
+    expect(readText(list.getAllByRole("listitem")[2])).toBe("Yakubboev, Nodirbek");
+    await expectNoAxeViolations(screen.getByTestId("probe"));
+  });
+
   it("leaves the names as text without links", () => {
     render(<TeamRosters teams={OLYMPIAD} testId="probe" />);
     expect(screen.queryByRole("link")).toBeNull();
+    // The title chip shows without a link too.
+    expect(screen.getAllByText("GM").length).toBeGreaterThan(0);
   });
 });

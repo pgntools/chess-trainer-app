@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
+import { localStorageKeys } from "../../test/localStorageKeys";
 import { resetRepertoireFolderStore } from "../../lib/savedRepertoireFolderStore";
 import {
   resetSavedRepertoireStore,
@@ -74,10 +75,10 @@ describe("the Repertoires list", () => {
     first.unmount();
 
     // A reload: nothing read yet, and no data in localStorage (the language
-    // choice is all that lives there) — IndexedDB holds it.
+    // choice and the notice's dismissal are all that live there) — IndexedDB holds it.
     resetSavedRepertoireStore();
     resetRepertoireFolderStore();
-    expect(Object.keys(localStorage).filter((key) => key.startsWith("chessapp."))).toEqual([]);
+    expect(localStorageKeys().filter((key) => key.startsWith("chessapp."))).toEqual([]);
     renderSectionNow("/repertoires");
     expect(screen.getByTestId("repertoires-loading")).toHaveTextContent("Reading your repertoires");
     expect(await screen.findByTestId("repertoires-item-a")).toBeInTheDocument();

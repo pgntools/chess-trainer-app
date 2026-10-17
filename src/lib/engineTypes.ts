@@ -10,9 +10,9 @@
  * ```
  *
  * - {@link EngineHandle} is the whole of what a board may ask of an engine.
- *   Nothing outside the transport knows whether it is a Web Worker, so a
- *   WebSocket to a hosted engine (planned, not built) is one more
- *   {@link UciTransport} — no board changes.
+ *   Nothing outside the transport knows whether it is a Web Worker — and an
+ *   engine on the engine server (`lib/hostedEngine.ts`, docs/engine.md §8) is
+ *   another `EngineHandle` altogether, over HTTP: no board changes.
  * - {@link EngineDescriptor} is a registry entry: what an engine is called,
  *   what it needs, what it can do, and how to build a handle.
  *
@@ -24,25 +24,25 @@
  * One option the running engine declared during the `uci` handshake.
  *
  * Read, never assumed. Which options exist — and which of them will take a
- * value — is a property of the *binary*, not of the UCI spec. The 2019 build
- * shipped in `public/stockfish/` answers `uci` with, among others:
+ * value — is a property of the *binary*, not of the UCI spec. The Stockfish 19
+ * single-thread build in `public/stockfish/` answers `uci` with, among others:
  *
  * ```
  * option name Threads type spin default 1 min 1 max 1
- * option name Hash type spin default 16 min 16 max 16
- * option name MultiPV type spin default 1 min 1 max 500
+ * option name Hash type spin default 16 min 1 max 33554432
+ * option name MultiPV type spin default 1 min 1 max 256
  * option name Skill Level type spin default 20 min 0 max 20
+ * option name UCI_LimitStrength type check default false
+ * option name UCI_Elo type spin default 1320 min 1320 max 3190
  * ```
  *
- * So `Threads` and `Hash` are declared but **pinned** — `min` equals `max`, one
- * legal value each — while `MultiPV` and `Skill Level` are genuinely
- * adjustable, and there is no `UCI_Elo` or `UCI_LimitStrength` at all. Three
- * states, not two. The Stockfish 19 builds declare `UCI_Elo` and
- * `UCI_LimitStrength`, and the multi-thread one an adjustable `Threads`. A
- * settings UI that hardcoded the usual list would show knobs that silently do
- * nothing, so it reads {@link EngineHandle.options} instead and can say
- * honestly which ones this engine does not have and which ones it has already
- * made up its mind about.
+ * So `Threads` is declared but **pinned** — `min` equals `max`, one legal
+ * value — while the multi-thread build declares it adjustable, and an engine
+ * may declare no `UCI_Elo` at all. Three states, not two: absent, pinned,
+ * adjustable. A settings UI that hardcoded the usual list would show knobs
+ * that silently do nothing, so it reads {@link EngineHandle.options} instead
+ * and can say honestly which ones this engine does not have and which ones it
+ * has already made up its mind about.
  */
 export type EngineOption = {
   name: string;
@@ -57,17 +57,42 @@ export type EngineOption = {
   vars?: string[];
 };
 
-/** What one `go` search should do. */
-export type SearchOptions = {
-  /**
-   * Plies to search. Clamped to the engine's own limit
-   * ({@link EngineCapabilities.maxDepth}) — the worker shares the tab with the
-   * UI.
-   */
-  depth?: number;
-  /** Milliseconds to spend, on top of the depth limit. 0 or absent means no time limit. */
-  movetime?: number;
-};
+/**
+ * **A UCI option's value as the app asks for it** (CTA-179) — a `spin`'s
+ * number, a `check`'s boolean (or `1` / `0`, the engine module's older
+ * spelling), a `combo`'s or a `string`'s words. Each handle puts it on the wire
+ * in the option's own type: `true` / `false` for a check, the words as they
+ * are for the rest.
+ */
+export type UciOptionValue = number | string | boolean;
+
+/**
+ * What one `go` search should do: stop at a depth (and, if asked, a time), or
+ * search **until stopped** — `go infinite`, an analysis board's infinite
+ * analysis (CTA-160), which only ever ends with {@link EngineHandle.stop} (a
+ * new position, the engine switched off) and so never suits a board waiting
+ * for the engine's move.
+ */
+export type SearchOptions =
+  | {
+      /**
+       * Plies to search — always the caller's (the board's settings), never a
+       * default of the engine's. Clamped to the engine's own limit
+       * ({@link EngineCapabilities.maxDepth}).
+       */
+      depth: number;
+      /** Milliseconds to spend, beside the depth limit — whichever comes first. 0 or absent means no time limit. */
+      movetime?: number;
+      /**
+       * **Whether the eval sources may answer it** (CTA-196, `lib/evalSources/`)
+       * — read by the decorator in front of a board's engine
+       * (`withEvalSources`), never sent to an engine. `false`: an engine
+       * choosing its move in a game (Play with Engine, Masked Pieces), which
+       * always searches. Absent: an analysis search, asked first.
+       */
+      evalSources?: boolean;
+    }
+  | { infinite: true };
 
 export type EngineMessage = {
   /** stockfish engine message in UCI format*/
@@ -89,6 +114,26 @@ export type EngineMessage = {
    * single-PV search and on every non-`info` message.
    */
   multipv?: number;
+  /*
+    The search's progress, read off an `info` line where the engine reports it
+    (CTA-190 — Jobs V2's live progress). Absent on a line without it and on
+    every non-`info` message; a consumer that reads none of them sees today's
+    message.
+  */
+  /** Nodes searched so far. */
+  nodes?: number;
+  /** Nodes per second. */
+  nps?: number;
+  /** Milliseconds since the search began. */
+  time?: number;
+  /** The selective depth — the deepest line looked at. */
+  seldepth?: number;
+  /** How full the hash table is, in permille. */
+  hashfull?: number;
+  /** The root move being searched now (`e2e4`). */
+  currmove?: string;
+  /** Its number among the root moves, 1-based. */
+  currmovenumber?: number;
   /**
    * The FEN this message is about.
    *
@@ -100,6 +145,21 @@ export type EngineMessage = {
    * computed for a position the player has navigated away from.
    */
   fen?: string;
+  /**
+   * **Not a line of the engine's: word that it is alive** (CTA-194) — an
+   * engine server's `heartbeat` event, sent while its engine has been silent
+   * on {@link fen}'s search for a while (deep in a search it says nothing
+   * for minutes); `uciMessage` is empty and no other field is set. Only the
+   * Jobs V2 runner reads it (its silence timer); every other consumer reads
+   * no depth, line or move off it. Absent on every other message.
+   */
+  heartbeat?: true;
+  /**
+   * **Not the engine's search: an eval source's answer** (CTA-196) — the id of
+   * the source (`lib/evalSources/`) whose stored eval this line or `bestmove`
+   * replays, the engine never asked. Absent on every message an engine sent.
+   */
+  evalSource?: string;
 };
 
 /** Callback registered with {@link EngineHandle.onMessage}. */
@@ -124,15 +184,20 @@ export interface EngineHandle {
    * Ask for `fen` to be searched. May not start immediately; a second call
    * before the first has started replaces it.
    */
-  search(fen: string, options?: SearchOptions): void;
-  /** End the running search early; the engine still answers with a `bestmove`. */
+  search(fen: string, options: SearchOptions): void;
+  /**
+   * Drop the search that was asked for: a waiting one never starts, and a
+   * running one is ended early — it still answers with a `bestmove`, so its
+   * score is still reported.
+   */
   stop(): void;
   /**
    * Request an option. Returns whether this engine will take the value —
-   * `false` when it has no such option or has pinned it to one value. Calls
-   * before the handshake report `true` optimistically.
+   * `false` when it has no such option, has pinned it to one value, or (a
+   * page's own build) cannot take it at all — a file path in a WebAssembly
+   * build (CTA-179). Calls before the handshake report `true` optimistically.
    */
-  setOption(name: string, value: string | number): boolean;
+  setOption(name: string, value: UciOptionValue): boolean;
   /**
    * Run `callback` once {@link options} is complete — at once if the handshake
    * already finished. Returns an unsubscribe fn.
@@ -147,8 +212,7 @@ export interface EngineHandle {
 /**
  * **The wire to an engine** — lines of UCI in, lines of UCI out, and nothing
  * about how they travel. {@link UciEngine} is written against this; a Web
- * Worker is one implementation (`WorkerTransport`), a WebSocket to a hosted
- * engine would be another.
+ * Worker is its one implementation (`WorkerTransport`).
  *
  * A transport starts delivering lines as soon as it exists, so the engine
  * subscribes first and only then sends `uci`.
@@ -161,12 +225,6 @@ export interface UciTransport {
   /** Close the wire and whatever is behind it (terminate the worker, shut the socket). */
   close(): void;
 }
-
-/**
- * Where an engine runs. Only `"local"` exists; `"remote"` will be added with
- * the hosted-engine transport — nothing reads it yet.
- */
-export type EngineKind = "local";
 
 /** What an engine can do — read by the UI before one is even built. */
 export type EngineCapabilities = {
@@ -199,10 +257,22 @@ export type EngineDescriptor = {
   id: string;
   /** What a reader is shown. */
   name: string;
-  /** The engine's own version, as a reader would say it ("19", "2019-08-15"). */
+  /** The engine's own version, as a reader would say it ("19"). */
   version: string;
-  kind: EngineKind;
   requires?: EngineRequirements;
+  /**
+   * The engine server it runs on (`lib/engines/hosted.ts`) — absent for an
+   * engine that ships with the app and runs in the page.
+   */
+  server?: string;
+  /**
+   * What the engine declares, **known before it runs** — an engine server's
+   * engine, from the server's list (CTA-175), so a form offers its `Hash` and
+   * `Threads` ranges before the first handshake. Absent for the shipped
+   * builds, whose own `uci` reply ({@link EngineHandle.options}) is the only
+   * word on theirs.
+   */
+  options?: readonly EngineOption[];
   capabilities: EngineCapabilities;
   /**
    * Build a handle — the only place an engine, a Worker, a socket is made, and

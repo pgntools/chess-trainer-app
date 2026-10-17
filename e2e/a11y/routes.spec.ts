@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 import { blogArticleRoutes } from "./blogRoutes";
-import { BLOG_READY, BLOG_SAMPLE, ROUTES } from "./routes";
+import { BLOG_READY, BLOG_SAMPLE, LEGAL_PAGES_BUILT, LEGAL_PATTERNS, ROUTES } from "./routes";
 
 /*
   The pass visits every shipped route (CTA-116) — so the list of routes it
@@ -28,7 +28,9 @@ test("every shipped route is visited", () => {
   const patterns = shippedPatterns();
   expect(patterns.length, "the route table was read").toBeGreaterThan(10);
   const visited = new Set(ROUTES.map((route) => route.pattern));
-  const missing = ["/", ...patterns].filter((pattern) => !visited.has(pattern) && !(pattern in SAME_SCREEN));
+  // A build without its site operator has no legal pages (CTA-182): their routes are in the table, not in it.
+  const absent = (pattern: string) => !LEGAL_PAGES_BUILT && LEGAL_PATTERNS.includes(pattern);
+  const missing = ["/", ...patterns].filter((pattern) => !visited.has(pattern) && !(pattern in SAME_SCREEN) && !absent(pattern));
   expect(missing, "shipped routes with no line in e2e/a11y/routes.ts").toEqual([]);
 });
 

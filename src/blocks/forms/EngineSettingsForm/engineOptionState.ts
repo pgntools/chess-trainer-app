@@ -1,8 +1,9 @@
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 
 /**
  * **What the running engine lets a slider do** (CTA-109) — the three states
- * the engine forms render (`EngineSettingsForm`, `AnalysisEngineForm` — once
+ * the engine forms render (`EngineSettingsForm`'s strength,
+ * `ComputerAnalysisForm`'s Threads, Hash and lines — once
  * `views/shared/OptionSlider.tsx`), as a pure rule:
  *
  * | The engine declared | The slider |

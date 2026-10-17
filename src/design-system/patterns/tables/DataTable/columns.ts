@@ -28,11 +28,25 @@ export type DataTableColumn<R, C extends string = string> = {
   /** Let the text wrap. By default a cell keeps to one line and a long one scrolls the table sideways. */
   wrap?: boolean;
   /**
+   * The column names its row (CTA-204): each cell a row header (`th
+   * scope="row"`), so a screen reader names the row with every cell of it —
+   * a standings table's player. Absent, a plain cell.
+   */
+  rowHeader?: boolean;
+  /**
    * The cell's own test id, on the cell itself — for a screen whose tests
    * name its cells from before it moved onto the table (`settings-storage-games-records`).
    * Absent, a cell has none.
    */
   cellTestId?: (row: R) => string;
+  /**
+   * **The column's filter, above its cells** (CTA-221) — a control drawn in
+   * the column's header under its label (and its sort button), so a filter
+   * stands over what it filters and scrolls and sticks with its column.
+   * Absent, the header is its label alone. The filtering is the caller's: the
+   * rows arrive filtered (with `filtered` for the no-match row).
+   */
+  filter?: ReactNode;
 };
 
 /** The sort a table shows: the column and which way. */

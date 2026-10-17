@@ -50,12 +50,15 @@ Gallery: `/dev/design/toolbars`.
 - **Purpose** — a list screen's top bar: back, the title (`h1`) over its
   count, the actions, over a bottom divider; one spacing (`pb: 1.5`, `mb:
   0.5`, `gap: 1`).
-- **Props** — `title`, `count?`, `back?` (a `BackButton`), `actions?`,
+- **Props** — `title` **or** `heading` (CTA-224: a node of the screen's own
+  in the title's place, bringing its own `h1` — a `Breadcrumbs` trail with
+  `currentComponent="h1"`), `count?`, `back?` (a `BackButton`), `actions?`,
   `wrap?` (let the **title** wrap to a second line instead of ellipsis),
-  `children?` (a second row), `titleDir?`, `testId` (`-title`, `-count`,
-  `-actions`).
+  `children?` (a second row), `titleDir?`, `testId` (`-title`, or `-heading`
+  for a heading's box, `-count`, `-actions`).
 - **Variations** — title and count with one action; with back and a long
-  reader-typed title; wrapping actions with a second row.
+  reader-typed title; wrapping actions with a second row; a trail in the
+  title's place.
 - **The row always wraps** (CTA-118) — the title box shrinks to nothing and
   the actions are pinned, so a narrow square used to crush the `h1` to zero
   width (WCAG 1.4.10, the reflow gate). The actions drop to a line of their
@@ -104,7 +107,11 @@ Gallery: `/dev/design/toolbars`.
 ## CTA-113 additions
 
 - `IconAction` — `popupOpen?` (a menu button: `aria-haspopup="menu"`,
-  `aria-expanded`).
+  `aria-expanded`); `popupKind="dialog"` for a popover of controls rather
+  than a menu (`aria-haspopup="dialog"` — the top bar's Engine menu and a
+  board's engine menu, CTA-181); `expanded?` for a disclosure — `aria-expanded`
+  with no `aria-haspopup` (a panel folded to a rail and opened again: the
+  Library collection's filters, CTA-230).
 - `ToggleIconAction` — `pressed?: boolean | null`: `null` for a Save that
   opens a dialog, so it carries no `aria-pressed`.
 - `ListScreenHeader` — used by every list screen; a title the tests read by

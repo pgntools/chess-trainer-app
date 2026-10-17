@@ -41,11 +41,26 @@ import { EmbedSource } from "./embedSource";
  * `<EmbedSource>`, then shown as a PGN of the article's own is. `src` may
  * also be the PGN's text.
  *
- * **`<InlinePgnGameColumns>`** (CTA-146) is the same component with its moves
+ * **`<InlinePgnGame2colH>`** (CTA-146) is the same component with its moves
  * laid out as the Analysis Board's move list is: numbered pairs in two
- * columns, a side line a row under the pair it answers, in a box no taller
- * than the board that scrolls when the tree is longer. Same props, same
- * sources; `<InlinePgnGame>` is untouched.
+ * columns, a side line a row under the pair it answers, beside the board in a
+ * column as tall as it that scrolls when the tree is longer — the game's
+ * players, result and event on a plate over the board, the step and flip
+ * buttons under the moves; `movesWidth` sets the moves' column's width — the
+ * rest of the row (`"full"`, the default), the board's (`"board"`), or only
+ * what its moves need (`"dense"`).
+ * **`<InlinePgnGame2colV>`** puts those columns under the board, at every
+ * width, in a box half its height — the one for boards side by side in a
+ * `<BoardRow>` — with the same game plate over the board, its step buttons
+ * between the board and the moves; `movesHeight` sets that box's height — half
+ * the board's (`"dense"`, the default), the board's (`"board"`), or the whole
+ * game, unscrolled (`"full"`). On either, `comments` is one of three:
+ * `"inline"` (the default) every PGN comment in the list where it is written —
+ * under the pair, splitting it after White's move, or inside a side line;
+ * `"bottom"` the move on screen's alone, under the moves (a bare `comments`
+ * too, as `<InlinePgnGame>` reads it); `"hidden"` none (`comments={false}`).
+ * Same props, same sources; `<InlinePgnGame>` is untouched.
+ * `<InlinePgnGameColumns>`, `<InlinePgnGame2colH>`'s first name, is its alias.
  */
 
 type InlinePgnGameProps = {
@@ -67,30 +82,60 @@ type InlinePgnGameProps = {
   startPly?: number | string;
   /** Show the side lines that branch inside the window. Default on. */
   variations?: boolean;
-  /** Show the PGN comment of the move on screen. */
-  comments?: boolean;
+  /**
+   * The PGN's comments: `"inline"` every one in the move list, where it is written; `"bottom"` (or `true`)
+   * the move on screen's, under the moves; `"hidden"` (or `false`) none. `<InlinePgnGame>`'s default is
+   * `"hidden"`, the two-column ones' `"inline"`.
+   */
+  comments?: boolean | CommentsShown;
   orientation?: "white" | "black";
   /** A line above the board. */
   caption?: string;
+  /** `<InlinePgnGame2colH>`: the moves' column — the rest of the row (the default), the board's width, or only what its moves need. */
+  movesWidth?: "full" | "board" | "dense";
+  /** `<InlinePgnGame2colV>`: the moves' box under the board — half the board's height (the default), the board's, or the whole game. */
+  movesHeight?: "full" | "board" | "dense";
 };
+
+type CommentsShown = "inline" | "bottom" | "hidden";
+
+/** How a `comments` prop shows them — a boolean as the first `<InlinePgnGame>`s wrote it, anything unknown the default. */
+const commentsShownOf = (comments: boolean | string | undefined, fallback: CommentsShown): CommentsShown =>
+  comments === true ? "bottom" : comments === false ? "hidden" : comments === "inline" || comments === "bottom" || comments === "hidden" ? comments : fallback;
 
 const plyOf = (value: number | string | undefined): number | undefined => {
   const number = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
   return typeof number === "number" && Number.isFinite(number) ? number : undefined;
 };
 
-type MovesLayout = "run" | "columns";
+type MovesLayout = {
+  movesLayout: "run" | "columns";
+  movesPlacement?: "beside" | "below";
+  /** The game's plate over the board, the step buttons by the moves — the two-column games'. */
+  framed?: boolean;
+};
 
 export function InlinePgnGame(props: InlinePgnGameProps) {
   return <InlinePgnSource {...props} movesLayout="run" />;
 }
 
-/** `<InlinePgnGame>` with its moves in numbered pairs, in a box capped at the board's height (CTA-146). */
-export function InlinePgnGameColumns(props: InlinePgnGameProps) {
-  return <InlinePgnSource {...props} movesLayout="columns" />;
+/**
+ * `<InlinePgnGame>` with its moves in numbered pairs beside the board, in a column as tall as it (CTA-146) —
+ * the game's players, result and event over the board, the step buttons under the moves.
+ */
+export function InlinePgnGame2colH(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="beside" framed />;
 }
 
-function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & { movesLayout: MovesLayout }) {
+/**
+ * The same pairs under the board, in a box half its height — for boards side by side —
+ * the game's plate over the board, the step buttons between it and the moves.
+ */
+export function InlinePgnGame2colV(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="below" framed />;
+}
+
+function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & MovesLayout) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
   if (src === undefined) return <InlinePgnBoard pgn={pgn ?? ""} game={game} {...shown} />;
@@ -136,8 +181,14 @@ function InlinePgnBoard({
   orientation,
   caption,
   movesLayout,
-}: Omit<InlinePgnGameProps, "src" | "pgn"> & { pgn: string; movesLayout: MovesLayout }) {
+  movesPlacement,
+  framed = false,
+  movesWidth = "full",
+  movesHeight = "dense",
+}: Omit<InlinePgnGameProps, "src" | "pgn"> & MovesLayout & { pgn: string }) {
   const { t } = useTranslation();
+  // The two-column boards (framed) show every comment in place unless told otherwise; the run, none.
+  const shown = commentsShownOf(comments, framed ? "inline" : "hidden");
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
 
   const parsed = useMemo(() => {
@@ -194,10 +245,16 @@ function InlinePgnBoard({
       tree={tree}
       window={window}
       orientation={orientation}
-      showComments={comments}
+      showComments={shown === "bottom"}
+      inlineComments={shown === "inline"}
       shapes={shapes}
       nextMoveArrows={showNextMoveArrow}
       movesLayout={movesLayout}
+      movesPlacement={movesPlacement}
+      gameInfo={framed}
+      controlsPlacement={framed ? "moves" : "board"}
+      movesWidth={movesWidth === "board" ? "board" : movesWidth === "dense" ? "fit" : "fill"}
+      movesHeight={movesHeight === "board" ? "board" : movesHeight === "full" ? "full" : "half"}
       caption={caption}
     />
   );

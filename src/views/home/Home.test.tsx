@@ -121,18 +121,22 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/openings/saved");
   });
 
-  it("shows one Analysis Board card linking to the saved list, and none to the board", async () => {
+  it("shows one Analysis card, to the Projects lobby (CTA-192, CTA-227) — and one Jobs card, to every job (CTA-221, CTA-228)", async () => {
     renderHome();
     await screen.findByTestId("home-nav-cards");
 
-    // The single entry — the same one the sidebar shows, under the same name
-    // (CTA-58, mirroring CTA-42's Openings folder).
-    const analysis = within(screen.getByTestId("home-nav-cards")).getAllByRole("link", { name: "Analysis Board" });
-    expect(analysis).toHaveLength(1);
-    expect(analysis[0]).toHaveAttribute("href", "/tools/analysis/saved");
-
-    // The board view has no card: it is the saved list's New button.
-    expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/tools/analysis");
+    // The sidebar's Analysis row — one destination, as Openings is: one card
+    // under the folder's own heading and name, to the Projects lobby.
+    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analysis" })).toBeInTheDocument();
+    const analysis = within(screen.getByTestId("home-nav-cards")).getAllByRole("link", { name: "Analysis" });
+    expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/analysis"]);
+    expect(cardLinks().map((link) => link.textContent)).not.toContain("Projects");
+    // The sidebar's Jobs row (CTA-228) — one destination too: one card under
+    // the folder's own heading and name, to every job; no Jobs settings card.
+    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Jobs" })).toBeInTheDocument();
+    const jobs = within(screen.getByTestId("home-nav-cards")).getAllByRole("link", { name: "Jobs" });
+    expect(jobs.map((link) => link.getAttribute("href"))).toEqual(["/jobs"]);
+    expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/jobs/settings");
   });
 
   it("still shows a card per screen of every other section, each under a section heading", async () => {

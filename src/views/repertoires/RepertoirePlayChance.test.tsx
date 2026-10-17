@@ -16,9 +16,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(
@@ -112,8 +112,8 @@ describe("play chances", () => {
     expect(screen.getByTestId("move-comment-icon-6")).toBeInTheDocument();
 
     // Autoplay on: a draw of 0 would take Bf5, but it is marked never.
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
-    fireEvent.click(screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-tab-settings"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!);
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
     for (const [from, to] of [["e2", "e4"], ["d2", "d4"], ["e4", "e5"]]) {
       drop(from, to);
@@ -142,8 +142,8 @@ describe("↑ / ↓ in the player — switching the trainer's reply", () => {
 
   it("cycle the siblings, and the trainer goes on from the one chosen", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", TWO_REPLIES)}`);
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
-    fireEvent.click(screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-tab-settings"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!);
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
 
     drop("e2", "e4");
@@ -161,11 +161,23 @@ describe("↑ / ↓ in the player — switching the trainer's reply", () => {
     wait();
     expect(boardOptions().position).toBe(fenAfter("e4", "e5", "Nf3", "Nc6"));
 
-    // Home and End are the line's start and end now. From the start the line
-    // is the mainline again, so End is its end, not the branch just played.
+    // Home travels the branch (CTA-165): to the side line's first move, then
+    // out to the start. From there the line is the mainline again, so End is
+    // its end, not the branch just played.
+    key("Home");
+    expect(boardOptions().position).toBe(fenAfter("e4", "e5"));
+    key("End");
+    expect(boardOptions().position).toBe(fenAfter("e4", "e5", "Nf3", "Nc6"));
+    key("Home");
     key("Home");
     expect(boardOptions().position).toBe(new Chess().fen());
     key("End");
+    expect(boardOptions().position).toBe(fenAfter("e4", "c6", "d4"));
+    // PgUp / PgDown are the whole game's ends, wherever the reader stands.
+    key("ArrowLeft");
+    key("PageUp");
+    expect(boardOptions().position).toBe(new Chess().fen());
+    key("PageDown");
     expect(boardOptions().position).toBe(fenAfter("e4", "c6", "d4"));
   });
 

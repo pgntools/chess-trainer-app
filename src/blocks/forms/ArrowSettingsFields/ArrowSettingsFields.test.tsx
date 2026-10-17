@@ -29,6 +29,24 @@ describe("ArrowSettingsFields", () => {
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("analysis.arrows.drawnAsNone"));
   });
 
+  it("offers Variations always, and says it is drawn as None while the engine has no lines (CTA-197)", async () => {
+    const user = userEvent.setup();
+    const onWidthSourceChange = vi.fn();
+    const { rerender } = render(<ArrowSettingsFields widthSource="none" onWidthSourceChange={onWidthSourceChange} available={UNTAGGED} engineLines={false} palette="classic" onPaletteChange={() => {}} testId="probe" />);
+    const variations = screen.getByRole("radio", { name: new RegExp(i18n.t("analysis.arrows.sources.variations")) });
+    expect(variations).toBeEnabled();
+    expect(screen.getByText(i18n.t("analysis.arrows.sourceHelp.variations"))).toBeInTheDocument();
+    // Chosen with the engine off: still chosen, and the note says why nothing is sized.
+    await user.click(variations);
+    expect(onWidthSourceChange).toHaveBeenCalledWith("variations");
+    rerender(<ArrowSettingsFields widthSource="variations" onWidthSourceChange={onWidthSourceChange} available={UNTAGGED} engineLines={false} palette="classic" onPaletteChange={() => {}} testId="probe" />);
+    expect(screen.getByTestId("probe-width-variations")).toBeChecked();
+    expect(screen.getByRole("status")).toHaveTextContent(i18n.t("analysis.arrows.drawnAsNoneEngine"));
+    // The lines in hand, no note.
+    rerender(<ArrowSettingsFields widthSource="variations" onWidthSourceChange={onWidthSourceChange} available={UNTAGGED} engineLines palette="classic" onPaletteChange={() => {}} testId="probe" />);
+    expect(screen.queryByTestId("probe-width-drawn-as-none")).toBeNull();
+  });
+
   it("chooses with the arrow keys", async () => {
     const user = userEvent.setup();
     const onPaletteChange = vi.fn();

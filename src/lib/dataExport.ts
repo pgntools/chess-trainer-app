@@ -1,7 +1,7 @@
 import { strToU8, zipSync } from "fflate";
 
-import type { AnalysisSettings } from "./analysisSettings";
-import type { ArrowPaletteId, ArrowWidthSource } from "./arrowSettings";
+import type { AnalysisCase, AnalysisProject, CaseLink, ProjectFolder } from "./analysisProjects";
+import type { EnginePreset, EnginePresetSelection } from "./enginePresets";
 import type { EngineSettings } from "./engineSettings";
 import type { CollectionSummary, TournamentFormat } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
@@ -9,8 +9,6 @@ import { isoDate, pgnFileOf } from "./pgnExport";
 import { slugify } from "./pgnText";
 import type { PlayedGame, PlayedGameEngine, PlayedGameMask } from "./playedGames";
 import type { RepertoireSettings } from "./repertoireSettings";
-import type { SavedAnalysis } from "./savedAnalyses";
-import { analysisFolderPath, type AnalysisFolder } from "./savedAnalysisFolders";
 import { flattenGameFolders, gameFolderPath, type GameFolder } from "./savedGameFolders";
 import {
   repertoiresInFolder,
@@ -33,9 +31,13 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * | Category | Files | One game per |
  * | --- | --- | --- |
  * | Games | `games.pgn` | played game (Play with Engine, Masked Pieces) |
- * | Analyses | `analyses.pgn` | saved analysis |
  * | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
  * | Repertoires | `repertoires/<folder>.pgn` per folder, and `repertoires/unfiled.pgn` | repertoire |
+ * | Engine presets | `engine-presets.json` — every preset and the one each engine runs (CTA-179) | — |
+ * | Analysis projects | `analysis-projects.json` — Analysis V2's folders, Projects and their Cases, and the links between Cases (CTA-186, CTA-188) | — |
+ *
+ * (A zip from before CTA-192 may carry `analyses.pgn` — the legacy saved
+ * analyses; the export writes none, and the import skips it, saying so.)
  *
  * Every PGN is the stored text joined as it stands (`pgnFileOf`) — nothing is
  * re-serialised, so a record this build cannot read still exports byte for
@@ -60,16 +62,27 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * The manifest's shape. Bumped on any change a reader of an older one would
  * misread — and every bump brings a migration from the version before it
  * (`lib/dataImport.ts`'s `MANIFEST_MIGRATIONS`), so an older zip still imports.
+ * Version 3 added the engine presets (CTA-179): a file of a kind an older
+ * reader refuses, so it says "newer" rather than "malformed". Version 4 added
+ * Analysis V2's projects (CTA-186), for the same reason. Version 5 added the
+ * links between their Cases (CTA-188) to that file — an older reader would drop them.
+ * CTA-192 dropped the `analyses` category (the legacy saved analyses) without
+ * a bump: an older reader of a new zip simply finds none.
  */
-export const EXPORT_FORMAT_VERSION = 2;
+export const EXPORT_FORMAT_VERSION = 5;
 
 /** What the manifest calls itself — how an import tells it from any other JSON. */
 export const EXPORT_FORMAT = "chessapp-export";
 
 type CollectionSource = CollectionSummary["source"];
 
-/** The four things the reader ticks. */
-export const EXPORT_CATEGORIES = ["collections", "games", "analyses", "repertoires"] as const;
+/**
+ * Every category the format knows — the engine presets since CTA-179,
+ * Analysis V2's projects since CTA-186; the legacy saved analyses' went in
+ * CTA-192. This file stays free of the build, since Node reads it too (the
+ * browser pass's seed).
+ */
+export const EXPORT_CATEGORIES = ["collections", "games", "repertoires", "enginePresets", "analysisProjects"] as const;
 export type ExportCategory = (typeof EXPORT_CATEGORIES)[number];
 
 /** What the reader ticked. */
@@ -88,14 +101,57 @@ export type ExportCollection = {
 /** Every record the export may draw on. A category not ticked may be left empty. */
 export type ExportSource = {
   playedGames: readonly PlayedGame[];
-  analyses: readonly SavedAnalysis[];
-  analysisFolders: readonly AnalysisFolder[];
   repertoires: readonly SavedRepertoire[];
   repertoireFolders: readonly RepertoireFolder[];
   collections: readonly ExportCollection[];
   /** The Library's folders (CTA-88) — the ones the uploaded collections are filed in. */
   collectionFolders: readonly GameFolder[];
+  /** The engine presets as stored (CTA-179) — Default only once it was edited. */
+  enginePresets: readonly EnginePreset[];
+  /** Which preset each engine runs. */
+  enginePresetSelections: readonly EnginePresetSelection[];
+  /** Analysis V2 (CTA-186): its folders, Projects and Cases. */
+  projectFolders: readonly ProjectFolder[];
+  analysisProjects: readonly AnalysisProject[];
+  analysisCases: readonly AnalysisCase[];
+  /** The links between the Cases (CTA-188) — absent, none. */
+  caseLinks?: readonly CaseLink[];
 };
+
+/**
+ * One Project in `analysis-projects.json`: the record as stored, where it is
+ * filed by name, and its Cases as stored. An import trusts `folderPath`, never
+ * the ids of another browser's folders, and files each Case in its entry.
+ */
+export type AnalysisProjectEntry = AnalysisProject & {
+  /** Folder names from the top down; `[]` is the top level, as is a folder that is gone. */
+  folderPath: readonly string[];
+  cases: readonly AnalysisCase[];
+};
+
+/**
+ * `analysis-projects.json` (CTA-186): every folder as its path of names,
+ * parents first, the Projects, and — since version 5 (CTA-188) — the links
+ * between their Cases, as stored (by the Cases' ids, which an import keeps);
+ * a link to a Case not in the file is left out.
+ */
+export type AnalysisProjectsFile = {
+  folders: readonly (readonly string[])[];
+  projects: readonly AnalysisProjectEntry[];
+  links: readonly CaseLink[];
+};
+
+/** Where Analysis V2's projects sit in the zip. */
+export const ANALYSIS_PROJECTS_PATH = "analysis-projects.json";
+
+/** `engine-presets.json`: the presets as stored and each engine's selection. */
+export type EnginePresetsFile = {
+  presets: readonly EnginePreset[];
+  selections: readonly EnginePresetSelection[];
+};
+
+/** Where the engine presets sit in the zip. */
+export const ENGINE_PRESETS_PATH = "engine-presets.json";
 
 /** Where a record sits in its file. */
 type Placed = { index: number; games: number };
@@ -112,22 +168,6 @@ type PlayedGameEntry = Placed & {
   updatedAt: string;
 };
 
-type AnalysisEntry = Placed & {
-  id: string;
-  name: string;
-  description: string;
-  orientation: "white" | "black";
-  showArrows: boolean;
-  arrowWidthSource: ArrowWidthSource;
-  arrowPalette: ArrowPaletteId;
-  settings: AnalysisSettings;
-  path: readonly string[];
-  /** Folder names from the top down; `[]` is Unfiled. */
-  folderPath: readonly string[];
-  savedAt: string;
-  updatedAt: string;
-};
-
 type RepertoireEntry = Placed & {
   id: string;
   name: string;
@@ -140,7 +180,6 @@ type RepertoireEntry = Placed & {
 
 type ExportFileEntry =
   | { path: string; kind: "games"; records: PlayedGameEntry[] }
-  | { path: string; kind: "analyses"; records: AnalysisEntry[] }
   | {
       path: string;
       kind: "collection";
@@ -167,6 +206,18 @@ type ExportFileEntry =
       /** The folder the file stands for; `null` is Unfiled. */
       folder: { name: string } | null;
       records: RepertoireEntry[];
+    }
+  | {
+      path: string;
+      kind: "engine-presets";
+      /** How many presets the file holds — what the import counts. */
+      presets: number;
+    }
+  | {
+      path: string;
+      kind: "analysis-projects";
+      /** How many Projects the file holds — what the import counts. */
+      projects: number;
     };
 
 export type ExportManifest = {
@@ -179,8 +230,6 @@ export type ExportManifest = {
   includeShippedCollections: boolean;
   /** The folder trees, whole — present for a category that was exported. */
   folders: {
-    /** Every analysis folder as its path of names, parents before children. */
-    analyses?: string[][];
     /** Every repertoire folder's name (one level), in name order. */
     repertoires?: string[];
     /** Every Library folder as its path of names, parents before children (Built-in is not one). */
@@ -337,32 +386,6 @@ export const buildExport = (
     if (records.length > 0) add(pgnFileOf(pgns), { path: "games.pgn", kind: "games", records });
   }
 
-  if (selection.analyses) {
-    const known = new Map(source.analysisFolders.map((folder) => [folder.id, folder]));
-    const { pgns, entries: records } = placed(source.analyses, (analysis, place): AnalysisEntry => ({
-      ...place,
-      id: analysis.id,
-      name: analysis.name,
-      description: analysis.description,
-      orientation: analysis.orientation,
-      showArrows: analysis.showArrows,
-      arrowWidthSource: analysis.arrowWidthSource,
-      arrowPalette: analysis.arrowPalette,
-      settings: analysis.settings,
-      path: analysis.path,
-      folderPath:
-        analysis.folderId !== null && known.has(analysis.folderId)
-          ? analysisFolderPath(source.analysisFolders, analysis.folderId).map((step) => step.name)
-          : [],
-      savedAt: analysis.savedAt,
-      updatedAt: analysis.updatedAt,
-    }));
-    folders.analyses = folderPaths(source.analysisFolders);
-    if (records.length > 0) {
-      add(pgnFileOf(pgns), { path: "analyses.pgn", kind: "analyses", records });
-    }
-  }
-
   if (selection.collections) {
     const places = libraryFolderPlaces(source.collectionFolders);
     // One file-name minter per directory.
@@ -426,6 +449,38 @@ export const buildExport = (
     folders.repertoires = sorted.map((folder) => folder.name);
   }
 
+  if (selection.enginePresets && (source.enginePresets.length > 0 || source.enginePresetSelections.length > 0)) {
+    const file: EnginePresetsFile = { presets: source.enginePresets, selections: source.enginePresetSelections };
+    add(`${JSON.stringify(file, null, 2)}\n`, {
+      path: ENGINE_PRESETS_PATH,
+      kind: "engine-presets",
+      presets: source.enginePresets.length,
+    });
+  }
+
+  if (selection.analysisProjects) {
+    const known = new Set(source.projectFolders.map((folder) => folder.id));
+    const projects: AnalysisProjectEntry[] = source.analysisProjects.map((project) => ({
+      ...project,
+      folderPath:
+        project.folderId !== null && known.has(project.folderId)
+          ? gameFolderPath(source.projectFolders, project.folderId).map((step) => step.name)
+          : [],
+      cases: source.analysisCases.filter((record) => record.projectId === project.id),
+    }));
+    const projectFolders = folderPaths(source.projectFolders);
+    const exported = new Set(projects.flatMap((project) => project.cases.map((record) => record.id)));
+    const links = (source.caseLinks ?? []).filter((link) => exported.has(link.fromId) && exported.has(link.toId));
+    if (projects.length > 0 || projectFolders.length > 0) {
+      const file: AnalysisProjectsFile = { folders: projectFolders, projects, links };
+      add(`${JSON.stringify(file, null, 2)}\n`, {
+        path: ANALYSIS_PROJECTS_PATH,
+        kind: "analysis-projects",
+        projects: projects.length,
+      });
+    }
+  }
+
   return {
     manifest: {
       format: EXPORT_FORMAT,
@@ -441,7 +496,7 @@ export const buildExport = (
   };
 };
 
-/** The bundle as one zip: `manifest.json` first, then the PGN files in manifest order. */
+/** The bundle as one zip: `manifest.json` first, then the files in manifest order. */
 export const zipExport = ({ manifest, files }: ExportBundle): Uint8Array<ArrayBuffer> =>
   zipSync(
     Object.fromEntries([

@@ -1,10 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type {
   EngineDescriptor,
   EngineHandle,
   EngineOption,
+  UciOptionValue,
 } from "../../../lib/engineTypes";
+import {
+  BOARD_OWNED_OPTIONS,
+  presetResetValue,
+  resolveEnginePreset,
+} from "../../../lib/enginePresets";
+import { presetValuesInEffect, readEnginePresetDraft, subscribeEnginePresetDraft } from "../../../lib/enginePresetDraft";
+import {
+  enginePresetSelectionsSnapshot,
+  enginePresetsSnapshot,
+  subscribeEnginePresetSelections,
+  subscribeEnginePresets,
+} from "../../../lib/enginePresetStore";
+import { ensureEngineServerChecked, engineServerStatus, subscribeEngineServer } from "../../../lib/engineServer";
 import { resolveEngine } from "../../../lib/engines";
+import { withEvalSources } from "../../../lib/evalSources";
 import {
   EMPTY_ANALYSIS,
   pvToSan,
@@ -12,6 +27,7 @@ import {
   withEngineLine,
   type Analysis,
   type Score,
+  type SearchProgress,
 } from "../../../lib/engineAnalysis";
 import { isTerminal, turnOf } from "./useBoardCore";
 
@@ -44,22 +60,40 @@ import { isTerminal, turnOf } from "./useBoardCore";
  *   {@link EngineModule.engineOptions}, so a settings tab can say which knobs
  *   this build does not have rather than showing controls that do nothing. And
  *   the caller's requested values are **clamped into the bounds it declared**
- *   and reported back through {@link EngineModuleStart.onUciOptionsReady} — the
- *   generalization of the two shipped clamps, so this module never learns what
- *   a setting *means*. Without it the panel would show a number the engine
- *   never accepts (this build pins `Hash` to 16 and `Threads` to 1).
+ *   and reported back through {@link EngineModuleStart.onUciOptionsReady}, so
+ *   this module never learns what a setting *means*. Without it the panel
+ *   would show a number the engine never accepts (the single-thread build pins
+ *   `Threads` to 1).
+ * - **The engine's preset** (CTA-179): the options the reader set for this
+ *   engine in Settings → Engine (`lib/enginePresets.ts`) — its selected
+ *   preset's values, met against what the running engine declared once the
+ *   handshake lands, held to its bounds, sent **beside** the caller's own
+ *   options. The caller's always win: a name in
+ *   {@link EngineModuleStart.uciOptions} is never sent from the preset, and
+ *   Threads, Hash and MultiPV never are. A value the preset stops setting
+ *   goes back to the engine's default. A change applies from the next
+ *   search, never into a running one (the handle's discipline, §4.1).
+ * - **The eval sources first** (CTA-196, `lib/evalSources/`): the handle is
+ *   built behind `withEvalSources`, so an analysis search asks the sources the
+ *   reader turned on (the lichess evaluation API) before its engine — a hit
+ *   at the target depth or deeper arrives as the engine's own lines would,
+ *   and a finished search is sent back where a source takes writes. A board
+ *   whose engine chooses its move in a game passes
+ *   {@link EngineModuleStart.evalSources} `false`.
  * - **Option pushes before the search.** The `setOption` effect is declared
  *   ahead of the search effect, so on any render where both run the options go
- *   out before the `go` that should honour them. `Engine.setOption` itself
- *   buffers, drops a name this build does not have, and never posts during a
- *   search — §4.1.
+ *   out before the `go` that should honour them. The handle's `setOption`
+ *   itself buffers, drops a name this build does not have, and never posts
+ *   during a search — §4.1.
  * - **Searching the position on screen**, not the live one. Switching off stops
  *   the running search rather than letting it finish quietly in the background:
  *   the worker shares the tab with the UI. A terminal position is not searched.
  * - **Per-FEN evals** (CTA-50/51): the score a search *finished* with, recorded
  *   when its `bestmove` lands — not per streamed line, each of which is
  *   shallower than the last. Keyed by FEN, so a position reached twice reads
- *   the same score twice, and never cleared by a load.
+ *   the same score twice, and never cleared by a load. A caller that wants
+ *   each finished search as it lands — with its depth and engine — passes
+ *   `onSearchFinished` (CTA-167, the Analysis Board's `[%eval]` writer).
  * - **Normalising the score** through `lib/engineAnalysis.ts` against the turn
  *   of the **searched** FEN. On a board that can show an earlier ply that is a
  *   different side from the live one, and mixing them inverts every evaluation.
@@ -90,17 +124,28 @@ export type EngineModuleStart = {
   /** `go movetime`, in milliseconds. Omitted by the wrapper when 0. */
   moveTimeMs: number;
   /**
-   * The UCI options this board wants set, by name. Pushed on change; a name
-   * this build does not have is dropped by `Engine.setOption`.
+   * Search until stopped — `go infinite`, an analysis board's infinite
+   * analysis (CTA-160) — instead of to {@link depth} and {@link moveTimeMs}.
+   * Absent is off. The search ends only when the position changes or the
+   * engine is switched off, so its `bestmove` (and the score the move list
+   * keeps) lands then; a board waiting for the engine's move must not ask
+   * for it.
+   */
+  infinite?: boolean;
+  /**
+   * The UCI options this board wants set, by name — a spin's number, a
+   * check's boolean (or `1` / `0`), words for a combo or a string (CTA-179).
+   * Pushed on change; a name this build does not have is dropped by the
+   * handle's `setOption`. They win over the engine's preset.
    *
    * **Memoise it.** Three effects here take it as a dependency (rather than
    * reading it out of a ref, which `react-hooks/refs` rejects — the shipped
    * hooks make the same trade), so a fresh object literal every render would
    * restart the search on every render.
    */
-  uciOptions: Readonly<Record<string, number>>;
+  uciOptions: Readonly<Record<string, UciOptionValue>>;
   /**
-   * The same names, with each value pulled into the bounds the running worker
+   * The same names — the numbers among them — with each value pulled into the bounds the running worker
    * declared — called once the handshake lands, and only when something
    * actually changed. The screen writes the clamped numbers back into its own
    * settings, which is what makes the panel and the engine agree.
@@ -111,6 +156,38 @@ export type EngineModuleStart = {
    * board where the engine plays — see the note above.
    */
   onBestMove?: (bestMove: string, searchedFen: string) => void;
+  /**
+   * **A search finished** (CTA-167) — called at the moment its score is
+   * recorded in {@link EngineModule.evalsByFen}, with the depth it reached and
+   * the engine that ran it: what the Analysis Board writes into the game as
+   * `[%eval]`. A search ended early — by a change of position, or by the
+   * switch going off — still finished, at the depth it reached; one stopped
+   * before its first scored line has nothing to say and is not reported.
+   * Absent: nothing is called, today's behaviour. Memoise it, as
+   * {@link onBestMove}: it is a dependency of the subscription.
+   */
+  onSearchFinished?: (finished: FinishedSearch) => void;
+  /**
+   * **Whether the eval sources may answer this board's searches** (CTA-196,
+   * `lib/evalSources/`, docs/engine.md §10). Absent or `true`: an analysis
+   * board — every search asks the sources the reader turned on first, and a
+   * finished one is sent back. `false`: **an engine choosing its move in a
+   * game** — Play with Engine and Masked Pieces — which always searches
+   * itself. (A strength-limited engine is never answered either way.)
+   */
+  evalSources?: boolean;
+};
+
+/** One finished search, as {@link EngineModuleStart.onSearchFinished} reports it. */
+export type FinishedSearch = {
+  /** The position searched. */
+  fen: string;
+  /** Its final score, White's view — the one `evalsByFen` keeps. */
+  score: Score;
+  /** The depth of the line that score came from. */
+  depth: number;
+  /** The engine that searched it. */
+  engine: EngineDescriptor;
 };
 
 export type EngineModule = {
@@ -124,6 +201,22 @@ export type EngineModule = {
   engineOptions: ReadonlyMap<string, EngineOption>;
   /** Clear the lines — what loading a different game does. */
   clearAnalysis: () => void;
+  /**
+   * **A search is running** for the position on screen (CTA-181) — on, not a
+   * terminal position, and the search last asked for has not yet answered
+   * with its `bestmove` (an infinite one never does until stopped). What the
+   * top bar's Engine icon pulses on. Absent from a caller's reading: today's
+   * behaviour.
+   */
+  searching: boolean;
+  /**
+   * **Where the running search stops** (CTA-195) — its target depth, held to
+   * the engine's `capabilities.maxDepth` as the wrapper holds the `go`, and its
+   * move time — while {@link searching}, and only for a bounded search (an
+   * infinite one has no target). What the variations box's depth chip fills
+   * toward (`BoardPanel`'s `searchProgress`). Absent otherwise.
+   */
+  searchProgress: SearchProgress | undefined;
 };
 
 export const useEngineModule = ({
@@ -132,10 +225,24 @@ export const useEngineModule = ({
   fen,
   depth,
   moveTimeMs,
+  infinite = false,
   uciOptions,
   onUciOptionsReady,
   onBestMove,
+  onSearchFinished,
+  evalSources = true,
 }: EngineModuleStart): EngineModule => {
+  /*
+    The engine server's engines come and go with its status (docs/engine.md §8):
+    render again when it changes, so `resolveEngine` below sees them — a
+    `hosted:…` engine asked for before the server answered is picked up when it
+    does, and one whose server went away falls back to the default. While the
+    reader has no server the status never changes. The first check is made
+    here, where the reader turned the server on.
+  */
+  useSyncExternalStore(subscribeEngineServer, engineServerStatus, engineServerStatus);
+  useEffect(ensureEngineServerChecked, []);
+
   /*
     Which engine, decided at render — a pure read of the registry, no worker is
     built — so the effects below depend on it and a change of choice re-runs
@@ -144,11 +251,26 @@ export const useEngineModule = ({
   const descriptor = resolveEngine(engineId);
 
   /*
+    The engine's preset (CTA-179) — the values its selected preset sets, its
+    unsaved draft over them (CTA-185, `lib/enginePresetDraft.ts`), the same
+    object until that preset, its draft or the selection changes, and none
+    until both stores have been read. Read here, where the engine is known, so
+    every board sends it without a line of its own.
+  */
+  const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
+  const selections = useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot);
+  // Read for its re-render: a draft edited is new values.
+  useSyncExternalStore(subscribeEnginePresetDraft, readEnginePresetDraft, readEnginePresetDraft);
+  const presetValues = presetValuesInEffect(presets, selections, descriptor.id);
+  /** The preset's names last sent to which handle — a name dropped since goes back to the engine's default. */
+  const presetSentRef = useRef<{ handle: EngineHandle; names: readonly string[] } | null>(null);
+
+  /*
     The final score of the search in flight, remembered from the last top-line
     `info` and written down when that search's `bestmove` lands: a position's
     score is recorded when the search for it *completes*.
   */
-  const latestScoreRef = useRef<{ fen: string; score: Score } | null>(null);
+  const latestScoreRef = useRef<{ fen: string; score: Score; depth: number } | null>(null);
 
   const engineRef = useRef<{
     descriptor: EngineDescriptor;
@@ -160,16 +282,33 @@ export const useEngineModule = ({
     before building the new one — one engine at a time — and forgets the score
     of a search that will now never finish.
   */
-  const getEngine = useCallback((): EngineHandle => {
+  const ensureEngine = useCallback((): EngineHandle => {
     const current = engineRef.current;
     if (current?.descriptor === descriptor) return current.handle;
 
     current?.handle.terminate();
     latestScoreRef.current = null;
-    const handle = descriptor.create();
+    // The eval sources in front of it (CTA-196): an analysis search asks them first.
+    const handle = withEvalSources(descriptor.create(), {
+      engine: descriptor.name,
+      maxDepth: descriptor.capabilities.maxDepth,
+    });
     engineRef.current = { descriptor, handle };
     return handle;
   }, [descriptor]);
+
+  /*
+    The search asked for now — one object per distinct request, so whether
+    it has answered is "the request its `bestmove` finished is this one"
+    (CTA-181, `searching`). Kept in a ref by the search effect for the
+    message handler, which reads it when a `bestmove` lands.
+  */
+  const searchRequest = useMemo(
+    () => ({ fen, depth, moveTimeMs, infinite, uciOptions, presetValues, descriptor }),
+    [fen, depth, moveTimeMs, infinite, uciOptions, presetValues, descriptor],
+  );
+  const requestRef = useRef<typeof searchRequest | null>(null);
+  const [finishedRequest, setFinishedRequest] = useState<typeof searchRequest | null>(null);
 
   const [analysis, setAnalysis] = useState<Analysis>(EMPTY_ANALYSIS);
   const [evals, setEvals] = useState<ReadonlyMap<string, Score>>(
@@ -195,7 +334,7 @@ export const useEngineModule = ({
   }
 
   /*
-    Subscribe once per Engine instance — and re-subscribe when the caller's
+    Subscribe once per engine handle — and re-subscribe when the caller's
     reply handler changes, because it closes over the position the reply has to
     be judged against. That is a dependency rather than a ref read because
     re-subscribing costs
@@ -206,7 +345,9 @@ export const useEngineModule = ({
     worker, before the search effect below asks it for anything.
   */
   useEffect(() => {
-    const unsubscribe = getEngine().onMessage((message) => {
+    const unsubscribe = ensureEngine().onMessage((message) => {
+      // An engine server's word that a silent engine is alive (CTA-194) — nothing for a board.
+      if (message.heartbeat) return;
       const { fen: searchedFen, pv, depth: reached, multipv, bestMove } = message;
       /*
         `fen` has no UCI equivalent — the wrapper stamps it on. Without it there
@@ -220,7 +361,7 @@ export const useEngineModule = ({
         const rank = multipv ?? 1;
 
         if (rank === 1 && score !== null) {
-          latestScoreRef.current = { fen: searchedFen, score };
+          latestScoreRef.current = { fen: searchedFen, score, depth: reached };
         }
 
         setAnalysis((previous) =>
@@ -238,22 +379,28 @@ export const useEngineModule = ({
       /*
         The search for this position is over: its final score is what the move
         list keeps, keyed by FEN. A search the switch interrupted still
-        finished, so its score is recorded even with the engine off.
+        finished, so its score is recorded even with the engine off — and so
+        is one a change of position interrupted: the wrapper stamps its
+        `bestmove` with the FEN it was searching, not the one asked for next.
       */
       const final = latestScoreRef.current;
       latestScoreRef.current = null;
-      if (final !== null && final.fen === searchedFen) {
+      // The search asked for, answered — when it was for this position (one a change of position stopped was not).
+      const request = requestRef.current;
+      if (request !== null && request.fen === searchedFen) setFinishedRequest(request);
+      const finished = final !== null && final.fen === searchedFen ? final : null;
+      if (finished !== null) {
         setEvals((previous) => {
           const existing = previous.get(searchedFen);
           if (
             existing !== undefined &&
-            existing.kind === final.score.kind &&
-            existing.value === final.score.value
+            existing.kind === finished.score.kind &&
+            existing.value === finished.score.value
           ) {
             return previous;
           }
           const next = new Map(previous);
-          next.set(searchedFen, final.score);
+          next.set(searchedFen, finished.score);
           return next;
         });
       }
@@ -261,10 +408,19 @@ export const useEngineModule = ({
       // The reply. Absent on every board but the one that plays — and that
       // board owns the guard, because only it knows whose turn it is.
       onBestMove?.(bestMove, searchedFen);
+
+      /*
+        Reported after the reply: a reply sets the tree it played into, and
+        an evaluation written into the tree (CTA-167) must land on that tree,
+        not be overwritten by it.
+      */
+      if (finished !== null) {
+        onSearchFinished?.({ fen: searchedFen, score: finished.score, depth: finished.depth, engine: descriptor });
+      }
     });
 
     return unsubscribe;
-  }, [getEngine, onBestMove]);
+  }, [ensureEngine, descriptor, onBestMove, onSearchFinished]);
 
   // Tear the worker down on unmount (and on StrictMode remount).
   useEffect(() => {
@@ -280,7 +436,7 @@ export const useEngineModule = ({
     The names are the caller's — this module never learns what one means.
   */
   useEffect(() => {
-    const engine = getEngine();
+    const engine = ensureEngine();
     return engine.whenOptionsReady(() => {
       const options = new Map(engine.options);
       setEngineOptions(options);
@@ -288,6 +444,8 @@ export const useEngineModule = ({
       const clamped: Record<string, number> = {};
       let changed = false;
       for (const [name, value] of Object.entries(uciOptions)) {
+        // Only a number has bounds to be held to: a check or words go as they are.
+        if (typeof value !== "number") continue;
         const option = options.get(name);
         const next =
           option?.min === undefined || option.max === undefined
@@ -306,19 +464,41 @@ export const useEngineModule = ({
       */
       if (changed) onUciOptionsReady?.(clamped);
     });
-  }, [getEngine, uciOptions, onUciOptionsReady]);
+  }, [ensureEngine, uciOptions, onUciOptionsReady]);
 
   /*
     Push the option-backed settings. Declared *before* the search effect so
     that on any render where both run, the options go out ahead of the `go`
     that should honour them.
+
+    The caller's go at once; the preset's once the engine has said what it
+    declares — they are met against it (bounds, a file path a browser build
+    cannot take, the board's own names left out). Asked for inside the
+    handshake's callbacks, they go out with everything the handshake held, so
+    the first search already runs under them (`UciEngine`).
   */
   useEffect(() => {
-    const engine = getEngine();
+    const engine = ensureEngine();
     for (const [name, value] of Object.entries(uciOptions)) {
       engine.setOption(name, value);
     }
-  }, [getEngine, uciOptions]);
+    return engine.whenOptionsReady(() => {
+      const context = {
+        inBrowser: descriptor.server === undefined,
+        owned: [...BOARD_OWNED_OPTIONS, ...Object.keys(uciOptions)],
+      };
+      const { send } = resolveEnginePreset(presetValues, engine.options, context);
+      // A name the preset set on this engine and no longer does: back to the engine's default.
+      const previous = presetSentRef.current?.handle === engine ? presetSentRef.current.names : [];
+      for (const name of previous) {
+        if (Object.hasOwn(send, name)) continue;
+        const reset = presetResetValue(engine.options.get(name), context);
+        if (reset !== undefined) engine.setOption(name, reset);
+      }
+      for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
+      presetSentRef.current = { handle: engine, names: Object.keys(send) };
+    });
+  }, [ensureEngine, descriptor, uciOptions, presetValues]);
 
   /*
     Search the position on screen — and only while the engine is switched on.
@@ -338,12 +518,13 @@ export const useEngineModule = ({
     // that: the analysis below is only handed on when its FEN matches.
     if (isTerminal(fen)) return;
 
-    getEngine().search(fen, { depth, movetime: moveTimeMs });
-    // `uciOptions` is a dependency so that changing a setting restarts the
-    // search and is reflected in the lines immediately, rather than waiting
-    // for the next move — which is what "takes effect on the next search"
-    // means in practice.
-  }, [getEngine, enabled, fen, depth, moveTimeMs, uciOptions]);
+    requestRef.current = searchRequest;
+    ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs, evalSources });
+    // `uciOptions` and the preset are dependencies so that changing a setting
+    // restarts the search and is reflected in the lines immediately, rather
+    // than waiting for the next move — which is what "takes effect on the
+    // next search" means in practice.
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, evalSources, uciOptions, presetValues, searchRequest]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 
@@ -356,11 +537,18 @@ export const useEngineModule = ({
   const currentAnalysis: Analysis =
     enabled && analysis.fen === fen ? analysis : { fen, depth: 0, lines: [] };
 
+  const searching = enabled && !isTerminal(fen) && finishedRequest !== searchRequest;
+  // Where it stops (CTA-195) — the depth as the wrapper sends it; one object per target, so a chip re-renders only on a change.
+  const targetDepth = Math.min(depth, descriptor.capabilities.maxDepth);
+  const bounds = useMemo<SearchProgress>(() => ({ targetDepth, moveTimeMs }), [targetDepth, moveTimeMs]);
+
   return {
     descriptor,
     analysis: currentAnalysis,
     evalsByFen: evals,
     engineOptions,
     clearAnalysis,
+    searching,
+    searchProgress: searching && !infinite ? bounds : undefined,
   };
 };

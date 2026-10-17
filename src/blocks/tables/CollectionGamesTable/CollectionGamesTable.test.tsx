@@ -109,4 +109,24 @@ describe("CollectionGamesTable (CTA-113)", () => {
     expect(numbers()).toHaveLength(50);
     expect(screen.getByTestId("games-pager")).toBeInTheDocument();
   });
+
+  it("without a link or picks: no pick column, no link, and a row's click is the caller's (CTA-208)", async () => {
+    const onRowClick = vi.fn();
+    render(
+      <CollectionGamesTable
+        rows={COLLECTION_ROWS}
+        sort={{ column: "number", direction: "asc" }}
+        onSort={() => {}}
+        paging={{ page: 0, rowsPerPage: 50, onPageChange: () => {}, onRowsPerPageChange: () => {} }}
+        onRowClick={onRowClick}
+        testId="games"
+      />,
+    );
+    const table = screen.getByTestId("games-frame-table");
+    expect(within(table).queryByRole("checkbox")).toBeNull();
+    expect(within(table).queryByRole("link")).toBeNull();
+    const firstRow = within(table).getAllByRole("row")[1];
+    await userEvent.click(within(firstRow).getAllByRole("cell")[1]);
+    expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ number: COLLECTION_ROWS[0].number }));
+  });
 });

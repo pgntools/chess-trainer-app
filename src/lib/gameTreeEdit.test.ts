@@ -1,6 +1,9 @@
+import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
 import { parsePgnTree } from "./pgn";
 import {
+  addLine,
+  addMove,
   deleteFrom,
   findNode,
   isInSideLine,
@@ -158,5 +161,58 @@ describe("linePgn", () => {
     expect(pgn).toContain('[FEN "4k3/8/8/8/8/8/4P3/4K3 b - - 0 12"]');
     expect(pgn).not.toContain("Result");
     expect(pgn.endsWith("12... Kd7 13. e3 *")).toBe(true);
+  });
+});
+
+describe("addLine", () => {
+  /** A SAN line from `fen` as `addLine`'s moves. */
+  const movesOf = (fen: string, sans: readonly string[]) => {
+    const chess = new Chess(fen);
+    return sans.map((san) => {
+      const move = chess.move(san);
+      return { san: move.san, from: move.from, to: move.to, fen: chess.fen(), ...(move.captured ? { captured: move.captured } : {}) };
+    });
+  };
+
+  it("adds the moves as addMove would, one at a time", () => {
+    const tree = load();
+    const at = idAt(tree, "e4", "e5");
+    const moves = movesOf(findNode(tree, at)?.fen ?? "", ["Bc4", "Nf6", "d3"]);
+    const { tree: added, nodeId } = addLine(tree, at, moves);
+    let byMove = tree;
+    let parent: string | null = at;
+    for (const move of moves) ({ tree: byMove, nodeId: parent } = addMove(byMove, parent, move));
+    expect(treeToPgn(added)).toBe(treeToPgn(byMove));
+    expect(nodeId).toBe(parent);
+    expect(added.nextId).toBe(byMove.nextId);
+    expect(findNode(added, nodeId)?.ply).toBe(5);
+  });
+
+  it("follows the moves already there and branches at the first new one", () => {
+    const tree = load();
+    const moves = movesOf(tree.startFen, ["e4", "c5", "Nf3", "Nc6"]);
+    const { tree: added } = addLine(tree, null, moves);
+    expect(treeToPgn(added)).toBe(
+      treeToPgn(parsePgnTree("1. e4 e5 (1... c5 2. Nf3 (2. Nc3 Nc6) 2... d6 (2... Nc6)) (1... e6) 2. Nf3 Nc6 *")),
+    );
+    // The original's ids are untouched, and nothing is mutated.
+    expect(idAt(added, "e4", "c5", "Nf3", "d6")).toBe(idAt(tree, "e4", "c5", "Nf3", "d6"));
+    expect(treeToPgn(tree)).toBe(treeToPgn(load()));
+  });
+
+  it("puts each move's comments on the nodes it creates only", () => {
+    const tree = load();
+    const [e4, d5] = movesOf(tree.startFen, ["e4", "d5"]);
+    const { tree: added, nodeId } = addLine(tree, null, [{ ...e4, comments: ["kept off"] }, { ...d5, comments: ["[%eval 0.3,20]"] }]);
+    expect(findNode(added, idAt(added, "e4"))?.comments).toBeUndefined();
+    expect(findNode(added, nodeId)?.comments).toEqual(["[%eval 0.3,20]"]);
+  });
+
+  it("is the same tree back when every move is there, or the parent is not", () => {
+    const tree = load();
+    const there = addLine(tree, null, movesOf(tree.startFen, ["e4", "e6"]));
+    expect(there.tree).toBe(tree);
+    expect(there.nodeId).toBe(idAt(tree, "e4", "e6"));
+    expect(addLine(tree, "nowhere", movesOf(tree.startFen, ["d4"])).tree).toBe(tree);
   });
 });

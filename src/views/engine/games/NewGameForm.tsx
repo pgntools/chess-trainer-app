@@ -11,17 +11,15 @@ import { InlineAlert } from "../../../design-system/components/feedback";
 import { CheckboxField, FieldLabel, SideToggle } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 
-import {
-  DEFAULT_ENGINE_SETTINGS,
-  uciOptionsOf,
-  withClampedUciOptions,
-  type EngineSettings as EngineSettingsValues,
-} from "../../../lib/engineSettings";
+import { presetLimitsStrength } from "../../../lib/enginePresets";
+import { DEFAULT_ENGINE_SETTINGS, uciOptionsOf, withClampedStrength } from "../../../lib/engineSettings";
 import { parseFen } from "../../../lib/fen";
-import { newGameParams, type NewGameSide } from "../../../lib/newGameLink";
+import { newGameParams, type NewGameSettings, type NewGameSide } from "../../../lib/newGameLink";
 import { START_POSITION } from "../../../lib/positionEditor";
 import { useEngineModule } from "../../board/core/useEngineModule";
 import { useEngineChoice } from "../../shared/useEngineChoice";
+import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
+import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
 import PositionEditor from "../../shared/positionEditor/PositionEditor";
 import { usePositionEditor } from "../../shared/positionEditor/usePositionEditor";
 import EngineSettings from "../play/EngineSettings";
@@ -36,8 +34,11 @@ import EngineSettings from "../play/EngineSettings";
  * `/engine/play` with the choice as query parameters (`lib/newGameLink.ts`),
  * which `arrivalOf` reads once.
  *
- * The form starts from `DEFAULT_ENGINE_SETTINGS` on every visit — nothing is
- * remembered. **An engine is handshaken but never searches**
+ * The form starts from `DEFAULT_ENGINE_SETTINGS`' strength on every visit —
+ * nothing is remembered; since CTA-181 the strength is all it sets (the
+ * search settings are the reader's global ones, the top bar's Engine menu),
+ * and its Elo is off while the engine's preset has `UCI_LimitStrength` off,
+ * as on the game. **An engine is handshaken but never searches**
  * (`useEngineModule` with `enabled: false`): what it declares is what the
  * tab renders — a pinned knob as pinned, an absent one as absent — and the
  * defaults are clamped into its bounds, exactly as on the play screen. Until
@@ -68,7 +69,11 @@ const EDITOR_BOARD_MAX_PX = 360;
 
 function NewGameForm() {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<EngineSettingsValues>(DEFAULT_ENGINE_SETTINGS);
+  const [settings, setSettings] = useState<NewGameSettings>(() => ({
+    skillLevel: DEFAULT_ENGINE_SETTINGS.skillLevel,
+    elo: DEFAULT_ENGINE_SETTINGS.elo,
+  }));
+  const { settings: search } = useEngineSearchSettings();
   const [side, setSide] = useState<NewGameSide>("white");
   const [evalBar, setEvalBar] = useState(true);
   // What the new game's pinned lines start as (CTA-90) — the block's own
@@ -98,32 +103,37 @@ function NewGameForm() {
   }, [editor.isValid, customFen]);
 
   const onUciOptionsReady = useCallback(
-    (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => withClampedUciOptions(current, clamped)),
+    (clamped: Readonly<Record<string, number>>) => setSettings((current) => withClampedStrength(current, clamped)),
     [],
   );
   // The form shows the options of the engine the game will be played by: the reader's choice.
   const { engineId } = useEngineChoice();
-  const { engineOptions } = useEngineModule({
+  const { engineOptions, descriptor } = useEngineModule({
     // Handshake only: the lobby has no position to think about.
     enabled: false,
     engine: engineId,
     fen: DEFAULT_POSITION,
-    depth: settings.depth,
-    moveTimeMs: settings.moveTimeMs,
+    depth: search.depth,
+    moveTimeMs: search.moveTimeMs,
     uciOptions: useMemo(
       () =>
-        uciOptionsOf({
-          skillLevel: settings.skillLevel,
-          elo: settings.elo,
-          multiPv: settings.multiPv,
-          threads: settings.threads,
-          hashMb: settings.hashMb,
-        }),
-      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb],
+        uciOptionsOf(
+          {
+            skillLevel: settings.skillLevel,
+            elo: settings.elo,
+            multiPv: search.multiPv,
+            threads: search.threads,
+            hashMb: search.hashMb,
+          },
+          engineId,
+        ),
+      [settings.skillLevel, settings.elo, search.multiPv, search.threads, search.hashMb, engineId],
     ),
     onUciOptionsReady,
   });
+  // Whether the Elo applies — the engine's preset's UCI_LimitStrength, as on the game (CTA-181).
+  const preset = useSelectedEnginePreset(descriptor.id);
+  const limitStrength = presetLimitsStrength(preset.values, engineOptions, { inBrowser: descriptor.server === undefined });
 
   const href = `/engine/play?${newGameParams(settings, side, evalBar, variations, customFen)}`;
 
@@ -200,8 +210,8 @@ function NewGameForm() {
               settings={settings}
               onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
               engineOptions={engineOptions}
-              showEvalBar={evalBar}
-              onShowEvalBarChange={setEvalBar}
+              limitStrength={limitStrength}
+              evalBar={{ checked: evalBar, onChange: setEvalBar }}
             />
 
             {/*

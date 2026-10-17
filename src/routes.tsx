@@ -7,14 +7,16 @@ import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
 import { default as MaskedPlayScreen  } from './views/engine/masked/Main'
-import { default as AnalysisBoardScreen  } from './views/tools/analysis/Main'
-import { default as SavedAnalysesScreen  } from './views/tools/analysis/saved/Main'
-import { default as AnalysisSettingsScreen  } from './views/tools/analysis/saved/AnalysisSettingsScreenMain'
+import { default as ProjectsBrowserScreen  } from './views/analysisV2/ProjectsBrowserMain'
+import { default as ProjectScreen  } from './views/analysisV2/ProjectScreenMain'
+import { default as CaseWorkspaceScreen  } from './views/analysisV2/CaseWorkspaceMain'
+import { default as JobsScreen  } from './views/jobs/JobsMain'
+import { default as JobScreen  } from './views/jobs/JobMain'
+import { default as JobsSettingsScreen  } from './views/jobs/JobsSettingsMain'
 import { default as OpeningsScreen  } from './views/openings/Main'
 import { default as LibraryScreen  } from './views/library/LibraryHomeMain'
 import { default as LibraryUploadScreen  } from './views/library/LibraryUploadMain'
 import { default as LibraryCollectionScreen  } from './views/library/CollectionScreenMain'
-import { default as LibraryCollectionSettingsScreen  } from './views/library/CollectionSettingsScreenMain'
 import { default as LibraryGameScreen  } from './views/library/LibraryGameScreenMain'
 import { default as RepertoiresScreen  } from './views/repertoires/RepertoiresMain'
 import { default as RepertoireUploadScreen  } from './views/repertoires/RepertoireUploadMain'
@@ -23,6 +25,8 @@ import { default as RepertoireSettingsScreen  } from './views/repertoires/Repert
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
+import { CookiesMain as CookiesScreen, PrivacyMain as PrivacyScreen } from './views/legal/LegalMain'
+import { LEGAL_PAGES_SHOWN } from './views/legal/legalPagesShown'
 import { blogPageMeta } from './views/blog/blogPageMeta'
 import { collectionPageMeta } from './views/library/collectionPageMeta'
 import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
@@ -141,26 +145,47 @@ export const appRoutes: RouteObject[] = [
           element: <MaskedPlayScreen />,
           handle: { title: "pages.maskedPieces" }
         },
+        // Analysis V2 (CTA-186, shipped in CTA-192 — `.claude/rules/analysis-v2.md`):
+        // Projects in nested folders (`?folder=`), each holding Cases — a Game or
+        // a Position — each Case its own autosaved board; the browser and a
+        // Project are full-width, the Case's board a board route.
         {
-          path: "/tools/analysis",
-          element: <AnalysisBoardScreen />,
-          handle: { title: "pages.analysisBoard" }
+          path: "/analysis",
+          element: <ProjectsBrowserScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProjects" }
         },
-        // The reader's own analysis boards, kept in IndexedDB
-        // (`lib/savedAnalysisStore.ts`), filed into nested folders.
         {
-          path: "/tools/analysis/saved",
-          element: <SavedAnalysesScreen />,
-          handle: { title: "pages.savedAnalyses" }
+          path: "/analysis/projects/:projectId",
+          element: <ProjectScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProject" }
         },
-        // A saved analysis' title, description, side, arrows and folder (CTA-73).
         {
-          path: "/tools/analysis/saved/:id/settings",
-          element: <AnalysisSettingsScreen />,
-          handle: { title: "pages.analysisSettings" }
+          path: "/analysis/projects/:projectId/cases/:caseId",
+          element: <CaseWorkspaceScreen />,
+          handle: { title: "pages.analysisCase" }
         },
-        // The Openings explorer (CTA-78): a v2 board with the opening book.
-        // It keeps nothing — its Analysis button hands the tree on.
+        // The Jobs module (CTA-221, `.claude/rules/jobs.md`): every background
+        // job of every kind, run app-wide by the page's job runtime
+        // (`lib/jobs/runtime.ts`, started by the shell, not here). `settings`
+        // is a static segment, so it ranks above `:jobId` whatever the order.
+        // Jobs V2's `/analysis/jobs` is an unknown route since (CTA-192's precedent).
+        {
+          path: "/jobs",
+          element: <JobsScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.jobs" }
+        },
+        {
+          path: "/jobs/settings",
+          element: <JobsSettingsScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.jobsSettings" }
+        },
+        {
+          path: "/jobs/:jobId",
+          element: <JobScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.job" }
+        },
+        // The Openings explorer (CTA-78): a board with the opening book.
+        // It keeps nothing — its Analysis button hands the tree on, as a Case.
         {
           path: "/openings",
           element: <OpeningsScreen />,
@@ -220,13 +245,6 @@ export const appRoutes: RouteObject[] = [
           // page is rendered ahead of time (CTA-136).
           handle: { title: "pages.collection", meta: collectionPageMeta }
         },
-        // A collection's settings (CTA-121) — its title, description and
-        // tournament mark. A static segment, so it ranks above `:game`.
-        {
-          path: "/library/:collectionId/settings",
-          element: <LibraryCollectionSettingsScreen />,
-          handle: { title: "pages.collectionSettings" }
-        },
         {
           path: "/library/:collectionId/:game",
           element: <LibraryGameScreen />,
@@ -244,6 +262,25 @@ export const appRoutes: RouteObject[] = [
           element: <BlogScreen />,
           handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: blogPageMeta }
         },
+        // The legal pages (CTA-159), linked from the footer: MDX documents
+        // in `views/blog/articles/app-pages/`, in no Blog folder and not in
+        // the sidebar. Articles to the shell (`ARTICLE_ROUTE`), pre-rendered
+        // in both languages like every static route — in a build that has
+        // them, whose site operator is configured (CTA-182).
+        ...(LEGAL_PAGES_SHOWN
+          ? [
+              {
+                path: "/privacy",
+                element: <PrivacyScreen />,
+                handle: { ...ARTICLE_ROUTE, title: "pages.privacy" }
+              },
+              {
+                path: "/cookies",
+                element: <CookiesScreen />,
+                handle: { ...ARTICLE_ROUTE, title: "pages.cookies" }
+              },
+            ]
+          : []),
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.
         {

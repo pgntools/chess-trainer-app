@@ -10,7 +10,11 @@
  * its header, the main menu's rail and its footer (`Layout.tsx`), because a
  * rail, a column, a square and the aside do not fit side by side — the panel is
  * a focused view of the board, and closing it (the screen stops registering
- * the panel) brings the shell back.
+ * the panel) brings the shell back. A panel that asks `keepShell` (CTA-186,
+ * Analysis V2's Case board) takes the **main menu's place alone**: the header
+ * and the footer stay. A **full-width route** may register one too (CTA-213,
+ * the Analysis Project view, `keepShell`): the column goes before the whole
+ * body, with the same drawer under the breakpoint.
  *
  * `rightPanel.tsx`'s trio again, aimed at the board's other side:
  * `BoardLeftPanelProvider` (the shell, above the router `<Outlet />`),
@@ -146,6 +150,7 @@ export function BoardLeftPanel({
     open,
     onClose,
     drawerLabel,
+    keepShell = false,
 }: {
     children: ReactNode;
     /** Wide: the column is folded to a rail. */
@@ -156,6 +161,8 @@ export function BoardLeftPanel({
     onClose: () => void;
     /** The drawer's accessible name. */
     drawerLabel: string;
+    /** Wide: keep the shell's header and footer — the panel in the main menu's place alone. Absent, the whole window. */
+    keepShell?: boolean;
 }) {
     const slot = useBoardLeftPanelSlot('BoardLeftPanel');
     // A layout effect, as `RightPanel`'s: the column is made before the browser paints.
@@ -171,9 +178,9 @@ export function BoardLeftPanel({
         closeRef.current = onClose;
     });
     useLayoutEffect(() => {
-        slot.setRequest({ collapsed, drawerOpen: open, drawerLabel, onDrawerClose: () => closeRef.current() });
+        slot.setRequest({ collapsed, drawerOpen: open, drawerLabel, onDrawerClose: () => closeRef.current(), keepShell });
         return () => slot.setRequest(null);
-    }, [slot, collapsed, open, drawerLabel]);
+    }, [slot, collapsed, open, drawerLabel, keepShell]);
 
     const host = useSyncExternalStore(slot.subscribe, slot.getHost, slot.getHost);
     const shellTheme = useContext(ShellThemeContext);

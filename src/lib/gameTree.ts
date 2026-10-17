@@ -229,9 +229,9 @@ export const pathTo = (tree: GameTree, id: string | null): VariationNode[] => {
  * **A node id is not portable and this is.** Ids are minted per tree
  * (`nextId`), so the id a reader was standing on means nothing once the same
  * game has been round-tripped through PGN and re-parsed — which is exactly what
- * a saved analysis does (`lib/savedAnalyses.ts`). SAN, on the other hand,
+ * an Analysis case does (`lib/analysisProjects.ts`). SAN, on the other hand,
  * identifies a move uniquely within its position, which is the property
- * {@link addMove} already rests on. So a saved analysis records where the reader
+ * {@link addMove} already rests on. So a Case records where the reader
  * was as this path and {@link nodeAtSanPath} finds it again.
  */
 export const sanPathTo = (tree: GameTree, id: string | null): string[] =>
@@ -439,6 +439,22 @@ export const isInSideLine = (tree: GameTree, id: string | null): boolean => {
 };
 
 /**
+ * **Where Home goes** (CTA-165): the first move of the innermost side line
+ * holding `id`. Standing on that first move already, the enclosing line's
+ * first move — so Home pressed again climbs a level, out to the start. On the
+ * mainline (and for `null`, or an id the tree does not hold) it is `null`, the
+ * start position.
+ */
+export const branchStartOf = (tree: GameTree, id: string | null): string | null => {
+  const path = pathTo(tree, id);
+  // The node on screen is left out: as a side line's first move it climbs.
+  for (let depth = path.length - 2; depth >= 0; depth -= 1) {
+    if (!isFirstAt(tree, path, depth)) return path[depth].id;
+  }
+  return null;
+};
+
+/**
  * **Promote variation** (lichess's): the line holding `id` moves one level up
  * — at the closest branch above it (itself included) where it is not the
  * first continuation, it becomes `children[0]`, and the line that was first
@@ -484,6 +500,66 @@ export const deleteFrom = (tree: GameTree, id: string): GameTree => {
   return rebuildAlong(tree, path, (siblings, node, depth) =>
     depth === last ? siblings.filter((sibling) => sibling.id !== node.id) : siblings,
   );
+};
+
+/** One move of a line given to {@link addLine}: what {@link addMove} takes, and its comments. */
+export type LineMove = Parameters<typeof addMove>[2] & { comments?: string[] };
+
+/**
+ * **Add a whole line under `parentId`**, as {@link addMove} would add it move
+ * by move: a move already there is followed, not added again, and the first
+ * one new to its position starts a side line. The difference is **one
+ * rebuild** for the whole line, so a caller adding many long lines (an
+ * engine's, CTA-172) does not copy and re-index the tree per move. A move's
+ * `comments` land only on a node this creates. Returns the id of the line's
+ * last node, and the same tree back when every move is already there.
+ */
+export const addLine = (
+  tree: GameTree,
+  parentId: string | null,
+  moves: readonly LineMove[],
+): { tree: GameTree; nodeId: string | null } => {
+  const parent = findNode(tree, parentId);
+  if (parentId !== null && parent === null) return { tree, nodeId: parentId };
+
+  let attachTo = parent;
+  let at = 0;
+  for (; at < moves.length; at += 1) {
+    const existing = (attachTo === null ? tree.moves : attachTo.children).find((node) => node.san === moves[at].san);
+    if (existing === undefined) break;
+    attachTo = existing;
+  }
+  if (at === moves.length) return { tree, nodeId: attachTo?.id ?? null };
+
+  const fresh = moves.slice(at);
+  const firstId = tree.nextId;
+  const basePly = attachTo?.ply ?? 0;
+  // Built from the end, so each node is complete when its parent takes it.
+  let head: VariationNode | undefined;
+  for (let index = fresh.length - 1; index >= 0; index -= 1) {
+    const { comments, ...move } = fresh[index];
+    head = {
+      id: `n${firstId + index}`,
+      ...move,
+      ply: basePly + index + 1,
+      ...(comments === undefined || comments.length === 0 ? {} : { comments: [...comments] }),
+      children: head === undefined ? [] : [head],
+    };
+  }
+  if (head === undefined) return { tree, nodeId: attachTo?.id ?? null };
+  const lastId = `n${firstId + fresh.length - 1}`;
+  const nextId = firstId + fresh.length;
+
+  if (attachTo === null) {
+    return { tree: { ...tree, nextId, moves: [...tree.moves, head] }, nodeId: lastId };
+  }
+  const path = pathTo(tree, attachTo.id);
+  const last = path.length - 1;
+  const grown = { ...attachTo, children: [...attachTo.children, head] };
+  const edited = rebuildAlong(tree, path, (siblings, node, depth) =>
+    depth === last ? siblings.map((sibling) => (sibling.id === node.id ? grown : sibling)) : siblings,
+  );
+  return { tree: { ...edited, nextId }, nodeId: lastId };
 };
 
 /** Which of a move's comment lists an edit is for — after it, or before it. */

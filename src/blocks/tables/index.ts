@@ -6,11 +6,15 @@
  * that proved the layer; `CollectionGamesTable` and `CollectionsTreeTable`
  * come with the Library's migration.
  */
+export * from "./CasesTable";
+export * from "./ProjectsTable";
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
+export * from "./EngineOptionsTable";
+// CTA-217: the Jobs module's queue — every job of any kind, over block-local view models (`JobRowView`), and the parts every Jobs block draws a job with.
+export * from "./JobQueueTable";
 export * from "./PlayedGamesTable";
 // CTA-144: the Saved analyses screen's list view — a folder's analyses as a games table.
-export * from "./SavedAnalysesTable";
 export * from "./StorageTable";
 // CTA-120: the tournament tables — a `StandingsTable` and a `CrossTable` over `lib/tournament.ts`, built ahead of their screen; the Blog's MDX embeds are their first consumer (CTA-128).
 export * from "./SwissStandingsTable";
@@ -21,3 +25,5 @@ export * from "./MatchTable";
 export * from "./TeamStandingsTable";
 // CTA-142: the Library's tournament view — each player's record on its Participants tab.
 export * from "./ParticipantsTable";
+// CTA-204: an arena's standings — each player's score sheet, scored as Lichess arena points or game points.
+export * from "./ArenaStandingsTable";

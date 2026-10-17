@@ -2,13 +2,23 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_ENGINE_SETTINGS,
+  deviceEngineLimits,
   ENGINE_SETTING_BOUNDS,
+  engineLimitsOf,
+  engineSettingBoundsOf,
+  HOSTED_ENGINE_SETTING_BOUNDS,
   LIMIT_STRENGTH_OPTION,
+  MOVE_TIME_INSTANT_MS,
+  MOVE_TIME_MARKS_S,
+  MOVE_TIME_UNLIMITED_SLOT,
   engineSettingsFrom,
+  moveTimeOfSliderValue,
+  moveTimeSliderMarks,
+  moveTimeSliderValueOf,
   sameEngineSettings,
   uciOptionsOf,
   usesEloStrength,
-  withClampedUciOptions,
+  withClampedStrength,
 } from "./engineSettings";
 import type { EngineOption } from "./engineTypes";
 
@@ -26,11 +36,19 @@ describe("the Elo request", () => {
     expect(ENGINE_SETTING_BOUNDS.elo).toEqual({ min: 1320, max: 3190 });
   });
 
-  it("goes to the engine module with UCI_LimitStrength asked on — both strength controls requested", () => {
+  it("goes to the engine module without UCI_LimitStrength — the preset's call since CTA-181 — and no Skill Level on an Elo engine", () => {
     expect(uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, elo: 1700 })).toEqual({
-      "Skill Level": 10,
       UCI_Elo: 1700,
-      UCI_LimitStrength: 1,
+      MultiPV: 3,
+      Threads: 1,
+      Hash: 16,
+    });
+  });
+
+  it("asks for the Skill Level too where the engine is strengthened by it alone", () => {
+    expect(uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, skillLevel: 5 }, undefined, { bySkill: true })).toEqual({
+      "Skill Level": 5,
+      UCI_Elo: DEFAULT_ENGINE_SETTINGS.elo,
       MultiPV: 3,
       Threads: 1,
       Hash: 16,
@@ -39,14 +57,17 @@ describe("the Elo request", () => {
 
   it("is re-clamped to the bounds the running engine declared, the same object when nothing moved", () => {
     const current = { ...DEFAULT_ENGINE_SETTINGS, elo: 3500 };
-    const clamped = withClampedUciOptions(current, { UCI_Elo: 3190 });
+    const clamped = withClampedStrength(current, { UCI_Elo: 3190, Threads: 1 });
     expect(clamped.elo).toBe(3190);
+    expect(clamped.threads).toBe(current.threads);
     expect(clamped).not.toBe(current);
 
     const same = { ...DEFAULT_ENGINE_SETTINGS, elo: 1800 };
-    expect(withClampedUciOptions(same, { UCI_Elo: 1800 })).toBe(same);
+    expect(withClampedStrength(same, { UCI_Elo: 1800 })).toBe(same);
     // An engine that declares no UCI_Elo reports none: the request stands.
-    expect(withClampedUciOptions(same, {})).toBe(same);
+    expect(withClampedStrength(same, {})).toBe(same);
+    // Only the strength: the search settings are the reader's global ones, never cut back (CTA-181).
+    expect(withClampedStrength(same, { Threads: 1, Hash: 8 })).toBe(same);
   });
 
   it("reads back from stored JSON, the default for a record from before it was asked", () => {
@@ -67,7 +88,7 @@ describe("usesEloStrength — read off what the engine declared, never its name"
     expect(usesEloStrength(options("Skill Level", "UCI_Elo", LIMIT_STRENGTH_OPTION))).toBe(true);
   });
 
-  it("is false for the 2019 build, which has neither", () => {
+  it("is false for an engine that has neither — Skill Level alone", () => {
     expect(usesEloStrength(options("Threads", "Hash", "MultiPV", "Skill Level"))).toBe(false);
   });
 
@@ -78,5 +99,146 @@ describe("usesEloStrength — read off what the engine declared, never its name"
 
   it("is false before the handshake, when nothing is declared", () => {
     expect(usesEloStrength(new Map())).toBe(false);
+  });
+});
+
+describe("deviceEngineLimits — what this device can give the engine (CTA-160)", () => {
+  it("offers one thread fewer than the cores, at most 8, and 4 where the browser does not say", () => {
+    expect(deviceEngineLimits({ hardwareConcurrency: 4 }).threads).toBe(3);
+    expect(deviceEngineLimits({ hardwareConcurrency: 1 }).threads).toBe(1);
+    expect(deviceEngineLimits({ hardwareConcurrency: 20 }).threads).toBe(8);
+    expect(deviceEngineLimits({}).threads).toBe(4);
+  });
+
+  it("offers Hash by the device's memory, never past the 1024 MB that held", () => {
+    expect(deviceEngineLimits({ deviceMemory: 8 }).hashMb).toBe(1024);
+    expect(deviceEngineLimits({ deviceMemory: 4 }).hashMb).toBe(512);
+    expect(deviceEngineLimits({ deviceMemory: 2 }).hashMb).toBe(128);
+    expect(deviceEngineLimits({}).hashMb).toBe(256);
+    expect(ENGINE_SETTING_BOUNDS.hashMb.max).toBe(1024);
+  });
+});
+
+describe("uciOptionsOf — the ceilings hold whatever a record says", () => {
+  it("never asks for more Hash or Threads than the bounds, which a stored or imported game could carry", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 128 });
+    expect(options.Hash).toBe(1024);
+    expect(options.Threads).toBe(32);
+  });
+});
+
+describe("the move-time slider — lichess's snap marks (CTA-163, CTA-185)", () => {
+  it("offers the marks 1, 5, 10, 30, 60, 300 and 600 seconds and an ∞ slot past them", () => {
+    expect(MOVE_TIME_MARKS_S).toEqual([1, 5, 10, 30, 60, 300, 600]);
+    expect(moveTimeSliderMarks()).toEqual([
+      { value: 0, label: "1" },
+      { value: 1, label: "5" },
+      { value: 2, label: "10" },
+      { value: 3, label: "30" },
+      { value: 4, label: "60" },
+      { value: 5, label: "300" },
+      { value: 6, label: "600" },
+      { value: 7, label: "∞" },
+    ]);
+    expect(MOVE_TIME_UNLIMITED_SLOT).toBe(7);
+  });
+
+  it("keeps moveTimeMs 0 the meaning of the ∞ mark — unlimited, depth alone deciding", () => {
+    expect(moveTimeSliderValueOf(0)).toBe(MOVE_TIME_UNLIMITED_SLOT);
+    expect(moveTimeOfSliderValue(MOVE_TIME_UNLIMITED_SLOT)).toBe(0);
+  });
+
+  it("shows the instant reply, and anything under a second, on the first mark", () => {
+    expect(moveTimeSliderValueOf(MOVE_TIME_INSTANT_MS)).toBe(0);
+    expect(moveTimeSliderValueOf(250)).toBe(0);
+    expect(moveTimeOfSliderValue(0)).toBe(1000);
+  });
+
+  it("maps each slot to its mark's seconds and back", () => {
+    expect(moveTimeOfSliderValue(1)).toBe(5000);
+    expect(moveTimeOfSliderValue(4)).toBe(60000);
+    expect(moveTimeOfSliderValue(6)).toBe(600000);
+    for (let slot = 0; slot <= MOVE_TIME_UNLIMITED_SLOT; slot += 1) {
+      expect(moveTimeSliderValueOf(moveTimeOfSliderValue(slot))).toBe(slot);
+    }
+  });
+
+  it("shows a stored value off the marks where it falls between them, never past the last mark", () => {
+    // The default's 1000 ms is the first mark itself.
+    expect(moveTimeSliderValueOf(DEFAULT_ENGINE_SETTINGS.moveTimeMs)).toBe(0);
+    // 7.5 s halfway from "5" to "10"; 20 s halfway from "10" to "30".
+    expect(moveTimeSliderValueOf(7500)).toBeCloseTo(1.5);
+    expect(moveTimeSliderValueOf(20000)).toBeCloseTo(2.5);
+    // Whatever a record carries beyond the bounds' top: the 600 s mark.
+    expect(moveTimeSliderValueOf(900000)).toBe(6);
+  });
+
+  it("rounds a stray slot to the mark under the thumb — a value off the marks snaps on the next drag", () => {
+    expect(moveTimeOfSliderValue(0.2)).toBe(1000);
+    expect(moveTimeOfSliderValue(1.2)).toBe(5000);
+  });
+
+  it("raises the bounds' top past the 600 s mark to 24 hours — a time typed (CTA-185), what a new-game link clamps to", () => {
+    expect(ENGINE_SETTING_BOUNDS.moveTimeMs).toEqual({ min: 0, max: 86_400_000 });
+  });
+});
+
+/*
+  An engine server's engine (CTA-175) — a native binary, which no WebAssembly
+  memory limits: its Threads and Hash are held to its own range, never the
+  in-browser builds' 1024 MB or this device's limits.
+*/
+const HOSTED = "hosted:stockfish-19";
+const spinOption = (name: string, min: number, max: number): EngineOption => ({ name, type: "spin", min, max });
+
+describe("engineSettingBoundsOf — the bounds of the engine that runs (CTA-175)", () => {
+  it("holds an in-browser build, or no engine named, to the WebAssembly ceilings", () => {
+    for (const id of [undefined, null, "stockfish-19-lite-single", "stockfish-19-lite-multi"]) {
+      expect(engineSettingBoundsOf(id)).toEqual({ threads: ENGINE_SETTING_BOUNDS.threads, hashMb: ENGINE_SETTING_BOUNDS.hashMb });
+    }
+  });
+
+  it("gives an engine server's engine the native range", () => {
+    expect(engineSettingBoundsOf(HOSTED)).toBe(HOSTED_ENGINE_SETTING_BOUNDS);
+    expect(HOSTED_ENGINE_SETTING_BOUNDS.hashMb.max).toBeGreaterThan(4096);
+  });
+});
+
+describe("engineLimitsOf — the most a form offers for an engine (CTA-175)", () => {
+  const server = [spinOption("Threads", 1, 15), spinOption("Hash", 1, 4096)];
+
+  it("is this device's for an in-browser build, unchanged", () => {
+    const device = { hardwareConcurrency: 4, deviceMemory: 4 };
+    expect(engineLimitsOf({ id: "stockfish-19-lite-single" }, device)).toEqual(deviceEngineLimits(device));
+    // Even a declaration on the descriptor does not lift an in-browser build past the tab's ceiling.
+    expect(engineLimitsOf({ id: "stockfish-19-lite-multi", options: server }, device)).toEqual({ threads: 3, hashMb: 512 });
+  });
+
+  it("is what an engine server's engine declares — the server's maxThreads and maxHashMb — whatever the device", () => {
+    expect(engineLimitsOf({ id: HOSTED, options: server }, { hardwareConcurrency: 2, deviceMemory: 2 })).toEqual({
+      threads: 15,
+      hashMb: 4096,
+    });
+  });
+
+  it("falls back to the native range, never the device's, for an option the server's list does not bound", () => {
+    expect(engineLimitsOf({ id: HOSTED }, { deviceMemory: 2 })).toEqual({
+      threads: HOSTED_ENGINE_SETTING_BOUNDS.threads.max,
+      hashMb: HOSTED_ENGINE_SETTING_BOUNDS.hashMb.max,
+    });
+  });
+});
+
+describe("uciOptionsOf — an engine server's engine keeps its own range (CTA-175)", () => {
+  it("asks an engine server's engine for the Hash and Threads set, past the in-browser ceilings", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 48 }, HOSTED);
+    expect(options.Hash).toBe(4096);
+    expect(options.Threads).toBe(48);
+  });
+
+  it("still holds an in-browser build to 1024 MB and 32 threads", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 48 }, "stockfish-19-lite-single");
+    expect(options.Hash).toBe(1024);
+    expect(options.Threads).toBe(32);
   });
 });

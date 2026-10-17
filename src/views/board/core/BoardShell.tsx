@@ -1,8 +1,9 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import type { ChessboardOptions, PieceRenderObject } from "react-chessboard";
+import { useChessTokens } from "../../../design-system/theme";
 import { capturedSummaryOf } from "../../../lib/capturedPieces";
-import type { Score } from "../../../lib/engineAnalysis";
+import type { MoveSquares, Score } from "../../../lib/engineAnalysis";
 import { pathTo } from "../../../lib/gameTree";
 import { RightPanel } from "../../main/rightPanel";
 import EngineBoardSquare from "../../shared/EngineBoardSquare";
@@ -39,6 +40,17 @@ import type { BoardCore } from "./useBoardCore";
  * against the tree's **own** start position rather than the standard one, so a
  * study that begins mid-game reports the pieces taken *in it* and a promotion
  * counts as a gain for the side that made it.
+ *
+ * ## The variations box's hovered move
+ *
+ * A line hovered or focused in the pinned variations box draws its first
+ * move as one arrow (CTA-201), on every board: the panel reports its squares
+ * (`BoardPanel`'s `onHoverVariationMove`, which this shell owns) and the
+ * arrow goes **on top of** the screen's own arrows, in the theme's hover
+ * colour (`chess.arrowPalettes.classic.hovered`, the colour a hovered
+ * next move takes). One of the screen's arrows on the same squares is
+ * stood in for while the hover lasts, never edited — when it ends the
+ * screen's arrows are exactly what it passed.
  *
  * ## What it deliberately leaves to the screen
  *
@@ -99,7 +111,7 @@ type BoardShellProps = {
   /** Everything the panel needs but its `ply`/`lastPly`/`onSelectPly`/`onFlip`. */
   panel: Omit<
     BoardPanelProps,
-    "ply" | "lastPly" | "onSelectPly" | "onFlip" | "testId"
+    "ply" | "lastPly" | "onSelectPly" | "onFlip" | "testId" | "onHoverVariationMove"
   > & { testId?: string };
 
   /**
@@ -139,6 +151,28 @@ function BoardShell({
     return hideMaterialDiff ? { ...summary, materialDiff: 0 } : summary;
   }, [core.tree, core.nodeId, core.fen, hideMaterialDiff]);
 
+  /*
+    The variations box's hovered move (CTA-201), drawn last so it sits over
+    the screen's arrows — and in place of one on the same squares, so the
+    board is never handed two arrows between one pair of squares.
+  */
+  const [hoveredMove, setHoveredMove] = useState<MoveSquares | null>(null);
+  const { arrowPalettes } = useChessTokens();
+  const hoverColor = arrowPalettes.classic.hovered;
+  const shownBoardOptions = useMemo<ChessboardOptions | undefined>(() => {
+    if (hoveredMove === null) return boardOptions;
+    const { from, to } = hoveredMove;
+    return {
+      ...boardOptions,
+      arrows: [
+        ...(boardOptions?.arrows ?? []).filter(
+          (arrow) => arrow.startSquare !== from || arrow.endSquare !== to,
+        ),
+        { startSquare: from, endSquare: to, color: hoverColor },
+      ],
+    };
+  }, [boardOptions, hoveredMove, hoverColor]);
+
   return (
     <>
       <Box
@@ -155,7 +189,7 @@ function BoardShell({
           // move until it is — whatever the screen asked for.
           allowDragging={allowDragging && core.promotion === null}
           onPieceDrop={core.onPieceDrop}
-          boardOptions={boardOptions}
+          boardOptions={shownBoardOptions}
           overlay={overlay}
           showEvalBar={showEvalBar}
           score={score}
@@ -187,6 +221,7 @@ function BoardShell({
             lastPly={core.lastPly}
             onSelectPly={core.goToPly}
             onFlip={core.flipBoard}
+            onHoverVariationMove={setHoveredMove}
           />
         </Box>
       </RightPanel>

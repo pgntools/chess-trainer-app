@@ -16,17 +16,16 @@ import {
 import { DeleteManyDialog } from "../../../design-system/components/dialogs";
 import { useTableUrlState } from "../../../design-system/components/tables";
 import { ListScreenHeader } from "../../../design-system/components/toolbars";
-import { PLAY_REFERENCE_KEY } from "../../../lib/gameReference";
 import { mainline } from "../../../lib/gameTree";
 import { openingOfLine } from "../../../lib/openings";
 import { removePlayedGame } from "../../../lib/playedGameStore";
 import {
-  PLAYED_GAMES_PATH,
   playedGameSummary,
   type PlayedGameSummary,
   playedGameToTree,
   type PlayedGameRow,
 } from "../../../lib/playedGames";
+import { useSendToAnalysis } from "../../analysisV2/useSendToAnalysis";
 import { RightPanel } from "../../main/rightPanel";
 import { useOpeningBook } from "../../shared/useOpeningBook";
 import NewGameForm from "./NewGameForm";
@@ -34,17 +33,15 @@ import { usePlayedGames } from "./usePlayedGames";
 import { useOwnPageHeading } from "../../main/pageTitle";
 
 /**
- * How the engine's side is named in the table (CTA-153): the default engine
- * keeps its wording, "Stockfish level N"; another is named — "Stockfish 19
- * Lite level N", or, where its strength was an Elo, "Stockfish 19 Lite Elo
- * 1800". The words are the app's, the engine's name the build's own.
+ * How the engine's side is named in the table (CTA-153): by its build and how
+ * its strength was set — "Stockfish 19 Lite Elo 1800", or "… level 5" for an
+ * engine strengthened by Skill Level. The words are the app's, the engine's
+ * name the build's own.
  */
 const engineLabelOf = (t: TFunction, summary: PlayedGameSummary): string =>
-  summary.engineName === undefined
-    ? t("playedGames.engine", { level: summary.skillLevel })
-    : summary.strength === "elo"
-      ? t("playedGames.engineElo", { name: summary.engineName, elo: summary.engineElo })
-      : t("playedGames.engineNamed", { name: summary.engineName, level: summary.skillLevel });
+  summary.strength === "elo"
+    ? t("playedGames.engineElo", { name: summary.engineName, elo: summary.engineElo })
+    : t("playedGames.engineNamed", { name: summary.engineName, level: summary.skillLevel });
 
 /**
  * **The Lobby** (`/engine/games`; the Saved games list of CTA-74, a lobby
@@ -158,8 +155,16 @@ function PlayedGames() {
 
   const filtered = side !== "all" || opening !== null;
 
+  /** A game into Analysis as a new Game Case — a Project picked (CTA-192). */
+  const sendTo = useSendToAnalysis("played-games-send");
+  const analyse = (row: PlayedGameRow) => {
+    const tree = parsed.find((entry) => entry.saved.id === row.id)?.tree;
+    if (tree !== undefined) sendTo.send({ games: [{ tree }], projectName: t("playEngine.sendTo.projectName") });
+  };
+
   return (
     <>
+      {sendTo.dialog}
       <Box
         data-testid="played-games-screen"
         sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
@@ -204,11 +209,7 @@ function PlayedGames() {
           }}
           picked={picked}
           onPickedChange={setPicked}
-          analysisLink={(row) => ({
-            component: RouterLink,
-            // The `?game=` reference `lib/gameReference.ts` resolves against the store's catalog.
-            to: `/tools/analysis?game=${encodeURIComponent(`${PLAY_REFERENCE_KEY}/${PLAYED_GAMES_PATH}/${row.id}`)}`,
-          })}
+          onAnalyse={analyse}
           continueLink={(row) => ({
             component: RouterLink,
             // A masked game continues where it was begun, in the same disguise.

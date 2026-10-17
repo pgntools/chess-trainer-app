@@ -9,6 +9,14 @@
 # files — scripts/prerender.mjs), holds dist/ to the build checks, and uploads
 # it for the caller's deploy job.
 #
+# The legal pages name the site's operator (CTA-182), whose details are not in
+# the repository: the build reads them from the repository's VARIABLES (not
+# secrets — the pages publish them), SITE_OPERATOR_NAME, SITE_OPERATOR_ADDRESS
+# and SITE_PRIVACY_EMAIL, and a language's own as <VARIABLE>_<LANG>
+# (SITE_OPERATOR_NAME_HE) — every SITE_* one is passed on, whatever the
+# language (docs/in-app-pages.md §5). Unset — a fork — the site has no legal
+# pages, and the run says so in a warning.
+#
 # Calling the BUILD is safe where calling the deploy is not: build-gh.yml is
 # dispatched (not called) by release.yml because the `github-pages`
 # environment refuses a `refs/pull/…` ref, and that concerns its deploy job,
@@ -48,12 +56,28 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      # The site's operator, for the legal pages (CTA-182): every SITE_*
+      # repository variable into the environment of the steps after this one —
+      # each language's own (SITE_OPERATOR_NAME_HE, …) too, so a new language
+      # needs no edit here. Their names go to the log; their values are public.
+      - name: The site's operator's variables
+        env:
+          REPOSITORY_VARIABLES: ${{ toJSON(vars) }}
+        run: |
+          jq -r 'keys[] | select(startswith("SITE_"))' <<< "$REPOSITORY_VARIABLES"
+          jq -r 'to_entries[] | select(.key | startswith("SITE_")) | "\(.key)<<SITE_VALUE_EOF\n\(.value)\nSITE_VALUE_EOF"' <<< "$REPOSITORY_VARIABLES" >> "$GITHUB_ENV"
+
       - name: Build and pre-render
         run: yarn build
         env:
           BASE_PATH: ${{ inputs.base_path }}
           DEPLOY_TARGET: ${{ inputs.deploy_target }}
           CANONICAL_URL: ${{ inputs.canonical_url }}
+
+      # A deploy without them publishes no Privacy Policy: said on the run, where it shows.
+      - name: Note a build without legal pages
+        if: vars.SITE_OPERATOR_NAME == '' || vars.SITE_OPERATOR_ADDRESS == '' || vars.SITE_PRIVACY_EMAIL == ''
+        run: echo "::warning title=No legal pages::The repository's SITE_* variables are not set, so this build has no Privacy Policy or Cookies Notice (docs/in-app-pages.md §5)."
 
       # The Blog as built (no draft, a chunk per article) and the pages as
       # written (every one there, its head, its language; the fallback the

@@ -20,9 +20,9 @@ import { resetLibraryFolderStore } from "../../lib/libraryFolderStore";
 import { collectionRowOf, readCollectionText } from "../../lib/libraryCollections";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import CollectionScreen from "./CollectionScreen";
-import CollectionSettingsScreen from "./CollectionSettingsScreen";
 import LibraryGameScreen from "./LibraryGameScreen";
 import LibraryHome from "./LibraryHome";
 import LibraryUpload from "./LibraryUpload";
@@ -38,7 +38,13 @@ export const GAMES = [
 /** Where the router is — the path and the query the screens wrote. */
 export const where = () => screen.getByTestId("where").textContent ?? "";
 
-export const mount = (entry: string) => {
+/** How the shell is drawn around the routes. */
+type MountOptions = {
+  /** Under the shell's breakpoint: the game board's and the collection page's left panel a drawer (the screen asks `useShellCompact` itself — a test mocks it). */
+  compact?: boolean;
+};
+
+export const mount = (entry: string, { compact = false }: MountOptions = {}) => {
   // The probe `where()` reads; declared here so the kit exports no component (react-refresh's rule).
   const Where = () => {
     const location = useLocation();
@@ -47,18 +53,20 @@ export const mount = (entry: string) => {
   return render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
-        <RightPanelProvider>
-          <Routes>
-            <Route path="/library" element={<LibraryHome />} />
-            <Route path="/library/new" element={<LibraryUpload />} />
-            <Route path="/library/:collectionId" element={<CollectionScreen />} />
-            <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
-            <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
-            <Route path="*" element={<div data-testid="elsewhere" />} />
-          </Routes>
-          <Where />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Routes>
+              <Route path="/library" element={<LibraryHome />} />
+              <Route path="/library/new" element={<LibraryUpload />} />
+              <Route path="/library/:collectionId" element={<CollectionScreen />} />
+              <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
+              <Route path="*" element={<div data-testid="elsewhere" />} />
+            </Routes>
+            <Where />
+            <BoardLeftPanelOutlet compact={compact} />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -122,14 +130,14 @@ export const cleanupAndMount = (entry: string) => {
 };
 
 /** Mount a collection's table and wait for its rows. */
-export const mountTable = async (entry: string) => {
-  mount(entry);
+export const mountTable = async (entry: string, options?: MountOptions) => {
+  mount(entry, options);
   await screen.findByTestId("library-table");
 };
 
 /** Mount a game and wait for its board. */
-export const mountGame = async (entry: string) => {
-  mount(entry);
+export const mountGame = async (entry: string, options?: MountOptions) => {
+  mount(entry, options);
   await screen.findByTestId("library-game-board");
 };
 

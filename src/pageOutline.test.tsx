@@ -12,9 +12,9 @@ import AppThemeWithLang from "./theme/AppThemeWithLang";
   page-structure rules. Each module's migration adds its screens here.
 */
 
-vi.mock("./lib/engine", async () => ({
-  default: (await import("./views/board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("./lib/engines/builtin", async (importOriginal) =>
+  (await import("./views/board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./views/board/boardTestHarness");
   return reactChessboardMock();
@@ -60,8 +60,9 @@ describe("the migrated screens' outlines (CTA-112)", () => {
     ["/settings/support", "Settings"],
     // CTA-113: the rest of the app.
     ["/", "Get started"],
-    ["/tools/analysis", "Analysis Board"],
-    ["/tools/analysis/saved", "Saved analyses"],
+    ["/analysis", "Projects"],
+    ["/jobs", "Jobs"],
+    ["/jobs/settings", "Jobs settings"],
     ["/repertoires", "Repertoires"],
     ["/repertoires/new", "Add a repertoire"],
     ["/openings", "Openings"],

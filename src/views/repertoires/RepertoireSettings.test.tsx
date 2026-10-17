@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
@@ -21,9 +21,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(
@@ -124,15 +124,7 @@ describe("a repertoire's settings screen", () => {
 
   it("opens the board facing the main color, with the description above the lines", async () => {
     await store("a");
-    await renderSection("/repertoires/a");
-    await waitFor(() =>
-      expect(screen.queryByTestId("repertoire-board-reading")).not.toBeInTheDocument(),
-    );
-    expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "white");
-    expect(screen.queryByTestId("repertoire-board-description")).not.toBeInTheDocument();
-
-    // From the board's own gear, and back to the board on Save.
-    await userEvent.click(screen.getByTestId("repertoire-board-settings"));
+    await renderSection("/repertoires/a/settings");
     await userEvent.click(screen.getByTestId("repertoire-settings-color-black"));
     fireEvent.change(screen.getByTestId("repertoire-settings-description"), {
       target: { value: "Play it from Black." },
@@ -140,13 +132,13 @@ describe("a repertoire's settings screen", () => {
     await userEvent.click(screen.getByTestId("repertoire-settings-save"));
 
     // The write lands, then the board: back on it, its tree read.
-    await screen.findByTestId("repertoire-board-description");
+    await screen.findByTestId("repertoire-board-details-description");
     await waitFor(() =>
       expect(screen.queryByTestId("repertoire-board-reading")).not.toBeInTheDocument(),
     );
     expect(boardOptions().id).toBe("repertoire-board");
     expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "black");
-    expect(screen.getByTestId("repertoire-board-description")).toHaveTextContent(
+    expect(screen.getByTestId("repertoire-board-details-description")).toHaveTextContent(
       "Play it from Black.",
     );
   });
@@ -189,5 +181,63 @@ describe("a repertoire's settings screen", () => {
   it("says so for an id this browser does not hold", async () => {
     await renderSection("/repertoires/nope/settings");
     expect(screen.getByTestId("repertoire-settings-missing")).toBeInTheDocument();
+  });
+});
+
+describe("the player's settings popup (CTA-206)", () => {
+  const ready = () =>
+    waitFor(() => expect(screen.queryByTestId("repertoire-board-reading")).not.toBeInTheDocument());
+
+  it("opens from the left panel's gear, says they are permanent, and saves them in place", async () => {
+    await store("a");
+    await renderSection("/repertoires/a");
+    await ready();
+    expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "white");
+
+    const gear = screen.getByRole("button", { name: "Repertoire settings" });
+    expect(gear).toHaveAttribute("aria-haspopup", "dialog");
+    await userEvent.click(gear);
+    const dialog = screen.getByRole("dialog", { name: "Repertoire settings" });
+    // Unlike the Settings tab beside the board, these are kept with the repertoire.
+    expect(within(dialog).getByTestId("repertoire-settings-dialog-note")).toHaveTextContent(
+      i18n.t("repertoires.settings.permanentNote"),
+    );
+    expect(within(dialog).getByTestId("repertoire-settings-name")).toHaveValue("My Caro");
+
+    fireEvent.change(within(dialog).getByTestId("repertoire-settings-name"), { target: { value: " Caro-Kann " } });
+    fireEvent.change(within(dialog).getByTestId("repertoire-settings-description"), {
+      target: { value: "Play it from Black." },
+    });
+    await userEvent.click(within(dialog).getByTestId("repertoire-settings-color-black"));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    // Written, the popup closed, the reader still on the board.
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Repertoire settings" })).not.toBeInTheDocument());
+    expect(findSavedRepertoire("a")?.name).toBe("Caro-Kann");
+    expect(findSavedRepertoire("a")?.settings.color).toBe("black");
+    expect(screen.getByRole("heading", { name: "Caro-Kann" })).toBeInTheDocument();
+    expect(screen.getByTestId("repertoire-board-details-description")).toHaveTextContent("Play it from Black.");
+    // The session keeps its side; the main colour is what the board opens facing next time.
+    expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "white");
+    cleanup();
+    await renderSection("/repertoires/a");
+    await ready();
+    expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "black");
+  });
+
+  it("drops the draft on Cancel, and starts afresh from the record when opened again", async () => {
+    await store("a");
+    await renderSection("/repertoires/a");
+    await ready();
+    const before = savedRepertoiresSnapshot();
+
+    await userEvent.click(screen.getByRole("button", { name: "Repertoire settings" }));
+    fireEvent.change(screen.getByTestId("repertoire-settings-name"), { target: { value: "Something else" } });
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Repertoire settings" })).not.toBeInTheDocument());
+    expect(savedRepertoiresSnapshot()).toBe(before);
+
+    await userEvent.click(screen.getByRole("button", { name: "Repertoire settings" }));
+    expect(screen.getByTestId("repertoire-settings-name")).toHaveValue("My Caro");
   });
 });

@@ -16,14 +16,15 @@ import {
   type GameTree,
   type VariationNode,
 } from "../../lib/gameTree";
-import { annotationsAt } from "../../lib/moveAnnotations";
-import { nextMoveWeights } from "../../lib/nextMoveWeights";
+import { annotationsAt, moveMarkBadge } from "../../lib/moveAnnotations";
+import { nextMoveWeights, type WeightedMove } from "../../lib/nextMoveWeights";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../shared/NextMovesBar";
+import MoveGlyphBadge from "../shared/MoveGlyphBadge";
 import ShapeCircles from "../shared/ShapeCircles";
-import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
+import { nextMoveArrowsOf } from "../shared/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
 import ChanceArrows from "./ChanceArrows";
 import { UNTAGGED_ARROW_CHANCE, weightedArrowColors } from "./chanceArrows";
@@ -67,6 +68,16 @@ type ExplorerArrowOptions = {
    * screen passes `"none"` for a tag its tree does not carry.
    */
   widthSource?: ArrowWidthSource;
+  /**
+   * **Moves drawn in place of the continuations** while `show` is on
+   * (CTA-197 — a Case board's *Variations* source: the engine's listed
+   * lines' first moves, `engineLineWeights`), whether the tree holds them or
+   * not: sized and coloured by quality as `eval`'s arrows are, and the
+   * continuations' own arrows — `widthSource`'s or the ordinary ones — not
+   * drawn; a hovered continuation that is none of them still gets its arrow.
+   * Absent or empty, the continuations' arrows as before.
+   */
+  engineMoves?: readonly WeightedMove[];
   /** The colours of every next-move arrow (CTA-98); absent, the classic ones. */
   palette?: ArrowPaletteId;
 };
@@ -99,6 +110,12 @@ export type VariationsExplorerOptions = {
    * comments would answer), neither is drawn.
    */
   annotations?: boolean;
+  /**
+   * Draw the move on screen's mark (`!`, `??`, …) on its square (CTA-168) —
+   * on by default, every board's; a board whose reader can switch it off
+   * (the Analysis Board, the Library's game board) passes its switch.
+   */
+  moveMarks?: boolean;
   /** The arrows part; absent draws none but a hovered move's. */
   arrows?: ExplorerArrowOptions;
   /** The map part; absent, `parts.map` is `undefined`. */
@@ -152,6 +169,7 @@ export function useVariationsExplorer({
   onEditTree,
   playChances: offerPlayChances,
   annotations: showAnnotations = false,
+  moveMarks = true,
   arrows: arrowOptions = NO_ARROWS,
   map,
   mask,
@@ -177,21 +195,28 @@ export function useVariationsExplorer({
     return playChances(continuations);
   }, [chanceArrows, continuations]);
 
+  // The moves the screen draws in place of the continuations (CTA-197) —
+  // only while the arrows are shown.
+  const engineMoves =
+    arrowOptions.show && arrowOptions.engineMoves !== undefined && arrowOptions.engineMoves.length > 0
+      ? arrowOptions.engineMoves
+      : undefined;
   // The width source's weights at the branch on screen (CTA-98) — only while
   // the arrows are shown, and `undefined` where no move here carries its tag.
   const widthSource = arrowOptions.widthSource ?? "none";
+  const sizesContinuations = arrowOptions.show && engineMoves === undefined && widthSource !== "none";
   const weights = useMemo(
-    () =>
-      arrowOptions.show && widthSource !== "none"
-        ? nextMoveWeights(continuations, widthSource)
-        : undefined,
-    [arrowOptions.show, widthSource, continuations],
+    () => (sizesContinuations ? nextMoveWeights(continuations, widthSource) : undefined),
+    [sizesContinuations, widthSource, continuations],
   );
   // The theme's arrow colours (CTA-107): the chosen palette, the required
   // move's and the untagged gray.
   const chess = useChessTokens();
   const palette = chess.arrowPalettes[arrowOptions.palette ?? "classic"];
   const hoveredId = hovered?.id ?? null;
+  // The engine's move the hovered continuation is, if any — answered in the overlay.
+  const hoveredEngineMove =
+    hovered === null ? undefined : engineMoves?.find((move) => move.from === hovered.from && move.to === hovered.to);
 
   /*
     What the PGN draws at the position on screen (CTA-143) — the move's
@@ -229,9 +254,11 @@ export function useVariationsExplorer({
   }, [gesturing]);
 
   // A required move is an instruction, so it is drawn whatever the switch
-  // says. Where the chances or a width source size the arrows, the library
-  // arrows stand down entirely — colour is the only thing `options.arrows`
-  // can vary per arrow — and the overlay draws them instead.
+  // says. Where the chances, the engine's moves or a width source size the
+  // arrows, the library arrows stand down — colour is the only thing
+  // `options.arrows` can vary per arrow — and the overlay draws them
+  // instead; beside the engine's moves, a hovered continuation that is none
+  // of them keeps its library arrow.
   const moveArrows: Arrow[] =
     arrowOptions.required !== undefined
       ? arrowOptions.required.map((node) => ({
@@ -239,13 +266,19 @@ export function useVariationsExplorer({
           endSquare: node.to,
           color: chess.arrows.required,
         }))
-      : chances !== undefined || weights !== undefined
+      : chances !== undefined
         ? []
-        : arrowOptions.show
-          ? nextMoveArrowsOf(continuations, hoveredId, palette)
-          : hovered !== null
+        : engineMoves !== undefined
+          ? hovered !== null && hoveredEngineMove === undefined
             ? nextMoveArrowsOf([hovered], hovered.id, palette)
-            : [];
+            : []
+          : weights !== undefined
+            ? []
+            : arrowOptions.show
+              ? nextMoveArrowsOf(continuations, hoveredId, palette)
+              : hovered !== null
+                ? nextMoveArrowsOf([hovered], hovered.id, palette)
+                : [];
   // The PGN's arrows on top, and the one being drawn on top of those; where
   // two land on the same squares, the later one is drawn.
   const drawn: Arrow[] = shapes.arrows.map(({ brush, from, to }) => ({
@@ -269,7 +302,9 @@ export function useVariationsExplorer({
 
   // The play-chance arrows themselves, over the board: white with a magenta
   // border, the wider the likelier the move (CTA-71). Or the width source's,
-  // in the palette's colours, an untagged move gray (CTA-98).
+  // in the palette's colours, an untagged move gray (CTA-98) — by index, or
+  // under `eval` by quality: the best group the mainline colour (CTA-180).
+  // Or the engine's moves, by quality as under `eval` (CTA-197).
   const chanceOverlay =
     chances !== undefined ? (
       <ChanceArrows
@@ -277,6 +312,24 @@ export function useVariationsExplorer({
         nodes={continuations}
         chances={chances}
         hoveredId={hoveredId}
+        orientation={source.orientation}
+      />
+    ) : engineMoves !== undefined ? (
+      <ChanceArrows
+        testId={`${testId}-engine-arrows-overlay`}
+        nodes={engineMoves}
+        chances={engineMoves.map(({ weight }) => weight ?? UNTAGGED_ARROW_CHANCE)}
+        colors={engineMoves.map((move, index) =>
+          weightedArrowColors(
+            move.weight,
+            index,
+            move === hoveredEngineMove,
+            palette,
+            chess.arrows.untagged,
+            true,
+          ),
+        )}
+        hoveredId={hoveredEngineMove?.id ?? null}
         orientation={source.orientation}
       />
     ) : weights !== undefined ? (
@@ -291,24 +344,39 @@ export function useVariationsExplorer({
             continuations[index].id === hoveredId,
             palette,
             chess.arrows.untagged,
+            widthSource === "eval",
           ),
         )}
         hoveredId={hoveredId}
         orientation={source.orientation}
       />
     ) : null;
-  // The PGN's circles, over the board with the chance arrows (CTA-143).
+  // The PGN's circles, over the board with the chance arrows (CTA-143), and
+  // the move mark of the move on screen above them (CTA-168).
+  const onScreen = nodeId === null ? null : findNode(tree, nodeId);
+  const badge =
+    moveMarks && onScreen !== null && moveMarkBadge(onScreen.nags) !== undefined ? (
+      <MoveGlyphBadge
+        nags={onScreen.nags}
+        square={onScreen.to}
+        orientation={source.orientation}
+        testId={`${testId}-move-glyph`}
+      />
+    ) : null;
   const overlay =
-    shapes.circles.length === 0 ? (
+    shapes.circles.length === 0 && badge === null ? (
       chanceOverlay
     ) : (
       <>
         {chanceOverlay}
-        <ShapeCircles
-          circles={shapes.circles}
-          orientation={source.orientation}
-          testId={`${testId}-shape-circles`}
-        />
+        {shapes.circles.length > 0 && (
+          <ShapeCircles
+            circles={shapes.circles}
+            orientation={source.orientation}
+            testId={`${testId}-shape-circles`}
+          />
+        )}
+        {badge}
       </>
     );
 

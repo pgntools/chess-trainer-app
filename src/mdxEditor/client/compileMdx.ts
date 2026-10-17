@@ -2,6 +2,7 @@ import { evaluate } from "@mdx-js/mdx";
 import type { MDXContent } from "mdx/types";
 import * as runtime from "react/jsx-runtime";
 import remarkFrontmatter from "remark-frontmatter";
+import remarkGfm from "remark-gfm";
 
 /**
  * **MDX compiled in the browser** — the dev-only MDX editor's one use of a
@@ -35,6 +36,9 @@ import remarkFrontmatter from "remark-frontmatter";
  * (`remark-frontmatter`), so a `---` block draws nothing and takes no marker.
  * The editor keeps the metadata in its own tab, so the Content tab holds the
  * body alone; this is the safety net for a block pasted into it.
+ *
+ * **GitHub's Markdown** (`remark-gfm`, CTA-174) — tables above all — as the
+ * build has it, so the preview draws what the Blog will.
  */
 
 /** The component the source-line markers name — the editor supplies it beside the article components. */
@@ -140,7 +144,7 @@ export const compileMdx = async (source: string, resolver: ImportResolver): Prom
   (globalThis as Record<string, unknown>)[IMPORTER] = async (key: string) => ({ default: await resolver.load(key) });
   if (!resolved.ok) return { ok: false, message: resolved.message, line: resolved.line };
   try {
-    const { default: Content } = await evaluate(resolved.source, { ...runtime, development: false, remarkPlugins: [remarkFrontmatter, remarkSourceLines] });
+    const { default: Content } = await evaluate(resolved.source, { ...runtime, development: false, remarkPlugins: [remarkFrontmatter, remarkGfm, remarkSourceLines] });
     return { ok: true, Content };
   } catch (error) {
     return describeError(error);

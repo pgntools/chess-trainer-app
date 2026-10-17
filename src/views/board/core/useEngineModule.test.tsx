@@ -1,56 +1,31 @@
 import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import type { EngineDescriptor, EngineHandle } from "../../../lib/engineTypes";
-import { registerEngine } from "../../../lib/engines";
+import { DEFAULT_ENGINE_ID, STOCKFISH_19_LITE_MULTI } from "../../../lib/engines";
+import {
+  createEnginePreset,
+  loadEnginePresetSelections,
+  selectEnginePreset,
+  setEnginePresetValue,
+} from "../../../lib/enginePresetStore";
 import { FakeEngine } from "../boardTestHarness";
 import { useEngineModule, type EngineModuleStart } from "./useEngineModule";
 
 /*
   The engine capability's own behaviour (CTA-152): which engine it builds, and
   that changing the choice replaces it. The boards' tests cover everything else
-  through the same `FakeEngine`, standing in for the default engine as it always
-  has — which is why the default must still be `lib/engine`'s default export.
+  through the same seam — the shipped descriptors, each building a `FakeEngine`
+  that declares what its build declares (`builtinEnginesMock`).
 */
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
-/** An engine that declares what the multi-thread build does: `Threads` adjustable. */
-class WideEngine extends FakeEngine {
-  override readonly options = new Map([
-    ["Threads", { name: "Threads", type: "spin", min: 1, max: 32 }],
-    ["UCI_Elo", { name: "UCI_Elo", type: "spin", min: 1320, max: 3190 }],
-  ]);
-}
+/** The multi-thread build: `Threads` adjustable (1–32), and runnable only on an isolated page. */
+const MULTI = STOCKFISH_19_LITE_MULTI.id;
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-/*
-  The harness's `FakeEngine` is looser than `EngineHandle` (its messages are
-  plain records), by design — every board's tests build it through
-  `vi.mock("lib/engine")`. A descriptor hands it out as the handle it stands in for.
-*/
-const descriptor = (
-  id: string,
-  create: () => FakeEngine,
-  overrides: Partial<EngineDescriptor> = {},
-): EngineDescriptor => ({
-  id,
-  name: id,
-  version: "1",
-  kind: "local",
-  capabilities: { maxDepth: 24, strength: "both", multiThread: true },
-  create: () => create() as unknown as EngineHandle,
-  ...overrides,
-});
-
-const removers: (() => void)[] = [];
-const register = (d: EngineDescriptor) => {
-  removers.push(registerEngine(d));
-  return d;
-};
 
 const live = () => FakeEngine.instances.filter((engine) => !engine.terminated);
 
@@ -79,83 +54,76 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  removers.splice(0).forEach((remove) => remove());
   vi.unstubAllGlobals();
 });
 
+/** The engine a `FakeEngine` was built for. */
+const builtFor = (engine: FakeEngine) => engine.descriptor?.id;
+
 describe("useEngineModule — which engine", () => {
-  it("builds the default engine when no choice is made — today's behaviour", () => {
+  it("builds the default engine when no choice is made", () => {
     const { result } = mount(start());
 
     expect(FakeEngine.instances).toHaveLength(1);
     expect(FakeEngine.latest().lastSearch).toBe(START);
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+    expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT_ENGINE_ID);
   });
 
-  it("builds the engine the choice names", () => {
-    const wide = register(descriptor("wide", () => new WideEngine()));
-    const { result } = mount(start({ engine: "wide" }));
+  it("falls back to the default for an id the app does not ship — the retired 2019 build's too", () => {
+    for (const engine of ["no-such-engine", "stockfish-2019-wasm"]) {
+      FakeEngine.reset();
+      const { result, unmount } = mount(start({ engine }));
 
-    expect(FakeEngine.instances).toHaveLength(1);
-    expect(FakeEngine.latest()).toBeInstanceOf(WideEngine);
-    expect(FakeEngine.latest().lastSearch).toBe(START);
-    expect(result.current.descriptor).toBe(wide);
-  });
-
-  it("falls back to the default for an id nobody registered", () => {
-    const { result } = mount(start({ engine: "no-such-engine" }));
-
-    expect(FakeEngine.latest()).not.toBeInstanceOf(WideEngine);
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+      expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+      expect(FakeEngine.instances.map(builtFor)).toEqual([DEFAULT_ENGINE_ID]);
+      unmount();
+    }
   });
 
   it("falls back for an engine this page cannot run — and builds nothing for it", () => {
-    const create = vi.fn(() => new WideEngine());
-    register(descriptor("needs-isolation", create, { requires: { crossOriginIsolated: true } }));
-
     // jsdom is not cross-origin isolated.
-    const { result } = mount(start({ engine: "needs-isolation" }));
+    const { result } = mount(start({ engine: MULTI }));
 
-    expect(create).not.toHaveBeenCalled();
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+    expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+    expect(FakeEngine.instances.map(builtFor)).toEqual([DEFAULT_ENGINE_ID]);
   });
 
-  it("uses an engine that needs isolation once the page has it", () => {
+  it("builds the engine the choice names, where the page can run it", () => {
     vi.stubGlobal("crossOriginIsolated", true);
-    const wide = register(
-      descriptor("needs-isolation", () => new WideEngine(), { requires: { crossOriginIsolated: true } }),
-    );
+    const { result } = mount(start({ engine: MULTI }));
 
-    const { result } = mount(start({ engine: "needs-isolation" }));
-
-    expect(result.current.descriptor).toBe(wide);
-    expect(FakeEngine.latest()).toBeInstanceOf(WideEngine);
+    expect(result.current.descriptor.id).toBe(MULTI);
+    expect(FakeEngine.instances.map(builtFor)).toEqual([MULTI]);
+    expect(FakeEngine.latest().lastSearch).toBe(START);
   });
 });
 
 describe("useEngineModule — changing the engine", () => {
-  const switching = () => {
-    register(descriptor("wide", () => new WideEngine()));
-    return mount(start());
-  };
+  // The multi-thread build is the other engine to switch to, so the page is isolated.
+  beforeEach(() => {
+    vi.stubGlobal("crossOriginIsolated", true);
+  });
+
+  const switching = () => mount(start());
 
   it("terminates the old handle and builds the new one — one engine at a time", () => {
     const { rerender } = switching();
     const first = FakeEngine.latest();
     expect(live()).toEqual([first]);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
 
     expect(first.terminated).toBe(true);
     expect(FakeEngine.instances).toHaveLength(2);
     expect(live()).toHaveLength(1);
-    expect(live()[0]).toBeInstanceOf(WideEngine);
+    expect(builtFor(live()[0])).toBe(MULTI);
   });
 
   it("never has two engines alive, however often the choice changes", () => {
     const { rerender } = switching();
 
-    for (const engine of ["wide", undefined, "wide", "no-such-engine", "wide"]) {
+    for (const engine of [MULTI, undefined, MULTI, "no-such-engine", MULTI]) {
       rerender(start({ engine }));
       expect(live().length).toBeLessThanOrEqual(1);
     }
@@ -167,7 +135,7 @@ describe("useEngineModule — changing the engine", () => {
 
     // An unknown id resolves to the default, which is already running.
     rerender(start({ engine: "no-such-engine" }));
-    rerender(start({ engine: "stockfish-2019-wasm" }));
+    rerender(start({ engine: DEFAULT_ENGINE_ID }));
 
     expect(FakeEngine.instances).toHaveLength(1);
   });
@@ -176,42 +144,39 @@ describe("useEngineModule — changing the engine", () => {
     const { rerender } = switching();
     const afterMove = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
-    rerender(start({ engine: "wide", fen: afterMove }));
+    rerender(start({ engine: MULTI, fen: afterMove }));
 
     expect(FakeEngine.latest().searches).toEqual([afterMove]);
   });
 
   it("runs the handshake again: publishes the new engine's options and pushes the settings to it", () => {
     const uciOptions = { Threads: 4 };
-    register(descriptor("wide", () => new WideEngine()));
     const { result, rerender } = mount(start({ uciOptions }));
     // The default build pins Threads to 1.
     expect(result.current.engineOptions.get("Threads")).toMatchObject({ min: 1, max: 1 });
 
-    rerender(start({ uciOptions, engine: "wide" }));
+    rerender(start({ uciOptions, engine: MULTI }));
 
     expect(result.current.engineOptions.get("Threads")).toMatchObject({ min: 1, max: 32 });
-    expect(result.current.engineOptions.has("UCI_Elo")).toBe(true);
     expect(FakeEngine.latest().setOptions).toContainEqual(["Threads", 4]);
   });
 
   it("clamps the requested settings to what the new engine declares", () => {
     const uciOptions = { Threads: 4 };
     const onUciOptionsReady = vi.fn();
-    register(descriptor("wide", () => new WideEngine()));
     const { rerender } = mount(start({ uciOptions, onUciOptionsReady }));
     // Pinned to 1 on the default build: the request is pulled down.
     expect(onUciOptionsReady).toHaveBeenLastCalledWith({ Threads: 1 });
     onUciOptionsReady.mockClear();
 
-    // A screen that took the clamp asks for 1; the wide engine keeps it as is.
+    // A screen that took the clamp asks for 1; the multi-thread engine keeps it as is.
     const taken = { Threads: 1 };
-    rerender(start({ uciOptions: taken, onUciOptionsReady, engine: "wide" }));
+    rerender(start({ uciOptions: taken, onUciOptionsReady, engine: MULTI }));
     expect(onUciOptionsReady).not.toHaveBeenCalled();
 
-    // And a request beyond the wide engine's own bound is pulled to it.
+    // And a request beyond its own bound is pulled to it.
     const tooMany = { Threads: 64 };
-    rerender(start({ uciOptions: tooMany, onUciOptionsReady, engine: "wide" }));
+    rerender(start({ uciOptions: tooMany, onUciOptionsReady, engine: MULTI }));
     expect(onUciOptionsReady).toHaveBeenLastCalledWith({ Threads: 32 });
   });
 
@@ -229,7 +194,7 @@ describe("useEngineModule — changing the engine", () => {
     });
     expect(result.current.analysis.lines).toHaveLength(1);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
     expect(result.current.analysis.lines).toHaveLength(0);
 
     act(() => {
@@ -252,17 +217,16 @@ describe("useEngineModule — changing the engine", () => {
     });
     expect(result.current.evalsByFen.has(START)).toBe(true);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
 
     expect(result.current.evalsByFen.has(START)).toBe(true);
   });
 
   it("delivers the new engine's best move to the board that plays", () => {
     const onBestMove = vi.fn();
-    register(descriptor("wide", () => new WideEngine()));
     const { rerender } = mount(start({ onBestMove }));
 
-    rerender(start({ onBestMove, engine: "wide" }));
+    rerender(start({ onBestMove, engine: MULTI }));
     act(() => {
       FakeEngine.latest().say({ uciMessage: "bestmove e2e4", fen: START, bestMove: "e2e4" });
     });
@@ -273,8 +237,7 @@ describe("useEngineModule — changing the engine", () => {
 
 describe("useEngineModule — lifecycle", () => {
   it("terminates the running engine on unmount", () => {
-    register(descriptor("wide", () => new WideEngine()));
-    const { unmount } = mount(start({ engine: "wide" }));
+    const { unmount } = mount(start());
 
     unmount();
 
@@ -282,13 +245,13 @@ describe("useEngineModule — lifecycle", () => {
   });
 
   it("leaves one live engine under StrictMode's mount, unmount, mount", () => {
-    register(descriptor("wide", () => new WideEngine()));
+    vi.stubGlobal("crossOriginIsolated", true);
     const wrapper = ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>;
 
-    mount(start({ engine: "wide" }), { wrapper });
+    mount(start({ engine: MULTI }), { wrapper });
 
     expect(live()).toHaveLength(1);
-    expect(live()[0]).toBeInstanceOf(WideEngine);
+    expect(builtFor(live()[0])).toBe(MULTI);
     expect(live()[0].lastSearch).toBe(START);
   });
 
@@ -296,5 +259,302 @@ describe("useEngineModule — lifecycle", () => {
     // The options handshake still builds an engine — the Engine tab reads what it declares.
     mount(start({ enabled: false }));
     expect(FakeEngine.latest().searches).toEqual([]);
+  });
+
+  it("searches to the depth and time asked, or until stopped while infinite (CTA-160)", () => {
+    const { rerender } = mount(start({ depth: 20, moveTimeMs: 0 }));
+    const engine = FakeEngine.latest();
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: true }));
+    expect(engine.searchOptions.at(-1)).toEqual({ infinite: true });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: false }));
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
+  it("stops the engine when switched off, and searches the position on screen when switched back on", () => {
+    const { rerender } = mount(start());
+    const engine = FakeEngine.latest();
+
+    rerender(start({ enabled: false }));
+    expect(engine.stops).toBe(1);
+
+    rerender(start());
+    expect(engine.searches).toEqual([START, START]);
+  });
+});
+
+describe("useEngineModule — a finished search reported (CTA-167)", () => {
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  it("reports each finished search with its score, depth and engine, after the reply", () => {
+    const calls: string[] = [];
+    const onSearchFinished = vi.fn(() => calls.push("finished"));
+    const onBestMove = vi.fn(() => calls.push("reply"));
+    mount(start({ onSearchFinished, onBestMove }));
+    const engine = FakeEngine.latest();
+
+    act(() => engine.say({ fen: START, depth: 18, multipv: 1, positionEvaluation: "25", pv: "e2e4" }));
+    expect(onSearchFinished).not.toHaveBeenCalled();
+    act(() => engine.say({ fen: START, bestMove: "e2e4" }));
+
+    expect(onSearchFinished).toHaveBeenCalledWith({
+      fen: START,
+      score: { kind: "cp", value: 25 },
+      depth: 18,
+      engine: expect.objectContaining({ id: DEFAULT_ENGINE_ID }),
+    });
+    // The reply first: its tree is the one an evaluation is written onto.
+    expect(calls).toEqual(["reply", "finished"]);
+  });
+
+  it("reports a search ended by a change of position, at the depth it reached and with its own position", () => {
+    const onSearchFinished = vi.fn();
+    const { rerender } = mount(start({ onSearchFinished, fen: AFTER_E4 }));
+    const engine = FakeEngine.latest();
+    act(() => engine.say({ fen: AFTER_E4, depth: 7, multipv: 1, positionEvaluation: "30", pv: "e7e5" }));
+
+    rerender(start({ onSearchFinished, fen: START }));
+    act(() => engine.say({ fen: AFTER_E4, bestMove: "e7e5" }));
+
+    // Black to move: +30 for Black is -30 from White's view.
+    expect(onSearchFinished).toHaveBeenCalledWith(
+      expect.objectContaining({ fen: AFTER_E4, score: { kind: "cp", value: -30 }, depth: 7 }),
+    );
+  });
+
+  it("takes nothing from an engine server's heartbeat — no line, depth, move or finished search (CTA-194)", () => {
+    const onSearchFinished = vi.fn();
+    const onBestMove = vi.fn();
+    const { result } = mount(start({ onSearchFinished, onBestMove }));
+    const engine = FakeEngine.latest();
+    act(() => engine.say({ fen: START, depth: 18, multipv: 1, positionEvaluation: "25", pv: "e2e4" }));
+    const before = result.current.analysis;
+
+    act(() => engine.say({ fen: START, heartbeat: true }));
+    expect(result.current.analysis).toBe(before);
+    expect(result.current.searching).toBe(true);
+    expect(onBestMove).not.toHaveBeenCalled();
+    expect(onSearchFinished).not.toHaveBeenCalled();
+
+    // The search goes on to its bestmove as ever.
+    act(() => engine.say({ fen: START, bestMove: "e2e4" }));
+    expect(onSearchFinished).toHaveBeenCalledWith(expect.objectContaining({ fen: START, depth: 18 }));
+  });
+
+  it("reports nothing for a search stopped before its first scored line", () => {
+    const onSearchFinished = vi.fn();
+    mount(start({ onSearchFinished }));
+    act(() => FakeEngine.latest().say({ fen: START, bestMove: "e2e4" }));
+    expect(onSearchFinished).not.toHaveBeenCalled();
+  });
+});
+
+describe("useEngineModule — the engine's preset (CTA-179)", () => {
+  const sent = (engine: FakeEngine) => engine.setOptions.map(([name, value]) => `${name}=${String(value)}`);
+  const choose = async (values: Record<string, number | string | boolean>, engineId = DEFAULT_ENGINE_ID) => {
+    const made = await createEnginePreset("deep-analysis");
+    if (!("id" in made)) throw new Error("no preset");
+    for (const [name, value] of Object.entries(values)) await setEnginePresetValue(made.id, name, value);
+    await selectEnginePreset(engineId, made.id);
+    return made.id;
+  };
+
+  it("sends the engine's selected preset beside the board's own options, which win", async () => {
+    await choose({ "Move Overhead": 100, UCI_ShowWDL: true, MultiPV: 7, "Skill Level": 3, Threads: 4 });
+    const board: Readonly<Record<string, number>> = { MultiPV: 2, "Skill Level": 12 };
+    mount(start({ uciOptions: board }));
+
+    await vi.waitFor(() => expect(sent(FakeEngine.latest())).toContain("UCI_ShowWDL=true"));
+    const options = sent(FakeEngine.latest());
+    expect(options).toContain("Move Overhead=100");
+    expect(options).toContain("MultiPV=2");
+    expect(options).toContain("Skill Level=12");
+    expect(options).not.toContain("MultiPV=7");
+    expect(options).not.toContain("Skill Level=3");
+    expect(options.some((option) => option.startsWith("Threads="))).toBe(false);
+  });
+
+  it("never sends a file path to a page's own build", async () => {
+    await choose({ EvalFile: "custom.nnue", UCI_ShowWDL: true });
+    mount(start());
+
+    await vi.waitFor(() => expect(sent(FakeEngine.latest())).toContain("UCI_ShowWDL=true"));
+    expect(sent(FakeEngine.latest()).some((option) => option.startsWith("EvalFile"))).toBe(false);
+  });
+
+  it("applies a change from the next search, and puts an option the preset dropped back to the engine's default", async () => {
+    const id = await choose({ "Move Overhead": 100 });
+    mount(start());
+    const engine = FakeEngine.latest();
+    await vi.waitFor(() => expect(sent(engine)).toContain("Move Overhead=100"));
+    const searches = engine.searches.length;
+
+    await act(async () => {
+      await setEnginePresetValue(id, "Move Overhead", undefined);
+      await setEnginePresetValue(id, "UCI_ShowWDL", true);
+    });
+
+    await vi.waitFor(() => expect(sent(engine)).toContain("UCI_ShowWDL=true"));
+    expect(sent(engine)).toContain("Move Overhead=10");
+    expect(engine.searches.length).toBeGreaterThan(searches);
+    expect(FakeEngine.instances).toHaveLength(1);
+  });
+
+  it("follows the selection of the engine running — not another engine's", async () => {
+    await choose({ UCI_ShowWDL: true }, MULTI);
+    mount(start());
+    await vi.waitFor(() => expect(FakeEngine.latest().searches.length).toBeGreaterThan(0));
+    await act(async () => {
+      await loadEnginePresetSelections();
+    });
+    expect(sent(FakeEngine.latest())).not.toContain("UCI_ShowWDL=true");
+  });
+});
+
+/*
+  Whether a search is running (CTA-181) — what the top bar's Engine icon
+  breathes on: on, a search asked for and not yet answered by its bestmove.
+*/
+describe("useEngineModule — searching", () => {
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+  const answer = (fen: string) =>
+    act(() => {
+      FakeEngine.latest().say({ fen, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+
+  it("is off while the engine is off, and on from the search asked for until its bestmove", () => {
+    const { result, rerender } = mount(start({ enabled: false }));
+    expect(result.current.searching).toBe(false);
+
+    rerender(start({ enabled: true }));
+    expect(result.current.searching).toBe(true);
+    answer(START);
+    expect(result.current.searching).toBe(false);
+
+    // A new position is a new search.
+    rerender(start({ enabled: true, fen: AFTER_E4 }));
+    expect(result.current.searching).toBe(true);
+    // A late bestmove of the position left behind answers nothing.
+    answer(START);
+    expect(result.current.searching).toBe(true);
+    answer(AFTER_E4);
+    expect(result.current.searching).toBe(false);
+  });
+
+  it("stays on under infinite analysis until stopped, and goes off with the switch", () => {
+    const { result, rerender } = mount(start({ enabled: true, infinite: true }));
+    expect(result.current.searching).toBe(true);
+    rerender(start({ enabled: false, infinite: true }));
+    expect(result.current.searching).toBe(false);
+  });
+
+  it("is off in a finished position — nothing is searched there", () => {
+    const MATE = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
+    const { result } = mount(start({ enabled: true, fen: MATE }));
+    expect(result.current.searching).toBe(false);
+  });
+});
+
+/*
+  Where the running search stops (CTA-195) — what the variations box's depth
+  chip fills toward: there while a bounded search runs, gone with it.
+*/
+describe("useEngineModule — searchProgress", () => {
+  const answer = () =>
+    act(() => {
+      FakeEngine.latest().say({ fen: START, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+
+  it("names the target depth and the move time while a search runs, and nothing once it answers", () => {
+    const { result } = mount(start({ depth: 24, moveTimeMs: 3000 }));
+    expect(result.current.searchProgress).toEqual({ targetDepth: 24, moveTimeMs: 3000 });
+    answer();
+    expect(result.current.searchProgress).toBeUndefined();
+  });
+
+  it("holds the target to the engine's deepest depth, as the wrapper holds the go", () => {
+    const { result } = mount(start({ depth: 500 }));
+    expect(result.current.searchProgress?.targetDepth).toBe(result.current.descriptor.capabilities.maxDepth);
+  });
+
+  it("is absent while the engine is off, and under infinite analysis, which has no target", () => {
+    const { result, rerender } = mount(start({ enabled: false }));
+    expect(result.current.searchProgress).toBeUndefined();
+    rerender(start({ infinite: true }));
+    expect(result.current.searching).toBe(true);
+    expect(result.current.searchProgress).toBeUndefined();
+  });
+
+  it("is the same object while the target does not change", () => {
+    const { result, rerender } = mount(start({ depth: 20 }));
+    const first = result.current.searchProgress;
+    rerender(start({ depth: 20 }));
+    expect(result.current.searchProgress).toBe(first);
+  });
+});
+
+describe("useEngineModule — the eval sources first (CTA-196)", () => {
+  const API = "http://10.0.0.3:8000";
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  /** The lichess evaluation API on, answering every position at `depth` (or a 404, `missing`) — and, `write`, taking the board's evals. */
+  const apiOn = ({ depth = 40, write = false, missing = false } = {}) => {
+    // Any depth written (CTA-202's minimum at 1): the fake engine's searches are shallow.
+    localStorage.setItem("chessapp.lichessEvalApi", JSON.stringify({ enabled: true, url: API, write, minWriteDepth: 1 }));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return new Response(JSON.stringify({ stored: 1 }), { status: 200 });
+      if (missing) return new Response("{}", { status: 404 });
+      // A legal line for whoever is to move.
+      const line = (new URL(url).searchParams.get("fen") ?? "").split(" ")[1] === "b" ? "e7e5 g1f3" : "e2e4 e7e5";
+      return new Response(
+        JSON.stringify({ positions: [{ evals: [{ depth, knodes: 1, pvs: [{ cp: 31, mate: null, line }] }] }] }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+
+  it("shows an analysis board the API's lines at the target depth or deeper — its engine never searches", async () => {
+    const fetchMock = apiOn();
+    const { result } = mount(start({ depth: 20 }));
+    await vi.waitFor(() => expect(result.current.analysis.lines).toHaveLength(1));
+    expect(result.current.analysis.lines[0]).toMatchObject({ depth: 40, score: { kind: "cp", value: 31 } });
+    expect(result.current.searching).toBe(false);
+    expect(result.current.evalsByFen.get(START)).toEqual({ kind: "cp", value: 31 });
+    expect(String(fetchMock.mock.calls[0][0])).toContain(`${API}/fen?fen=`);
+    expect(FakeEngine.latest().searches).toEqual([]);
+  });
+
+  it("searches with the engine on a miss, and sends a search finished at its target depth back while writing is on", async () => {
+    const fetchMock = apiOn({ missing: true, write: true });
+    mount(start({ depth: 20 }));
+    await vi.waitFor(() => expect(FakeEngine.latest().searches).toEqual([START]));
+    act(() => {
+      FakeEngine.latest().say({ fen: START, depth: 20, multipv: 1, positionEvaluation: "25", pv: "e2e4" });
+      FakeEngine.latest().say({ fen: START, bestMove: "e2e4" });
+    });
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const [url, init] = fetchMock.mock.calls.find(([, call]) => call?.method === "POST")!;
+    expect(url).toBe(`${API}/evals`);
+    expect(JSON.parse(String(init?.body)).entries[0]).toMatchObject({ fen: START, depth: 20, pvs: [{ cp: 25, line: "e2e4" }] });
+  });
+
+  it("never asks for an engine choosing its move in a game (evalSources: false) — and a hit never reaches a new position", async () => {
+    const fetchMock = apiOn();
+    const game = mount(start({ evalSources: false }));
+    expect(FakeEngine.latest().searches).toEqual([START]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    game.unmount();
+
+    const { result, rerender } = mount(start());
+    // The reader moves on before the API answers: its answer is for a position no longer on screen.
+    rerender(start({ fen: AFTER_E4 }));
+    await vi.waitFor(() => expect(result.current.analysis.lines).toHaveLength(1));
+    expect(result.current.analysis.fen).toBe(AFTER_E4);
+    expect(result.current.analysis.lines[0]?.san[0]).toBe("e5");
+    expect(result.current.evalsByFen.has(START)).toBe(false);
   });
 });

@@ -46,12 +46,12 @@ describe("IconAction", () => {
   it("is a real link when given one", () => {
     render(
       <MemoryRouter>
-        <IconAction label="Analysis" link={{ component: RouterLink, to: "/tools/analysis?game=x" }} testId="probe">
+        <IconAction label="Analysis" link={{ component: RouterLink, to: "/jobs/x" }} testId="probe">
           <svg />
         </IconAction>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Analysis" })).toHaveAttribute("href", "/tools/analysis?game=x");
+    expect(screen.getByRole("link", { name: "Analysis" })).toHaveAttribute("href", "/jobs/x");
   });
 
   it("says it opens a menu, and whether it is open (CTA-113)", () => {
@@ -64,6 +64,36 @@ describe("IconAction", () => {
     expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "false");
     rerender(
       <IconAction label="Games" popupOpen testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
+  });
+  it("says what it opens: a menu by default, a dialog when asked (CTA-181)", () => {
+    const { rerender } = render(
+      <IconAction label="More" popupOpen={false} testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "menu");
+    rerender(
+      <IconAction label="Engine settings" popupOpen popupKind="dialog" testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "dialog");
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
+  });
+  it("says whether the region it discloses is open, opening no popup (CTA-230)", () => {
+    const { rerender } = render(
+      <IconAction label="Show filters" expanded={false} testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("probe")).not.toHaveAttribute("aria-haspopup");
+    rerender(
+      <IconAction label="Hide filters" expanded testId="probe">
         <svg />
       </IconAction>,
     );

@@ -1,3 +1,8 @@
+import { MAX_ANALYSIS_PROJECTS, MAX_PROJECT_FOLDERS } from "./analysisProjects";
+import { importAnalysisCases, loadAnalysisCases } from "./analysisCaseStore";
+import { importCaseLinks, loadCaseLinks } from "./analysisCaseLinkStore";
+import { addProjectFolders, loadProjectFolders } from "./analysisProjectFolderStore";
+import { importAnalysisProjects, loadAnalysisProjects } from "./analysisProjectStore";
 import type { IndexedRow } from "./collectionIndex";
 import type {
   CapProblem,
@@ -7,6 +12,8 @@ import type {
   ImportWrites,
 } from "./dataImport";
 import type { ExportCategory } from "./dataExport";
+import { MAX_ENGINE_PRESETS } from "./enginePresets";
+import { importEnginePresets, loadEnginePresetSelections, loadEnginePresets } from "./enginePresetStore";
 import {
   addCollection,
   loadUploadedCollections,
@@ -14,8 +21,6 @@ import {
 } from "./libraryCollectionStore";
 import { addLibraryFolders, loadLibraryFolders, MAX_LIBRARY_FOLDERS } from "./libraryFolderStore";
 import { importPlayedGames, loadPlayedGames, MAX_PLAYED_GAMES } from "./playedGameStore";
-import { addAnalysisFolders, loadAnalysisFolders, MAX_ANALYSIS_FOLDERS } from "./savedAnalysisFolderStore";
-import { importAnalyses, loadSavedAnalyses, MAX_SAVED_ANALYSES } from "./savedAnalysisStore";
 import {
   addRepertoireFolders,
   loadRepertoireFolders,
@@ -35,27 +40,59 @@ import { importRepertoires, loadSavedRepertoires, MAX_SAVED_REPERTOIRES } from "
  * answers a problem, and so does this.
  */
 
+/** Analysis V2's folders, Projects, Cases and links. */
+const loadAnalysisProjectsCurrent = async (): Promise<
+  Pick<ImportCurrent, "projectFolders" | "analysisProjects" | "analysisCases" | "caseLinks">
+> => {
+  const [projectFolders, analysisProjects, analysisCases, caseLinks] = await Promise.all([
+    loadProjectFolders(),
+    loadAnalysisProjects(),
+    loadAnalysisCases(),
+    loadCaseLinks(),
+  ]);
+  return { projectFolders, analysisProjects, analysisCases, caseLinks };
+};
+
 /** Every store the import writes, read now if it has not been. */
 export const loadImportCurrent = async (): Promise<ImportCurrent> => {
-  const [playedGames, analyses, analysisFolders, repertoires, repertoireFolders, collections, collectionFolders] =
-    await Promise.all([
-      loadPlayedGames(),
-      loadSavedAnalyses(),
-      loadAnalysisFolders(),
-      loadSavedRepertoires(),
-      loadRepertoireFolders(),
-      loadUploadedCollections(),
-      loadLibraryFolders(),
-    ]);
-  return { playedGames, analyses, analysisFolders, repertoires, repertoireFolders, collections, collectionFolders };
+  const [
+    playedGames,
+    repertoires,
+    repertoireFolders,
+    collections,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+    analysisProjects,
+  ] = await Promise.all([
+    loadPlayedGames(),
+    loadSavedRepertoires(),
+    loadRepertoireFolders(),
+    loadUploadedCollections(),
+    loadLibraryFolders(),
+    loadEnginePresets(),
+    loadEnginePresetSelections(),
+    loadAnalysisProjectsCurrent(),
+  ]);
+  return {
+    playedGames,
+    repertoires,
+    repertoireFolders,
+    collections,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+    ...analysisProjects,
+  };
 };
 
 /** The stores' caps. The three folder stores share one, which `folders` is. */
 export const IMPORT_CAPS: ImportCaps = {
   playedGames: MAX_PLAYED_GAMES,
-  analyses: MAX_SAVED_ANALYSES,
   repertoires: MAX_SAVED_REPERTOIRES,
-  folders: Math.min(MAX_ANALYSIS_FOLDERS, MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS),
+  folders: Math.min(MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS, MAX_PROJECT_FOLDERS),
+  enginePresets: MAX_ENGINE_PRESETS,
+  analysisProjects: MAX_ANALYSIS_PROJECTS,
 };
 
 /** Why a category was not (wholly) written. */
@@ -130,14 +167,22 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
   await run("collections", writes.collections, (planned) => applyCollections(planned, options));
   await run("games", writes.games, ({ add, remove }) => importPlayedGames(add, remove));
   await run(
-    "analyses",
-    writes.analyses,
-    async ({ folders, add, remove }) => (await addAnalysisFolders(folders)) ?? (await importAnalyses(add, remove)),
-  );
-  await run(
     "repertoires",
     writes.repertoires,
     async ({ folders, add, remove }) => (await addRepertoireFolders(folders)) ?? (await importRepertoires(add, remove)),
   );
+  await run("enginePresets", writes.enginePresets, async (planned) => {
+    const problem = await importEnginePresets(planned);
+    return problem === "default" ? "storage" : problem;
+  });
+  // Analysis V2 (CTA-186): the folders, then the Projects, then their Cases, then the links between the Cases (CTA-188).
+  await run("analysisProjects", writes.analysisProjects, async ({ folders, add, remove, cases, links }) => {
+    return (
+      (await addProjectFolders(folders)) ??
+      (await importAnalysisProjects({ add, remove })) ??
+      (await importAnalysisCases(cases)) ??
+      (await importCaseLinks(links))
+    );
+  });
   return results;
 };

@@ -4,11 +4,10 @@ import { Link as RouterLink, useLocation } from "react-router";
 import type { LinkTarget } from "../../../design-system/components/link";
 import { sourceAddressOf, gameReferenceOf, type SourceAddress } from "../../../lib/embedSource";
 import { gameTag, type GameHeaders } from "../../../lib/gameModel";
-import { isAnalysisReference, isReferenceRead, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
+import { isReferenceRead, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
 import type { CollectionSummary } from "../../../lib/libraryCollections";
 import { readPgnTags, splitPgnGames } from "../../../lib/pgn";
 import { slugify } from "../../../lib/pgnText";
-import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../../lib/savedAnalysisStore";
 import { useCollectionGames } from "../../library/useLibraryCollections";
 import { useSavedRepertoires } from "../../repertoires/useSavedRepertoires";
 import { usePgnSource, type PgnSourceProps } from "./pgnTournament";
@@ -20,8 +19,8 @@ import { usePgnSource, type PgnSourceProps } from "./pgnTournament";
  * - `pgn={games}` (or `src={games}`) — a PGN of the article's own, its text;
  *   `load` — one imported as a chunk of its own;
  * - `src="<app path>"` — anything the app keeps, by the path its screen has
- *   (`lib/embedSource.ts`): a Library collection or one game of it, a saved
- *   analysis, a game played against the engine, a repertoire.
+ *   (`lib/embedSource.ts`): a Library collection or one game of it, an
+ *   Analysis case, a game played against the engine, a repertoire.
  *
  * `<EmbedSource>` reads it and hands its children one {@link SourceRead}:
  * the games (each its PGN) and their tags, the event's name, and — for a
@@ -59,7 +58,7 @@ export type SourceRead =
     };
 
 export type EmbedSourceProps = PgnSourceProps & {
-  /** An app path (`/library/<c>`, `/tools/analysis?analysis=<id>`, …) — or a PGN's text. */
+  /** An app path (`/library/<c>`, `/analysis/projects/<p>/cases/<c>`, …) — or a PGN's text. */
   src?: string;
 };
 
@@ -123,17 +122,14 @@ function CollectionReader({ collection, number, detail, children }: { collection
   return children(ready ?? { status: "loading", collectionId: collection });
 }
 
-/** Whether what a stored game's reference names has been read. */
-const isRead = (reference: string) => (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
-
-/** A stored game — a saved analysis, a played game, or a Library game by its reference. */
+/** A stored game — an Analysis case, a played game, or a Library game by its reference. */
 function StoredGameReader({ reference, detail, children }: { reference: string; detail: string } & ReaderProps) {
-  const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
+  const [readReference, setReadReference] = useState<string | null>(() => (isReferenceRead(reference) ? reference : null));
   const ready = readReference === reference;
   useEffect(() => {
     if (ready) return;
     let live = true;
-    void Promise.all([isAnalysisReference(reference) ? loadSavedAnalyses() : undefined, loadReferencedGames(reference)]).then(() => {
+    void loadReferencedGames(reference).then(() => {
       if (live) setReadReference(reference);
     });
     return () => {

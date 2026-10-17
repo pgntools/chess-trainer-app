@@ -61,12 +61,12 @@ const USAGE = `Usage:
   node scripts/wirepgn.js --remove <id>                            unwire one, deleting its files
 Options:
   --tournament [type]   mark it a tournament: swiss, roundRobin, knockout, doubleElimination,
-                        match, teamSwiss, teamKnockout or arena; bare or "auto" for the guess from
+                        match, teamSwiss, teamKnockout, arena or lichessArena; bare or "auto" for the guess from
                         its tags; "none" to take a mark off (re-wiring without it keeps it)
   --dir <path>          the collections folder (default: src/data/library)`;
 
 /** What `--tournament` may be followed by — anything else after it is not its value. */
-const TOURNAMENT_VALUES = new Set(["auto", "none", "swiss", "roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout", "arena"]);
+const TOURNAMENT_VALUES = new Set(["auto", "none", "swiss", "roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout", "arena", "lichessArena"]);
 
 const fail = (message) => {
   console.error(`wirepgn: ${message}`);

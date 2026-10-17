@@ -2,16 +2,18 @@
  * **How a board draws its next-move arrows** (CTA-98) — the two choices the
  * Analysis Board's Arrows tab offers and a saved analysis keeps, as ids and
  * their readers. Pure data: what a source *weighs* is `nextMoveWeights.ts`,
- * what a palette's colours *are* is `views/tools/analysis/nextMoveArrows.ts`.
+ * what a palette's colours *are* is `views/shared/nextMoveArrows.ts`.
  *
  * - **The width source** — what sizes each continuation's arrow. `none` is
  *   the arrows every board draws (colour only); `eval`, `games` and `prc` are
- *   read off a tag in each move's comment; `lines` needs no tag.
+ *   read off a tag in each move's comment; `lines` needs no tag;
+ *   `variations` (CTA-197, a Case board's) reads no tree at all — the
+ *   engine's listed lines, their first moves sized as `eval` sizes moves.
  * - **The palette** — the mainline / side-line / hovered colours.
  */
 
 /** Every width source, in the order the Arrows tab lists them. */
-export const ARROW_WIDTH_SOURCES = ["none", "eval", "games", "prc", "lines"] as const;
+export const ARROW_WIDTH_SOURCES = ["none", "eval", "games", "prc", "lines", "variations"] as const;
 
 export type ArrowWidthSource = (typeof ARROW_WIDTH_SOURCES)[number];
 

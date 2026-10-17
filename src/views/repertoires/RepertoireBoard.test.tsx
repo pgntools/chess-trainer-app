@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
 import { isMultiGameRepertoire, repertoireTreeOf } from "../../lib/savedRepertoires";
-import { findSavedRepertoire, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
-import { repertoireFoldersSnapshot } from "../../lib/savedRepertoireFolderStore";
+import { fileRepertoire, findSavedRepertoire, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
+import { createRepertoireFolder, repertoireFoldersSnapshot } from "../../lib/savedRepertoireFolderStore";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import {
   CARO,
@@ -25,15 +25,19 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(
     importOriginal as () => Promise<typeof import("../../lib/openings")>,
   );
 });
+
+/** Whether the window is under the shell's breakpoint — wide unless a test says otherwise. */
+const shell = vi.hoisted(() => ({ compact: false }));
+vi.mock("../main/shellCompact", () => ({ useShellCompact: () => shell.compact }));
 
 const files = import.meta.glob<string>("../../test/fixtures/pgn/*.pgn", {
   query: "?raw",
@@ -45,6 +49,7 @@ const fixture = (name: string) => files[`../../test/fixtures/pgn/${name}`]!;
 const AFTER_NF3 = "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R b KQkq - 2 4";
 
 beforeEach(async () => {
+  shell.compact = false;
   FakeEngine.reset();
   await i18n.changeLanguage("en");
 });
@@ -72,17 +77,22 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     expect(screen.getByTestId("repertoire-board-panel")).toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-variations")).not.toBeInTheDocument();
     expect(screen.getByTestId("repertoire-board-panel-status")).toBeInTheDocument();
-    for (const tab of ["moves", "settings", "engine"]) {
+    for (const tab of ["moves", "map"]) {
       expect(screen.getByTestId(`repertoire-board-panel-tab-${tab}`)).toBeInTheDocument();
     }
-    // The player (CTA-63): its games a menu away, no game running.
-    expect(screen.getByTestId("repertoire-board-games")).toBeInTheDocument();
+    // The session's settings are the left panel's (CTA-206), not a tab of this one.
+    expect(screen.queryByTestId("repertoire-board-panel-tab-settings")).not.toBeInTheDocument();
+    // No Engine tab (CTA-181): the engine is the header's on / off switch (CTA-206), its search the top bar's.
+    expect(screen.queryByTestId("repertoire-board-panel-tab-engine")).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Engine" })).not.toBeChecked();
+    // The player (CTA-63): its games the left panel's Games tab (CTA-206), no game running.
+    expect(screen.getByTestId("repertoire-board-details-tab-games")).toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-tab-score")).not.toBeInTheDocument();
     // One game, one board: no Lines tab to pick from, no Tree tab to repeat it.
     expect(screen.queryByTestId("repertoire-board-panel-tab-lines")).not.toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-tab-tree")).not.toBeInTheDocument();
     expect(screen.getByTestId("board-controls")).toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-board-name")).toHaveTextContent("Caro");
+    expect(screen.getByTestId("repertoire-board-details-title")).toHaveTextContent("Caro");
   });
 
   it("opens on the Moves tab with the repertoire's side lines in the list", async () => {
@@ -105,8 +115,8 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     await ready();
     const list = screen.getByTestId("move-list");
 
-    // Away to Settings: the list is still there, hidden, not unmounted.
-    await userEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
+    // Away to the Map: the list is still there, hidden, not unmounted.
+    await userEvent.click(screen.getByTestId("repertoire-board-panel-tab-map"));
     const hidden = screen.getByTestId("repertoire-board-panel-content-moves");
     expect(hidden).not.toBeVisible();
     expect(hidden).toContainElement(list);
@@ -119,11 +129,6 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     await userEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
     expect(screen.getByTestId("move-list")).toBe(list);
     expect(screen.getByTestId("repertoire-board-panel-content-moves")).toBeVisible();
-
-    // The Settings tab is not kept: leaving it unmounts it, as every tab used to.
-    expect(
-      screen.queryByTestId("repertoire-board-panel-content-settings"),
-    ).not.toBeInTheDocument();
   });
 
   it("never moves a piece by itself", async () => {
@@ -134,6 +139,48 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
       FakeEngine.latest().say({ bestMove: "e2e4", fen: before });
     });
     expect(boardOptions().position).toBe(before);
+  });
+
+  it("draws its left panel as a column beside the board, wide (CTA-206)", async () => {
+    await renderSection(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
+    await ready();
+    expect(within(screen.getByTestId("layout-board-left-panel")).getByRole("region", { name: "Details of Caro" })).toBeInTheDocument();
+    // Wide there is no drawer to open.
+    expect(screen.queryByTestId("repertoire-board-details-toggle")).not.toBeInTheDocument();
+  });
+
+  it("goes Back up a level from its left panel: the repertoire to its folder in the list, a game to the repertoire (CTA-206)", async () => {
+    const id = await storeRepertoire("r", CARO, "Caro");
+    const folder = (await createRepertoireFolder("Openings"))!;
+    await fileRepertoire(id, folder.id);
+    await renderSection(`/repertoires/${id}`);
+    await ready();
+    expect(screen.getByRole("link", { name: "Back to the repertoires" })).toHaveAttribute(
+      "href",
+      `/repertoires?folder=${encodeURIComponent(folder.id)}`,
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Games" }));
+    await userEvent.click(screen.getByTestId("repertoire-board-details-games-end"));
+    // In a game the head's Back and the Games tab's both lead to the repertoire.
+    const backs = await screen.findAllByRole("link", { name: /^Back to the repertoire(?!s)/ });
+    expect(backs.map((link) => link.getAttribute("href"))).toEqual([`/repertoires/${id}`, `/repertoires/${id}`]);
+  });
+
+  it("puts its left panel in a drawer under the breakpoint, opened from the board's header (CTA-206)", async () => {
+    shell.compact = true;
+    await renderSection(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`, undefined, { compact: true });
+    await ready();
+    expect(screen.queryByRole("region", { name: "Details of Caro" })).not.toBeInTheDocument();
+
+    const toggle = within(screen.getByTestId("repertoire-board-panel-header")).getByRole("button", { name: "The repertoire's details" });
+    await userEvent.click(toggle);
+    const drawer = await screen.findByRole("dialog", { name: "Details of Caro" });
+    expect(within(drawer).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByTestId("repertoire-board-details-arrows")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Caro" })).not.toBeInTheDocument());
   });
 
   it("says so for an id this browser does not hold", async () => {
@@ -150,7 +197,7 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     expect(screen.getByTestId("repertoire-board-reading")).toBeInTheDocument();
 
     await ready();
-    expect(screen.getByTestId("repertoire-board-name")).toHaveTextContent(
+    expect(screen.getByTestId("repertoire-board-details-title")).toHaveTextContent(
       "Live Chess",
     );
 

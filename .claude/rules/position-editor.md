@@ -4,7 +4,6 @@ paths:
   - "src/lib/positionEditor*"
   - "src/views/engine/games/NewGameForm.tsx"
   - "src/lib/newGameLink*"
-  - "src/views/tools/analysis/saved/NewAnalysisForm.tsx"
 ---
 
 # The position editor — `views/shared/positionEditor/`
@@ -37,7 +36,6 @@ as `?fen=`, which each validates with `parseFen` and takes as initial state.
 | `src/lib/positionEditor.ts` | Pure: `fenFields` / `fenFromFields`, `enPassantOptions`, `positionProblems`, `START_POSITION` / `EMPTY_POSITION`. |
 | `src/views/shared/positionEditor/PositionEditor.test.tsx` | The component's tests, in a bare host (§5). |
 | `src/views/engine/games/NewGameForm.tsx` | **The first host** — the Lobby's form (§3). |
-| `src/views/tools/analysis/saved/NewAnalysisForm.tsx` | **The second host** — the analyses' Lobby's form (§4). |
 | `src/lib/newGameLink.ts` | `newGameParams(settings, side, evalBar, fen?)` — Start's link, `fen` included for a custom position. |
 
 Locale keys: `positionEditor.*` in `src/locales/en.ts` / `he.ts` — top level,
@@ -143,29 +141,12 @@ switches off itself is the FEN tab's copy button.
 - Precedence on arrival is `arrivalOf`'s, unchanged: the Lobby always writes a
   `side`, which beats the position's side to move.
 
-## 4. The second host — the analyses' Lobby's new-analysis form
+## 4. A second host, once
 
-Built (CTA-87): the right-hand panel of `/tools/analysis/saved`
-(`NewAnalysisForm.tsx`, the counterpart of the engine Lobby's form) holds
-`usePositionEditor()` — the standard start, on every visit — rendered
-directly, no Game tab around it: nothing rides along to the Analysis Board,
-whose engine and settings are its own tabs. A full-width **Start** opens
-`/tools/analysis`, the edited position riding along as `?fen=` whenever it is
-not the standard start — and a position turns the board there, so the
-analysis opens facing the side to move. The gate is the Lobby's — `isValid`
-plus `parseFen`: while the position cannot be analyzed, Start is a plain
-disabled button with a warning above it listing the problems.
-`boardMaxWidth` 360. Nothing in this folder changed for it. The form's header
-carries the editor's resets — **New, Clear, Flip** — and the editor's
-`controls` row holds the **quick loads**: a FEN field and a `.pgn` pick, side
-by side, feeding `useAnalysisLoad` (CTA-96 — the Load route's pipeline,
-[`analysis-board.md`](./analysis-board.md)), with the paste box as its own
-section under the editor. A PGN of more than one move (or a merge of several)
-opens the Analysis Board with the whole tree; a PGN of a single move or
-none, and a FEN, set the editor up instead — a position is the editor's and
-Start's job. So *this* form's editor offers no tabs at all
-(`forms={["position"]}`, the fields always shown) and no resets of its own.
-Everywhere else the editor's resets and tabs are unchanged.
+The legacy Saved analyses' new-analysis form (CTA-87, CTA-96) hosted the
+editor with a FEN field and a `.pgn` pick in its `controls` row and
+`forms={["position"]}`; it went with its module in CTA-192. Those props stay,
+for the next host.
 
 ---
 
@@ -185,18 +166,6 @@ Everywhere else the editor's resets and tabs are unchanged.
   mounts the form in its right panel): the two tabs with Start on both, the
   edited FEN on Start's link beside the Game tab's options, the Game tab's
   note and reset, Start off and why.
-- **The second host** — `SavedAnalyses.test.tsx`'s *new-analysis form* block:
-  Start opening the plain board for the standard start, the edited position
-  riding along as `?fen=`, and Start off with the problems listed while the
-  position cannot be analyzed, then back on at a reset; and the Load route
-  (CTA-96): the resets in the header and the quick loads in the editor's row,
-  a whole game handed over by paste and by pick, a single-move or move-less
-  PGN and a FEN setting the editor up, the several-games popup (merge, or a
-  games collection — CTA-101), the error that goes
-  nowhere. The screen stubs the
-  spare-piece trio with the provider holding the options — a spare-piece board
-  renders with no options of its own (`chessboard.md` §8), and the list's
-  preview boards pass their own.
 - `newGameLink.test.ts` — `newGameParams` with and without a `fen`.
 - The board's actual drawing, palette sizing and drag are a browser check.
 

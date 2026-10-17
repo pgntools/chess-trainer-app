@@ -13,7 +13,7 @@ import {
   REQUIRED_MOVE_ARROW_COLOR,
   SIDELINE_NEXT_MOVE_ARROW_COLOR,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 import type { TreeViewParts } from "./treeView";
 import { useVariationsExplorer, type VariationsExplorerOptions } from "./useVariationsExplorer";
 
@@ -269,6 +269,67 @@ describe("useVariationsExplorer — annotation glyphs (CTA-97)", () => {
   });
 });
 
+describe("useVariationsExplorer — the move mark on the board (CTA-168)", () => {
+  const marked = parsePgnTree("1. e4 $1 e5 $14 2. Nf3 $16 $4 {[%csl Gd4]} *");
+
+  function Marked({ nodeId, ...rest }: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string | null }) {
+    const view = useVariationsExplorer({
+      testId: "x",
+      source: {
+        tree: marked,
+        mainlineNodes: mainline(marked),
+        nodeId,
+        goToNode: vi.fn(),
+        orientation: "white",
+      },
+      ...rest,
+    });
+    report(view);
+    return <div data-testid="overlay">{view.overlay}</div>;
+  }
+
+  const mountMarked = (props: Parameters<typeof Marked>[0]) =>
+    render(
+      <AppThemeWithLang>
+        <Marked {...props} />
+      </AppThemeWithLang>,
+    );
+
+  it("draws the move on screen's mark on the square it landed on — comment block or not", () => {
+    mountMarked({ nodeId: at(marked, "e4") });
+    const badge = screen.getByTestId("x-move-glyph");
+    expect(badge).toHaveAttribute("data-square", "e4");
+    expect(badge).toHaveAttribute("data-tone", "good");
+    expect(badge).toHaveTextContent("!");
+  });
+
+  it("draws nothing for a move without a mark, nor at the start", () => {
+    const { unmount } = mountMarked({ nodeId: at(marked, "e4", "e5") });
+    expect(screen.queryByTestId("x-move-glyph")).toBeNull();
+    expect(parts.overlay).toBeNull();
+    unmount();
+
+    mountMarked({ nodeId: null });
+    expect(parts.overlay).toBeNull();
+  });
+
+  it("draws none on a board whose reader switched them off", () => {
+    mountMarked({ nodeId: at(marked, "e4"), moveMarks: false });
+    expect(screen.queryByTestId("x-move-glyph")).toBeNull();
+    expect(parts.overlay).toBeNull();
+  });
+
+  it("draws it over the PGN's circles, the mark first in print order", () => {
+    mountMarked({ nodeId: at(marked, "e4", "e5", "Nf3"), annotations: true });
+    const overlay = screen.getByTestId("overlay");
+    const circles = screen.getByTestId("x-shape-circles");
+    const badge = screen.getByTestId("x-move-glyph");
+    expect(badge).toHaveTextContent("??");
+    expect(badge).toHaveAttribute("data-tone", "blunder");
+    expect([...overlay.children]).toEqual([circles, badge]);
+  });
+});
+
 describe("useVariationsExplorer — the start position's menu (CTA-149)", () => {
   const onStart = () => {
     const onEditTree = vi.fn();
@@ -323,13 +384,15 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     "1. e4 e5 2. Nf3 {games:30} (2. f4 {[%games 10]}) (2. Nc3) 2... Nc6 3. Bb5 (3. Bc4) *",
   );
 
-  function Weighted(props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string }) {
-    const { nodeId, ...rest } = props;
+  function Weighted(
+    props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string; tree?: GameTree },
+  ) {
+    const { nodeId, tree = tagged, ...rest } = props;
     const view = useVariationsExplorer({
       testId: "x",
       source: {
-        tree: tagged,
-        mainlineNodes: mainline(tagged),
+        tree,
+        mainlineNodes: mainline(tree),
         nodeId,
         goToNode: vi.fn(),
         orientation: "white",
@@ -405,6 +468,80 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     expect(parts.arrows).toEqual([]);
     fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
     expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+  });
+
+  it("colours eval arrows by quality: the best group mainline and widest, the worse thinner by loss (CTA-180)", () => {
+    // 2. Nf3 and 2. Bc4 tie; 2. f4 gives up 80 cp, 2. Qh5 280; 2. Nc3 is untagged.
+    const evals = parsePgnTree(
+      "1. e4 e5 2. Nf3 {[%eval 0.3]} (2. Bc4 {[%eval 0.3]}) (2. f4 {[%eval -0.5]}) (2. Qh5 {[%eval -2.5]}) (2. Nc3) *",
+    );
+    for (const palette of ["classic", "lichess", "colorblind"] as const) {
+      const colors = NEXT_MOVE_ARROW_PALETTES[palette];
+      const { unmount } = mountWeighted({
+        tree: evals,
+        nodeId: at(evals, "e4", "e5"),
+        arrows: { show: true, widthSource: "eval", palette },
+      });
+      expect(pathTo("f3")).toHaveAttribute("fill", colors.mainline);
+      // A side line in the best group takes the mainline colour, at full width.
+      expect(pathTo("c4")).toHaveAttribute("fill", colors.mainline);
+      expect(widthOf("c4")).toBe(widthOf("f3"));
+      expect(pathTo("f4")).toHaveAttribute("fill", colors.sideline);
+      expect(pathTo("h5")).toHaveAttribute("fill", colors.sideline);
+      expect(widthOf("f3")).toBeGreaterThan(widthOf("f4"));
+      expect(widthOf("f4")).toBeGreaterThan(widthOf("h5"));
+      expect(pathTo("c3")).toHaveAttribute("fill", UNTAGGED_NEXT_MOVE_ARROW_COLOR);
+      unmount();
+    }
+  });
+
+  it("draws the engine's moves in place of the continuations, by quality — a move the tree lacks too (CTA-197)", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    // At 2. …: the engine likes 2. Nf3 and 2. Bc4 (not in the tree) alike, 2. d4 less.
+    const engineMoves = [
+      { id: "g1f3", from: "g1", to: "f3", weight: 1 },
+      { id: "f1c4", from: "f1", to: "c4", weight: 1 },
+      { id: "d2d4", from: "d2", to: "d4", weight: 0.3 },
+    ] as const;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", engineMoves, palette: "lichess" },
+    });
+    // The tree's own arrows stand down — neither the library's nor the width source's.
+    expect(parts.arrows).toEqual([]);
+    expect(screen.queryByTestId("x-width-arrows-overlay")).toBeNull();
+    const overlay = screen.getByTestId("x-engine-arrows-overlay");
+    const engineArrow = (square: string) => overlay.querySelector(`path[data-to="${square}"]`)!;
+    expect([...overlay.querySelectorAll("path")].map((path) => path.getAttribute("data-to"))).toEqual(["f3", "c4", "d4"]);
+    expect(engineArrow("f3")).toHaveAttribute("fill", lichess.mainline);
+    expect(engineArrow("c4")).toHaveAttribute("fill", lichess.mainline);
+    expect(engineArrow("d4")).toHaveAttribute("fill", lichess.sideline);
+    const width = (square: string) => Number(engineArrow(square).getAttribute("stroke-width"));
+    expect(width("f3")).toBe(width("c4"));
+    expect(width("f3")).toBeGreaterThan(width("d4"));
+
+    // A hovered continuation answers in the overlay when it is one of the engine's, as a library arrow when not.
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "Nf3")}`));
+    expect(engineArrow("f3")).toHaveAttribute("fill", lichess.hovered);
+    expect(parts.arrows).toEqual([]);
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "Nc3")}`));
+    expect(parts.arrows).toEqual([{ startSquare: "b1", endSquare: "c3", color: lichess.hovered }]);
+  });
+
+  it("draws the continuations as before with no engine moves, and nothing of the engine's with the arrows off", () => {
+    const engineMoves = [{ id: "g1f3", from: "g1", to: "f3", weight: 1 }] as const;
+    const { unmount } = mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", engineMoves: [], palette: "lichess" },
+    });
+    expect(screen.getByTestId("x-width-arrows-overlay")).toBeInTheDocument();
+    unmount();
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: false, widthSource: "games", engineMoves, palette: "lichess" },
+    });
+    expect(parts.overlay).toBeNull();
+    expect(parts.arrows).toEqual([]);
   });
 
   it("sizes by the lines ahead with no tag at all", () => {

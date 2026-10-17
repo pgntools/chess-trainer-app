@@ -1,4 +1,5 @@
-import { getEngine, resolveEngine, subscribeEngines } from "./engines";
+import { subscribeEngineServer } from "./engineServer";
+import { getEngine, resolveEngine } from "./engines";
 
 /**
  * **The reader's engine** (CTA-153) — which of the registered engines
@@ -9,9 +10,9 @@ import { getEngine, resolveEngine, subscribeEngines } from "./engines";
  * data, **it is not in the export zip** (`settings.md`).
  *
  * The store keeps the **raw** id the reader chose. What a board runs is
- * {@link engineChoiceId}: that engine when it is registered and can run on this
- * page, otherwise the default — so a stored id naming an engine that has gone
- * (a hand edit, a build that dropped it), or one this host cannot run (the
+ * {@link engineChoiceId}: that engine when the app ships it and it can run on
+ * this page, otherwise the default — so a stored id naming an engine that has
+ * gone (a hand edit, the retired 2019 build), or one this host cannot run (the
  * multi-thread build on GitHub Pages), falls back for now and **comes back by
  * itself** where it can run, because the stored choice was never overwritten.
  *
@@ -36,13 +37,13 @@ export const readStoredEngineId = (): string | undefined => {
 };
 
 /**
- * The engine a board runs: the stored choice when it is registered and
- * available on this page, else the default. Always a registered id.
+ * The engine a board runs: the stored choice when it is shipped and
+ * available on this page, else the default. Always a shipped engine's id.
  */
 export const engineChoiceId = (): string => resolveEngine(readStoredEngineId()).id;
 
 /**
- * Keep the choice and tell every board; an id that is not registered is
+ * Keep the choice and tell every board; an id the app does not ship is
  * ignored, like an unknown theme. A storage that refuses it only forgets it
  * after this visit.
  */
@@ -59,19 +60,20 @@ export const storeEngineId = (id: string): void => {
 
 /**
  * Call `listener` when the choice may have changed: this tab's write, another
- * tab's (`storage`), or the registry growing — which can make a stored id
- * resolvable. Returns an unsubscribe fn.
+ * tab's (`storage`), or the engine server's engines coming or going — a
+ * stored `hosted:…` choice resolves to that engine only while the server has
+ * it (`lib/engineServer.ts`). Returns an unsubscribe fn.
  */
 export const subscribeEngineChoice = (listener: () => void): (() => void) => {
   listeners.add(listener);
-  const stopRegistry = subscribeEngines(listener);
   const onStorage = (event: StorageEvent) => {
     if (event.key === null || event.key === ENGINE_STORAGE_KEY) listener();
   };
   window.addEventListener("storage", onStorage);
+  const unsubscribeServer = subscribeEngineServer(listener);
   return () => {
     listeners.delete(listener);
-    stopRegistry();
     window.removeEventListener("storage", onStorage);
+    unsubscribeServer();
   };
 };

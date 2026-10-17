@@ -1,31 +1,42 @@
+import { Link as RouterLink } from "react-router";
+
 import { EngineSettingsForm } from "../../../blocks/forms";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import type { EngineSettings as EngineSettingsValues } from "../../../lib/engineSettings";
 
 /**
- * **The Engine tab** — strength, search limits, the lines to report, the two
- * resource knobs and the eval bar — on Play with Engine and Masked Pieces,
- * and the body of the Lobby's new-game form (`NewGameForm.tsx`), over an
- * engine that is handshaken but never searches.
+ * **The Engine tab's strength** — an Elo, or a Skill Level with its Elo an
+ * estimate — on Play with Engine and Masked Pieces, and in the Lobby's
+ * new-game form (`NewGameForm.tsx`, with the eval bar), over an engine that
+ * is handshaken but never searches.
  *
- * Since CTA-109 it is the `EngineSettingsForm` block (`blocks/forms/`) under
- * the module's ids (`engine-settings`, `engine-setting-<option>`): the block
- * renders every option-backed control from what the running worker declared
- * — absent, pinned or adjustable (`.claude/rules/chessboard.md` §4.1) — and
- * words the strength's Elo as an estimate, since this build has no `UCI_Elo`.
- * Which colour the reader plays, and a new game, are the header's.
+ * The `EngineSettingsForm` block (`blocks/forms/`) under the module's ids
+ * (`engine-settings`, `engine-setting-<option>`). Since CTA-181 the strength
+ * is all the tab sets: depth, move time, lines, Threads and Hash are the
+ * reader's global search settings (the top bar's Engine menu). **Whether the
+ * Elo applies is the engine's preset's call** — `limitStrength`, its
+ * `UCI_LimitStrength` (`presetLimitsStrength`): off, the slider is off and
+ * links to Settings → Engine, where it is turned on.
  */
 type EngineSettingsProps = {
-  settings: EngineSettingsValues;
-  onChange: (patch: Partial<EngineSettingsValues>) => void;
+  settings: Pick<EngineSettingsValues, "skillLevel" | "elo">;
+  onChange: (patch: Partial<Pick<EngineSettingsValues, "skillLevel" | "elo">>) => void;
   /** What the running worker declared. Empty until the handshake lands. */
   engineOptions: ReadonlyMap<string, EngineOption>;
-  showEvalBar: boolean;
-  onShowEvalBarChange: (next: boolean) => void;
+  /** Whether the engine's preset has `UCI_LimitStrength` on — the Elo slider's switch. */
+  limitStrength: boolean;
+  /** The eval bar's switch — the Lobby's form only; a board's is in its engine menu. */
+  evalBar?: { checked: boolean; onChange: (next: boolean) => void };
 };
 
-function EngineSettings(props: EngineSettingsProps) {
-  return <EngineSettingsForm {...props} testId="engine" />;
+function EngineSettings({ limitStrength, ...props }: EngineSettingsProps) {
+  return (
+    <EngineSettingsForm
+      {...props}
+      strengthOff={limitStrength ? undefined : { settingsLink: { component: RouterLink, to: "/settings/engine" } }}
+      testId="engine"
+    />
+  );
 }
 
 export default EngineSettings;

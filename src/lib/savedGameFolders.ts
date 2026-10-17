@@ -4,8 +4,8 @@
  * The old Saved games screen's flat list grew into a folder system (CTA-46);
  * that screen, its store and its games are gone (CTA-74, CTA-79), and what
  * stays is this pure half: the {@link GameFolder} entity and the reads over a
- * list of them, which the saved analyses' folders *are*
- * (`savedAnalysisFolders.ts`). A folder is **not** a record of what it holds,
+ * list of them, which the Library's and Analysis V2's folders *are*
+ * (`libraryFolderStore.ts`, `analysisProjects.ts`). A folder is **not** a record of what it holds,
  * which is the whole reason it is a separate record in a separate store: it
  * carries only a name and a parent. What joins the two is a
  * {@link FiledRecord}'s `folderId`, a plain id — no join table, no `children`

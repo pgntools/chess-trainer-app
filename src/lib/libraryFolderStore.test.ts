@@ -16,6 +16,7 @@ import {
   MAX_LIBRARY_FOLDERS,
   moveLibraryFolder,
   removeLibraryFolder,
+  removeLibraryFoldersDeep,
   renameLibraryFolder,
   resetLibraryFolderStore,
 } from "./libraryFolderStore";
@@ -128,6 +129,21 @@ describe("the Library's folders", () => {
     await removeLibraryFolder(top.id);
     expect(parents()).toEqual({ Kept: null });
     expect((await loadUploadedCollections()).find((row) => row.name === "Inside")?.folderId).toBeNull();
+  });
+
+  it("deletes folders whole — every sub-folder under them, in one write (CTA-235)", async () => {
+    const top = await folder("Top");
+    const doomed = await folder("Doomed", top.id);
+    await folder("Under", doomed.id);
+    const other = await folder("Other");
+    await folder("Kept", other.id);
+
+    expect(await removeLibraryFoldersDeep([doomed.id, "nowhere"])).toBeUndefined();
+    expect(parents()).toEqual({ Top: null, Other: null, Kept: other.id });
+
+    const before = libraryFoldersSnapshot();
+    expect(await removeLibraryFoldersDeep(["nowhere"])).toBeUndefined();
+    expect(libraryFoldersSnapshot()).toBe(before);
   });
 
   it("takes an unknown folder's delete as nothing to do", async () => {

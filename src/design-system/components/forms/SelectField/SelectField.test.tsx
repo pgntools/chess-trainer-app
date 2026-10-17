@@ -37,6 +37,13 @@ describe("SelectField", () => {
     expect(css).toMatch(/min-width:\s*min\(160px,\s*100%\)/);
   });
 
+  it("keeps its label as the name, undrawn, where `labelHidden` — a filter under its column's header (CTA-221)", () => {
+    render(<SelectField label="Status" labelHidden value="" onChange={() => {}} options={OPTIONS} emptyOption="Any status" testId="probe" />);
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveTextContent("Any status");
+    // The label is there for the name, hidden from sight.
+    expect(screen.getByText("Status", { selector: ".MuiInputLabel-root" })).toBeInTheDocument();
+  });
+
   it("can put its test id on the visible select instead (CTA-113)", async () => {
     render(<SelectField label="Square" value="" onChange={() => {}} options={[{ value: "e6", label: "e6" }]} testIdOn="display" testId="probe" />);
     expect(screen.getByTestId("probe")).toHaveAttribute("role", "combobox");

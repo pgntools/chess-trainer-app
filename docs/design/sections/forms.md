@@ -65,11 +65,29 @@ Gallery: `/dev/design/forms`.
 - **Purpose** — a labelled slider: the label at the start, the value at the end
   (`dir="ltr"`), the slider under it, dimmed while off — its notice never
   (CTA-109: a dimmed warning caption fell to 2.5:1), nor its header
-  (CTA-142: the dimmed value fell to 4.0:1).
-- **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
-  `valueLabel?`, `notice?` (a warning caption), `disabled?`, `testId` (the
-  parts `-value`, `-input`, `-notice`).
-- **Variations** — the number; the caller's value words; disabled with a notice.
+  (CTA-142: the dimmed value fell to 4.0:1), nor its help (CTA-163); the
+  slider inset by its thumb's room at either end, so a thumb at the rail's
+  end is never cut by the box around it (CTA-185).
+- **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`
+  (`null` snaps the slider to its marks alone — MUI's own; the Hash slider's
+  round sizes, CTA-185),
+  `valueLabel?`, `marks?` (labelled marks, positioned by their value; the
+  slider still steps by `step` — a caller whose marks are the only legal
+  values makes them the step's grid, as the engine form's move-time slider
+  does, CTA-163), `valueText?` (the value as words for a screen reader,
+  `aria-valuetext`), `help?` (a neutral helper caption), `notice?` (a
+  warning caption), `disabled?`, `input?` (CTA-185 — a number box at the
+  slider's end: `{ label, value, onChange, min, max, step?, unit?,
+  emptyText?, disabled? }`, its name required with it; its value in its own
+  unit, so a slider over marks' slots can take seconds; a number typed is held
+  to its bounds — whole at step 1 — and reported at once, the box keeping the
+  reader's text until they leave it or press Enter; with it the header shows
+  the label alone, the box being the value; off on its own, or with the
+  slider), `testId` (the parts `-value`, `-input`, `-number`, `-help`,
+  `-notice`).
+- **Variations** — the number; the caller's value words; disabled with a
+  notice; marked with a help caption; with a number box; a number box in a
+  unit of its own, off on the slider's last mark.
 - **Replaces** — `OptionSlider`'s header and its four hand-written copies
   (depth and move time in `EngineSettings` and `AnalysisSettings`) —
   [Shared.md → OptionSlider](../Shared.md#optionslider). `OptionSlider`'s
@@ -85,7 +103,9 @@ Gallery: `/dev/design/forms`.
   It is at least 160 px wide **or as wide as its container where that is
   narrower** (`min-width: min(160px, 100%)`, CTA-116), so a grid of selects in
   a half-panel column — the mask editor's twelve — fits without `fullWidth`.
-- **Variations** — with an "any" choice; required, full width; in a column
+  `labelHidden?` (CTA-221): the label read, not drawn — a filter under its
+  column's header, whose place names it — the outline without a notch.
+- **Variations** — with an "any" choice; its label hidden (a column filter); required, full width; in a column
   narrower than its floor; disabled with a helper.
 - **Replaces** — the `TextField select` filters (the Lobby's opening, the
   collection's result) and the Masking tab's native `Select`.

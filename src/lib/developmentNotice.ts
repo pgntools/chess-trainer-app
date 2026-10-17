@@ -1,55 +1,83 @@
 /**
- * **The in-development notice's dismissal** (CTA-155) — the one thing the app
- * keeps in `sessionStorage`: the notice opens on the first load of any route
- * and, once dismissed, stays closed for the rest of the browser session
- * (a reload, another screen, a change of language); a new tab or window is a
- * new session and shows it again. It is not the reader's data and not a
- * preference to carry between visits, so it is neither IndexedDB nor
- * `localStorage` ([`database.md`](../../.claude/rules/database.md) §2).
+ * **The in-development notice's dismissal** (CTA-155, a month since CTA-210) —
+ * kept in `localStorage` as the time it was dismissed (epoch milliseconds): the
+ * notice opens on the first load of any route and, once dismissed, stays closed
+ * for {@link DEVELOPMENT_NOTICE_DISMISSAL_MS} — in every tab and window, after a
+ * restart — then opens again on the next load, and a new dismissal starts a new
+ * month. A missing, unreadable or future-dated value is not a dismissal, and the
+ * `"1"` the notice once kept in `sessionStorage` is not read at all
+ * ([`database.md`](../../.claude/rules/database.md) §2).
  *
  * Nothing here runs at module scope, so the pre-render imports it under Node.
  */
 export const DEVELOPMENT_NOTICE_KEY = "chessapp.developmentNoticeDismissed";
 
+/** How long a dismissal keeps the notice closed: 30 days. */
+export const DEVELOPMENT_NOTICE_DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
+
 const listeners = new Set<() => void>();
 
-/** Where `sessionStorage` is refused (a locked-down browser) the dismissal lasts the page's life instead. */
+/** Where `localStorage` is refused (a locked-down browser) the dismissal lasts the page's life instead. */
 let remembered = false;
 
 const storage = (): Storage | undefined => {
   try {
-    return typeof sessionStorage === "undefined" ? undefined : sessionStorage;
+    return typeof localStorage === "undefined" ? undefined : localStorage;
   } catch {
     return undefined;
   }
 };
 
-/** Whether the notice was dismissed in this session. */
-export const isDevelopmentNoticeDismissed = (): boolean => {
-  if (remembered) return true;
+/** When the notice was last dismissed, if the stored value reads as a time. */
+const dismissedAt = (): number | undefined => {
   try {
-    return storage()?.getItem(DEVELOPMENT_NOTICE_KEY) === "1";
+    const value = storage()?.getItem(DEVELOPMENT_NOTICE_KEY);
+    if (value == null || !/^\d+$/.test(value)) return undefined;
+    const at = Number(value);
+    return Number.isSafeInteger(at) ? at : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 };
 
-/** Dismisses the notice for the rest of the session, and tells every reader of it. */
+/** Whether the notice was dismissed less than {@link DEVELOPMENT_NOTICE_DISMISSAL_MS} ago. */
+export const isDevelopmentNoticeDismissed = (): boolean => {
+  if (remembered) return true;
+  const at = dismissedAt();
+  if (at === undefined) return false;
+  const elapsed = Date.now() - at;
+  return elapsed >= 0 && elapsed < DEVELOPMENT_NOTICE_DISMISSAL_MS;
+};
+
+/** Dismisses the notice for the next 30 days, and tells every reader of it. */
 export const dismissDevelopmentNotice = (): void => {
-  try {
-    storage()?.setItem(DEVELOPMENT_NOTICE_KEY, "1");
-  } catch {
-    remembered = true;
+  const local = storage();
+  if (local === undefined) remembered = true;
+  else {
+    try {
+      local.setItem(DEVELOPMENT_NOTICE_KEY, String(Date.now()));
+    } catch {
+      remembered = true;
+    }
   }
-  if (storage() === undefined) remembered = true;
   for (const listener of listeners) listener();
 };
 
-/** For `useSyncExternalStore`. */
+/**
+ * For `useSyncExternalStore` — woken by a dismissal in this page, and by the
+ * window's `storage` event, so a dismissal in another tab closes the notice here.
+ */
 export const subscribeToDevelopmentNotice = (listener: () => void): (() => void) => {
   listeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    // A `null` key is the other tab's `localStorage.clear()`.
+    if (event.key === DEVELOPMENT_NOTICE_KEY || event.key === null) listener();
+  };
+  const target = typeof window === "undefined" ? undefined : window;
+  target?.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(listener);
+    target?.removeEventListener("storage", onStorage);
   };
 };
 

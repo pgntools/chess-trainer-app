@@ -3,34 +3,32 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { engineOptionState, optionSlug } from "./engineOptionState";
 import EngineSettingsForm from "./EngineSettingsForm";
 import {
-  ADJUSTABLE_OPTIONS,
-  ELO_OPTIONS,
   ELO_WITHOUT_LIMIT_OPTIONS,
   NO_OPTIONS,
+  PINNED_SKILL_OPTIONS,
   SETTINGS,
+  SETTINGS_LINK,
   SHIPPED_OPTIONS,
-  SPARSE_OPTIONS,
+  SKILL_ONLY_OPTIONS,
 } from "./fixtures";
 
-const mount = (engineOptions: ReadonlyMap<string, EngineOption> = SHIPPED_OPTIONS) => {
+const mount = (engineOptions: ReadonlyMap<string, EngineOption> = SHIPPED_OPTIONS, strengthOff = false) => {
   const onChange = vi.fn();
-  const onShowEvalBarChange = vi.fn();
   render(
     <EngineSettingsForm
       settings={SETTINGS}
       onChange={onChange}
       engineOptions={engineOptions}
-      showEvalBar
-      onShowEvalBarChange={onShowEvalBarChange}
+      strengthOff={strengthOff ? { settingsLink: SETTINGS_LINK } : undefined}
       testId="engine"
     />,
   );
-  return { onChange, onShowEvalBarChange };
+  return { onChange };
 };
 
 beforeEach(async () => {
@@ -60,55 +58,40 @@ describe("engineOptionState", () => {
   });
 });
 
-describe("EngineSettingsForm", () => {
-  it("renders every setting, each a named slider, and the eval bar switch", () => {
+describe("EngineSettingsForm — the opponent's strength (CTA-181: the strength alone)", () => {
+  it("is the strength alone: no depth, move time, lines, Threads or Hash — the top bar's Engine menu has them", () => {
     mount();
-    for (const name of ["Strength", "Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
-      expect(screen.getByRole("slider", { name })).toBeInTheDocument();
-    }
-    expect(screen.getByRole("switch", { name: "Show evaluation bar" })).toBeChecked();
+    expect(screen.getAllByRole("slider")).toHaveLength(1);
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).toBeNull();
     expect(screen.getByTestId("engine-settings")).toBeInTheDocument();
   });
 
-  it("turns a pinned option off and says what it is fixed at", () => {
-    mount();
-    expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
-    expect(screen.getByTestId("engine-setting-threads-fixed")).toHaveTextContent("This engine build fixes Threads at 1.");
-    expect(screen.queryByTestId("engine-setting-threads-unsupported")).toBeNull();
-  });
-
-  it("turns an absent option off and says the build lacks it", () => {
-    mount(SPARSE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeDisabled();
-    expect(screen.getByTestId("engine-setting-hash-unsupported")).toHaveTextContent('This engine build has no "Hash" option.');
-    expect(screen.getByRole("slider", { name: "Strength" })).toHaveAttribute("max", "8");
-  });
-
-  it("leaves every knob live on a build that takes them, and before the handshake", () => {
-    mount(ADJUSTABLE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
-    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "8");
-  });
-
-  it("calls nothing unsupported before the handshake", () => {
-    mount(NO_OPTIONS);
-    expect(screen.queryByTestId(/-unsupported$|-fixed$/)).toBeNull();
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
-  });
-
-  it("is operated from the keyboard: an arrow moves a slider, Space the switch", async () => {
-    const { onChange, onShowEvalBarChange } = mount();
-    screen.getByRole("slider", { name: "Search depth" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(onChange).toHaveBeenLastCalledWith({ depth: SETTINGS.depth + 1 });
+  it("offers the eval bar's switch where a screen hands it one — the Lobby's form", async () => {
+    const onEvalBar = vi.fn();
+    render(
+      <EngineSettingsForm
+        settings={SETTINGS}
+        onChange={vi.fn()}
+        engineOptions={SHIPPED_OPTIONS}
+        evalBar={{ checked: true, onChange: onEvalBar }}
+        testId="engine"
+      />,
+    );
     screen.getByRole("switch", { name: "Show evaluation bar" }).focus();
     await userEvent.keyboard(" ");
-    expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+    expect(onEvalBar).toHaveBeenCalledWith(false);
   });
 
-  describe("the strength control — Skill Level or Elo, by what the running engine declared (CTA-153)", () => {
+  it("turns a pinned strength off and says what it is fixed at", () => {
+    mount(PINNED_SKILL_OPTIONS);
+    expect(screen.getByRole("slider", { name: "Strength" })).toBeDisabled();
+    expect(screen.getByTestId("engine-setting-skill-level-fixed")).toHaveTextContent("This engine build fixes Skill Level at 8.");
+  });
+
+  describe("Skill Level or Elo, by what the running engine declared (CTA-153)", () => {
     it("is Skill Level, with its Elo an estimate, on an engine without UCI_Elo", () => {
-      mount(SHIPPED_OPTIONS);
+      mount(SKILL_ONLY_OPTIONS);
       const strength = screen.getByRole("slider", { name: "Strength" });
       expect(strength).toHaveAttribute("max", "20");
       expect(screen.queryByRole("slider", { name: "Strength (Elo)" })).toBeNull();
@@ -116,18 +99,17 @@ describe("EngineSettingsForm", () => {
     });
 
     it("is an Elo, in the engine's own range, on an engine that has UCI_Elo and UCI_LimitStrength", () => {
-      mount(ELO_OPTIONS);
+      mount(SHIPPED_OPTIONS);
       const strength = screen.getByRole("slider", { name: "Strength (Elo)" });
       expect(strength).toHaveAttribute("min", "1320");
       expect(strength).toHaveAttribute("max", "3190");
       expect(strength).toBeEnabled();
-      // The Skill Level slider is not offered beside it: the engine ignores it while limited.
       expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
       expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent(`${SETTINGS.elo} Elo`);
     });
 
     it("sends the Elo the reader moves to, as a patch", async () => {
-      const { onChange } = mount(ELO_OPTIONS);
+      const { onChange } = mount(SHIPPED_OPTIONS);
       screen.getByRole("slider", { name: "Strength (Elo)" }).focus();
       await userEvent.keyboard("{ArrowRight}");
       expect(onChange).toHaveBeenLastCalledWith({ elo: SETTINGS.elo + 1 });
@@ -139,14 +121,29 @@ describe("EngineSettingsForm", () => {
       expect(screen.queryByRole("slider", { name: "Strength (Elo)" })).toBeNull();
     });
 
-    it("is Skill Level until the handshake lands — nothing is called unsupported meanwhile", () => {
+    it("is the Elo — every shipped engine's — until the handshake lands, nothing called unsupported meanwhile", () => {
       mount(NO_OPTIONS);
-      expect(screen.getByRole("slider", { name: "Strength" })).toBeEnabled();
-      expect(screen.queryByRole("slider", { name: "Strength (Elo)" })).toBeNull();
+      expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeEnabled();
+      expect(screen.queryByTestId("engine-setting-elo-unsupported")).toBeNull();
+    });
+  });
+
+  describe("the preset's UCI_LimitStrength off (CTA-181)", () => {
+    it("turns the Elo off, says why, and links to Settings → Engine", () => {
+      mount(SHIPPED_OPTIONS, true);
+      expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeDisabled();
+      expect(screen.getByTestId("engine-strength-off")).toHaveTextContent("UCI_LimitStrength off");
+      expect(screen.getByRole("link", { name: "Turn it on in Settings → Engine" })).toHaveAttribute("href", "/settings/engine");
     });
 
-    it("passes axe in Elo mode", async () => {
-      mount(ELO_OPTIONS);
+    it("leaves a Skill Level live — it is always Play's", () => {
+      mount(SKILL_ONLY_OPTIONS, true);
+      expect(screen.getByRole("slider", { name: "Strength" })).toBeEnabled();
+      expect(screen.queryByTestId("engine-strength-off")).toBeNull();
+    });
+
+    it("passes axe with the Elo off", async () => {
+      mount(SHIPPED_OPTIONS, true);
       await expectNoAxeViolations();
     });
   });

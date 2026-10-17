@@ -1,7 +1,9 @@
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
-import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
+
+import { LEGAL_PAGES_SHOWN } from '../legal/legalPagesShown';
 
 /**
  * Project source repository. A plain constant rather than a catalog string:
@@ -16,6 +18,13 @@ const REPO_URL = 'https://github.com/pgntools/chess-trainer-app';
  * non-scrolling strip. Direction-relative: it follows the active language like
  * the sidebar, so every inset is a logical property and it is *not* wrapped in
  * `ForceLTR` (that hatch is only for the board subtree).
+ *
+ * Its links: at the inline start the legal pages (CTA-159 — the Privacy Policy
+ * and the Cookies Notice, router links, so they carry the base path and the
+ * language's prefix; only in a build that has them, CTA-182), at the inline
+ * end the app's version, linked to the project's source (CTA-199).
+ * Row-wrapping, so the strip grows a line rather than overflow at 320 px
+ * (WCAG 1.4.10).
  */
 const Footer = () => {
     const { t } = useTranslation();
@@ -28,9 +37,12 @@ const Footer = () => {
                 flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
+                flexWrap: 'wrap',
+                columnGap: 1.5,
+                rowGap: 0.5,
                 minHeight: 36,
                 paddingInline: 2,
+                paddingBlock: 0.5,
                 color: 'text.secondary',
                 bgcolor: 'background.translucent',
                 backdropFilter: 'blur(8px)',
@@ -39,24 +51,37 @@ const Footer = () => {
                 fontSize: 13,
             }}
         >
-            <Typography
-                component="span"
-                variant="caption"
-                data-testid="layout-footer-version"
-                sx={{ color: 'text.secondary' }}
-            >
-                {t('app.brandText')} v{__APP_VERSION__}
-            </Typography>
-
+            {LEGAL_PAGES_SHOWN && (
+                <>
+                    <Link
+                        component={RouterLink}
+                        to="/privacy"
+                        variant="caption"
+                        data-testid="layout-footer-privacy-link"
+                        sx={{ color: 'text.secondary' }}
+                    >
+                        {t('footer.privacy')}
+                    </Link>
+                    <Link
+                        component={RouterLink}
+                        to="/cookies"
+                        variant="caption"
+                        data-testid="layout-footer-cookies-link"
+                        sx={{ color: 'text.secondary' }}
+                    >
+                        {t('footer.cookies')}
+                    </Link>
+                </>
+            )}
             <Link
                 href={REPO_URL}
                 target="_blank"
                 rel="noopener"
                 variant="caption"
                 data-testid="layout-footer-repo-link"
-                sx={{ color: 'text.secondary', marginInlineStart: 'auto' }}
+                sx={{ marginInlineStart: 'auto', color: 'text.secondary' }}
             >
-                {t('footer.source')}
+                v{__APP_VERSION__}
             </Link>
         </Box>
     );

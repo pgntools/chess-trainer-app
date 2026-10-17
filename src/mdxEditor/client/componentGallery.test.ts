@@ -17,7 +17,7 @@ import { guessOf } from "./libraryLookup";
 const ARTICLES = "src/views/blog/articles";
 const manifest = JSON.parse(readFileSync("src/data/library/manifest.json", "utf8")) as { collections: { id: string; pgn: string }[] };
 /** Markdown's own elements, which the map renders prose with — not components an article names. */
-const PROSE = new Set(["h1", "h2", "h3", "p", "ul", "ol", "li", "a", "hr", "pre", "code"]);
+const PROSE = new Set(["h1", "h2", "h3", "p", "ul", "ol", "li", "a", "hr", "pre", "code", "table", "th", "td"]);
 /** The components an article embeds — but the older names that are another with a source. */
 const embeds = Object.keys(mdxComponents).filter((name) => !PROSE.has(name) && !MDX_ALIASES.has(name));
 const entries = galleryEntries();
@@ -44,7 +44,7 @@ describe("the gallery's index", () => {
     const ids = [...GALLERY.map((folder) => folder.id), ...entries.map((entry) => entry.id)];
     expect(new Set(ids).size).toBe(ids.length);
     const boards = GALLERY.find((folder) => folder.id === "boards")?.entries.map((entry) => entry.component);
-    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGameColumns", "StoredGameEmbed", "CollectionCard", "RepertoireBoard"]);
+    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGame2colH", "InlinePgnGame2colV", "StoredGameEmbed", "CollectionCard", "RepertoireBoard"]);
   });
 
   it("opens every entry that reads a game on a shipped sample that fits it", () => {
@@ -97,7 +97,7 @@ describe("the gallery's index", () => {
     const tal = { kind: "address", address: { kind: "collection", collection: "tal" } } as const;
     expect(sourceKindOf(tal)).toBe("collection");
     expect(misfitOf(stored, tal)).toBe(
-      "<StoredGameEmbed> does not read a whole Library collection: it reads one Library game, /library/<collection>/<n> or a saved analysis, /tools/analysis?analysis=<id> or a game played against the engine, /engine/play?saved=<id>.",
+      "<StoredGameEmbed> does not read a whole Library collection: it reads one Library game, /library/<collection>/<n> or an Analysis case, /analysis/projects/<project>/cases/<case> or a game played against the engine, /engine/play?saved=<id>.",
     );
     expect(misfitOf(stored, { kind: "pasted", text: "1. e4 *" })).toMatch(/^<StoredGameEmbed> does not read a PGN/);
     // A table reads a PGN or a collection alike — one component, any source.
@@ -125,7 +125,7 @@ describe("the gallery's index", () => {
     expect(snippetOf(byId("double-elimination-bracket"), address("/library/esportsplayin2026"))).toBe('<KnockoutBracket src="/library/esportsplayin2026" losersFromRound="51" />');
     expect(snippetOf(byId("inline-pgn-game"), address("/repertoires/r7"))).toBe('<InlinePgnGame src="/repertoires/r7" />');
     expect(snippetOf(byId("inline-pgn-game"), address("/library/tal"))).toBe('<InlinePgnGame src="/library/tal" game="1" />');
-    expect(snippetOf(byId("stored-game-embed"), address("/tools/analysis?analysis=a1"))).toBe('<StoredGameEmbed src="/tools/analysis?analysis=a1" />');
+    expect(snippetOf(byId("stored-game-embed"), address("/analysis/projects/p1/cases/c1"))).toBe('<StoredGameEmbed src="/analysis/projects/p1/cases/c1" />');
   });
 
   it("offers as built-in examples only what fits: the entry's own first, then the Blog's PGNs or the shipped collections", () => {

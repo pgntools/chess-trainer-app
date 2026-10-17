@@ -17,9 +17,10 @@ import {
   type CollectionRow,
   type CollectionSummary,
 } from "../../lib/libraryCollections";
+import { stampPgnTags, type PgnTag } from "../../lib/pgnTagStamp";
 import { indexCollection } from "./indexCollection";
 
-/** A file's kept games, ready to write. */
+/** A file's kept games, ready to write — `rows` the file's own (tag-only), `games` with the typed tags stamped on. */
 type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[] };
 
 /**
@@ -50,6 +51,11 @@ type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[
  *   with the type the popup's table holds for it (`eventType`: the guess,
  *   unless the reader changed it), "Not a tournament" — and "Unknown" — left
  *   plain.
+ * - **The TAGS field** (CTA-234): the tag pairs typed in it are stamped on
+ *   every kept game (`stampPgnTags`) **just before the index pass** — so the
+ *   index, the stored games and every later export carry them, while the
+ *   popup's filters, metadata, split, guess and the collections' names read
+ *   the file as it came.
  *
  * Cancel, Escape, the backdrop or the popup going away stop the index pass
  * and write nothing. The one moment nothing can be stopped is the write
@@ -140,9 +146,9 @@ function ImportOptionsDialog({
       // The file's kept games by event — each group's games in file order,
       // its rows the same games' slice of the one index pass.
       for (const group of eventGroupsOf(
-        batch.rows.map((row, index) => ({ event: row.event, row, indexed: rows[index] as IndexedRow })),
+        batch.rows.map((row, index) => ({ event: row.event, game: batch.games[index] as string, indexed: rows[index] as IndexedRow })),
       )) {
-        const groupGames = group.rows.map(({ row }) => batch.file.games[row.number - 1] as string);
+        const groupGames = group.rows.map((entry) => entry.game);
         // The event's type as the reader left it in the popup's table (the guess, unless changed).
         const type = group.event === undefined ? undefined : tournament.eventType?.(source.files.indexOf(batch.file), group.event);
         const result = await addCollection(
@@ -164,12 +170,12 @@ function ImportOptionsDialog({
     return { path: added.length === 1 ? `/library/${encodeURIComponent(added[0] as string)}` : "/library" };
   };
 
-  const confirm = async (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice) => {
-    // Each file's kept games, in file order; a file that keeps none makes nothing.
+  const confirm = async (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice, tags: PgnTag[]) => {
+    // Each file's kept games, in file order, the typed tags stamped on; a file that keeps none makes nothing.
     const batches = source.files
       .map((file, index): Batch => {
         const rows = kept[index] ?? [];
-        return { file, rows, games: rows.map((row) => file.games[row.number - 1] as string) };
+        return { file, rows, games: rows.map((row) => stampPgnTags(file.games[row.number - 1] as string, tags)) };
       })
       .filter((batch) => batch.games.length > 0);
     const games = batches.flatMap((batch) => batch.games);
@@ -231,7 +237,8 @@ function ImportOptionsDialog({
       intoName={into?.name}
       problem={problem === null ? undefined : t(`library.upload.problem.${problem}`)}
       onCancel={cancel}
-      onImport={(kept, splitByEvent, tournament) => void confirm(kept, splitByEvent, tournament)}
+      tagsField
+      onImport={(kept, splitByEvent, tournament, tags) => void confirm(kept, splitByEvent, tournament, tags)}
       testId="library-import"
     />
   );

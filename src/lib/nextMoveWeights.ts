@@ -1,4 +1,7 @@
+import { Chess, type Square } from "chess.js";
+
 import type { ArrowWidthSource } from "./arrowSettings";
+import type { EngineLine, Score } from "./engineAnalysis";
 import { gamesOf } from "./gamesTag";
 import type { GameTree, VariationNode } from "./gameTree";
 import { readComment } from "./moveAnnotations";
@@ -14,15 +17,20 @@ import { TreeManager } from "./treeManager";
  *
  * | Source | Read from | Weight |
  * | --- | --- | --- |
- * | `eval` | `[%eval X]` in the move's own comment, or the trailing `+1.31 (21 ply)` shape (`readComment`'s `eval`) — White's view, pawns or `#N` | **loss vs best**: the best tagged move is 1, each narrows linearly with the centipawns it gives up, to 0 at {@link EVAL_HAIRLINE_CP} or worse; a mate for the mover is the best, a mate against it 0 |
+ * | `eval` | `[%eval X]` in the move's own comment, or the trailing `+1.31 (21 ply)` shape (`readComment`'s `eval`) — White's view, pawns or `#N` | **loss vs best, in two groups** (CTA-180): every move within {@link EVAL_BEST_CP} of the best tagged move is 1 — the *best* group; every other is a *worse* move, at most {@link EVAL_WORSE_MAX_WEIGHT} and narrowing with the square root of its loss to 0 at {@link EVAL_HAIRLINE_CP} or worse (so 10 and 50 cp apart already look different); a mate for the mover is the best, a mate against it 0 |
  * | `games` | `games:N` / `[%games N]` (`lib/gamesTag.ts`) | `N / Σ N` over the tagged moves |
  * | `prc` | `prc:N` / `[%prc N]` (`playChanceOf`) | the marks scaled to 100% over the tagged moves (lichess-tools' rule 2) |
  * | `lines` | nothing — lichess-tools' default | each move's share of the lines within 8 plies (`linesWithin`) |
+ * | `variations` | nothing in the tree — the engine's listed lines (CTA-197) | each line's first move by `eval`'s rule, its score the line's — {@link engineLineWeights}; the tree's continuations weigh nothing |
  *
  * **Partly tagged**: a move without the tag weighs `null` — drawn gray, of a
  * fixed modest width — while the tagged ones are sized. **Not tagged at all**
  * at this branch: `undefined`, and the board draws its ordinary arrows, so it
  * stays readable past the tagged part of a game. `lines` always weighs.
+ *
+ * Under `eval` a weight of exactly 1 **is** the best group — no worse move
+ * reaches it — so the arrows can colour by quality from the weight alone
+ * (`weightedArrowColors`' `byQuality`, `views/explorer/chanceArrows.ts`).
  *
  * Pure.
  */
@@ -30,8 +38,22 @@ import { TreeManager } from "./treeManager";
 /** A continuation's weight, 0–1; `null` for a move that carries no tag. */
 export type NextMoveWeight = number | null;
 
+/** How many centipawns a move may give up and still count among the best. */
+export const EVAL_BEST_CP = 1;
+
 /** How many centipawns a move may give up before its arrow is a hairline. */
 export const EVAL_HAIRLINE_CP = 300;
+
+/** The widest a worse move is drawn — clearly thinner than the best's 1. */
+export const EVAL_WORSE_MAX_WEIGHT = 0.6;
+
+/**
+ * A worse move's weight by the centipawns it gives up: the square root makes
+ * the first centipawns count most, so a small loss is already visibly thinner
+ * and the arrows still tell 50 cp from 150; 0 at {@link EVAL_HAIRLINE_CP}.
+ */
+const worseWeight = (loss: number): number =>
+  EVAL_WORSE_MAX_WEIGHT * (1 - Math.sqrt(Math.min(1, loss / EVAL_HAIRLINE_CP)));
 
 /** A mate's score in centipawns — past any real evaluation, a shorter mate the better. */
 const MATE_CP = 100_000;
@@ -105,29 +127,101 @@ export const nextMoveWeights = (
       return shares(nodes.map(gamesOf));
     case "prc":
       return shares(nodes.map(playChanceOf));
-    case "eval": {
-      const scores = nodes.map((node) => {
-        const value = evalOf(node);
-        return value === undefined ? undefined : moverScore(value, playedByWhite(node));
-      });
-      if (scores.every((score) => score === undefined)) return undefined;
-      const best = Math.max(...scores.filter((score) => score !== undefined));
-      return scores.map((score) => {
-        if (score === undefined) return null;
-        if (score <= -MATE_CP / 2) return 0;
-        return Math.max(0, 1 - (best - score) / EVAL_HAIRLINE_CP);
-      });
-    }
+    case "eval":
+      return evalWeights(
+        nodes.map((node) => {
+          const value = evalOf(node);
+          return value === undefined ? undefined : moverScore(value, playedByWhite(node));
+        }),
+      );
+    case "variations":
+      // The engine's lines, not the tree's moves — `engineLineWeights`.
+      return undefined;
   }
 };
 
 /**
- * Every width source a tree can be drawn by: `none` and `lines` always, and
- * each tag some move anywhere in it carries. One walk; recompute it when the
- * tree changes (a load, a comment edited).
+ * `eval`'s rule over the mover's scores (`moverScore`) — the best group 1,
+ * every worse move narrower by its loss, a mate against the mover 0; `null`
+ * where a move has none, `undefined` where none has one.
+ */
+const evalWeights = (scores: readonly (number | undefined)[]): NextMoveWeight[] | undefined => {
+  if (scores.every((score) => score === undefined)) return undefined;
+  const best = Math.max(...scores.filter((score) => score !== undefined));
+  return scores.map((score) => {
+    if (score === undefined) return null;
+    if (score <= -MATE_CP / 2) return 0;
+    // Every mate for the mover is among the best, a longer one too.
+    if (score >= MATE_CP / 2) return 1;
+    const loss = best - score;
+    return loss <= EVAL_BEST_CP ? 1 : worseWeight(loss);
+  });
+};
+
+/**
+ * A move drawn by its squares rather than as a tree node — an engine line's
+ * first move (CTA-197) — with its weight. `id` is its UCI (`e2e4`, `e7e8q`):
+ * the arrow's key, and unique among one position's moves.
+ */
+export type WeightedMove = { id: string; from: Square; to: Square; weight: NextMoveWeight };
+
+/** An engine score (`lib/engineAnalysis.ts`, White's view) as an evaluation. */
+const moveEvalOf = (score: Score): MoveEval =>
+  score.kind === "cp" ? { cp: score.value } : { mate: score.value };
+
+/**
+ * **The `variations` source** (CTA-197): the first move of each of the
+ * engine's listed lines for `fen` — in their order, a move two lines open
+ * with drawn once — weighted by `eval`'s rule on the lines' scores, so the
+ * best line (and every line within {@link EVAL_BEST_CP} of it) is the widest
+ * and the rest narrow to a hairline at {@link EVAL_HAIRLINE_CP}. A line
+ * without a score weighs `null`. `undefined` when there is nothing to draw:
+ * no line opens with a legal move here, or no line has a score.
+ *
+ * The caller makes sure the lines are `fen`'s (`Analysis.fen`) — a line
+ * from another position would mostly fail to replay, but not always.
+ */
+export const engineLineWeights = (
+  fen: string,
+  lines: readonly (EngineLine | undefined)[],
+): WeightedMove[] | undefined => {
+  let board: Chess;
+  try {
+    board = new Chess(fen);
+  } catch {
+    return undefined;
+  }
+  const whiteMoves = board.turn() === "w";
+  const moves: Omit<WeightedMove, "weight">[] = [];
+  const scores: (number | undefined)[] = [];
+  for (const line of lines) {
+    const san = line?.san[0];
+    if (line === undefined || san === undefined) continue;
+    let move;
+    try {
+      move = board.move(san);
+    } catch {
+      continue;
+    }
+    board.undo();
+    const id = `${move.from}${move.to}${move.promotion ?? ""}`;
+    if (moves.some((each) => each.id === id)) continue;
+    moves.push({ id, from: move.from, to: move.to });
+    scores.push(line.score === null ? undefined : moverScore(moveEvalOf(line.score), whiteMoves));
+  }
+  const weights = evalWeights(scores);
+  return weights === undefined ? undefined : moves.map((move, index) => ({ ...move, weight: weights[index] }));
+};
+
+/**
+ * Every width source a tree can be drawn by: `none`, `lines` and
+ * `variations` (the engine's, not the tree's — the board draws it as None
+ * until the engine has lines) always, and each tag some move anywhere in it
+ * carries. One walk; recompute it when the tree changes (a load, a comment
+ * edited).
  */
 export const arrowWidthSourcesIn = (tree: GameTree): ReadonlySet<ArrowWidthSource> => {
-  const found = new Set<ArrowWidthSource>(["none", "lines"]);
+  const found = new Set<ArrowWidthSource>(["none", "lines", "variations"]);
   new TreeManager<VariationNode>(tree.moves).traverse((node) => {
     if (node.comments === undefined && node.preComments === undefined) return;
     if (!found.has("prc") && playChanceOf(node) !== undefined) found.add("prc");

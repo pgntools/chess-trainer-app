@@ -35,6 +35,15 @@ import { committed, done } from "./idb";
  *
  * Each write is announced on a `BroadcastChannel`, and a tab that hears one
  * reads the store again (queued behind its own writes).
+ *
+ * ### A quiet write (CTA-222)
+ *
+ * A write may be **quiet**: committed, kept and announced to other tabs like
+ * any other, but this tab's subscribers are not called — so a write the screen
+ * on view already shows (the Case board's move on screen, on every arrow
+ * press) costs it no re-render. The kept list is the new one all the same, so
+ * the next render that reads the snapshot for any reason reads it, and the
+ * next write that is not quiet tells every subscriber.
  */
 
 /** What went wrong with a write. */
@@ -54,12 +63,31 @@ export interface IdbRecordStore<Row extends { id: string }> {
    * Change the list: `update` gets the current rows and answers the next ones
    * (the same array for "nothing to do"). Queued behind every earlier write.
    */
-  write: (update: (rows: readonly Row[]) => readonly Row[]) => Promise<IdbRecordStoreProblem | undefined>;
+  write: (
+    update: (rows: readonly Row[]) => readonly Row[],
+    options?: IdbRecordStoreWriteOptions,
+  ) => Promise<IdbRecordStoreProblem | undefined>;
   /** Resolves once every write issued so far has landed (or been refused). Never rejects. */
   settled: () => Promise<void>;
+  /**
+   * The browser's own words for the last write it refused (CTA-208) —
+   * `"QuotaExceededError: …"` — so a screen can say exactly why; `undefined`
+   * before any refusal.
+   */
+  lastWriteError: () => string | undefined;
   /** **For tests**: forget everything read — the database itself is the caller's to delete. */
   reset: () => void;
 }
+
+/** How a write tells of itself — absent, as every write always has. */
+export type IdbRecordStoreWriteOptions = {
+  /**
+   * Whether this write is **quiet** (CTA-222): its subscribers in this tab are
+   * not called, other tabs are still told. Asked once the update has run, so
+   * the update can decide it from the rows it found. Absent: not quiet.
+   */
+  quiet?: () => boolean;
+};
 
 export type IdbRecordStoreOptions<Row> = {
   /** The database the store lives in — opened once, and shared by its stores. */
@@ -72,6 +100,15 @@ export type IdbRecordStoreOptions<Row> = {
   order: "newest-first" | "oldest-first";
   /** The `BroadcastChannel` other tabs hear this store's writes on. */
   channel: string;
+  /**
+   * **The whole list mended after every read** (CTA-203) — what one row's
+   * normaliser cannot do because it needs the others (the Cases' order, given
+   * to a record from before by its Project's). It keeps the list's ids and
+   * their order, answering the same array when there is nothing to mend; a
+   * row it replaces is written back before the read lands (a refusal is
+   * ignored — the next read mends it again). Absent, nothing is mended.
+   */
+  repair?: (rows: readonly Row[]) => readonly Row[];
 };
 
 /**
@@ -108,6 +145,7 @@ export const idbRecordStore = <Row extends { id: string }>({
   normalise,
   order,
   channel: channelName,
+  repair,
 }: IdbRecordStoreOptions<Row>): IdbRecordStore<Row> => {
   let rows: readonly Row[] | undefined;
   /** Each row's `seq`, by id — what a write keeps where it can. */
@@ -145,7 +183,22 @@ export const idbRecordStore = <Row extends { id: string }>({
       read.push(row);
     }
     seqs = nextSeqs;
-    return read;
+    if (repair === undefined) return read;
+
+    const mended = repair(read);
+    const mendedRows = mended.filter((row, index) => row !== read[index]);
+    if (mendedRows.length > 0) {
+      try {
+        const db = await openDb();
+        const tx = db.transaction(store, "readwrite");
+        const objects = tx.objectStore(store);
+        for (const row of mendedRows) objects.put({ id: row.id, seq: nextSeqs.get(row.id) ?? 0, value: row } satisfies Stored);
+        await committed(tx);
+      } catch {
+        // Kept mended in memory; the next read mends it again.
+      }
+    }
+    return mended;
   };
 
   const settleRead = (read: readonly Row[]) => {
@@ -184,8 +237,16 @@ export const idbRecordStore = <Row extends { id: string }>({
 
   const announce = () => channel?.postMessage({ store });
 
+  let lastError: string | undefined;
+  /** An error as the browser names it: `name: message`, or what it says of itself. */
+  const describe = (error: unknown): string =>
+    error instanceof Error || (typeof DOMException !== "undefined" && error instanceof DOMException)
+      ? [error.name, error.message].filter((part) => part !== "").join(": ")
+      : String(error);
+
   const write = (
     update: (rows: readonly Row[]) => readonly Row[],
+    { quiet }: IdbRecordStoreWriteOptions = {},
   ): Promise<IdbRecordStoreProblem | undefined> => {
     const run = queue.then(async (): Promise<IdbRecordStoreProblem | undefined> => {
       const current = await load();
@@ -204,13 +265,14 @@ export const idbRecordStore = <Row extends { id: string }>({
           for (const id of gone) objects.delete(id);
           for (const row of puts) objects.put({ id: row.id, seq: nextSeqs.get(row.id) ?? 0, value: row } satisfies Stored);
           await committed(tx);
-        } catch {
+        } catch (error) {
+          lastError = describe(error);
           return "storage";
         }
       }
       seqs = nextSeqs;
       rows = next;
-      emit();
+      if (quiet?.() !== true) emit();
       announce();
       return undefined;
     });
@@ -246,5 +308,5 @@ export const idbRecordStore = <Row extends { id: string }>({
 
   const settled = (): Promise<void> => queue.then(() => undefined);
 
-  return { snapshot: () => rows, subscribe, load, write, settled, reset };
+  return { snapshot: () => rows, subscribe, load, write, settled, reset, lastWriteError: () => lastError };
 };

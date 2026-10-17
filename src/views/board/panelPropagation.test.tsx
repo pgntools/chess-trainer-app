@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -45,9 +46,9 @@ vi.mock("./core/BoardPanel", () => ({
   ),
 }));
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("./boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");
@@ -61,12 +62,13 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   );
 });
 
-import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
 import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
+import { CaseBoard } from "../analysisV2/CaseWorkspace";
+import { gameCaseOf } from "../../lib/analysisProjects";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -80,34 +82,44 @@ const LibraryGame = () => (
     collection={LIBRARY_FIXTURE}
     number={1}
     tree={parsePgnTree(LIBRARY_FIXTURE.games[0])}
+    detailsTab="settings"
+    onDetailsTabChange={() => {}}
+    drawerOpen={false}
+    onDrawerOpenChange={() => {}}
   />
 );
+
+
+/** A Case of Analysis V2 (CTA-186), on its board. */
+const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 
 /** Every board composed from the core, by the id its panel carries. */
 const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] =
   [
-    // Analysis v2, shipped as the Analysis Board (CTA-73) and kept under the
-    // assertion it was built to pass.
-    { name: "Analysis Board", panelId: "analysis-panel", Screen: AnalysisBoard },
     // Play with Engine, a v2 screen since CTA-74.
     { name: "Play with Engine", panelId: "play-with-engine-panel", Screen: PlayWithEngine },
-    // The Library's game board (CTA-75), composed as the Analysis Board is.
+    // The Library's game board (CTA-75).
     { name: "Library game", panelId: "library-game-panel", Screen: LibraryGame },
     // The Openings explorer (CTA-78), in Openings v2's place.
     { name: "Openings explorer", panelId: "openings-panel", Screen: OpeningsBoard },
     // Masked Pieces (CTA-79), Play with Engine's screen in a costume — in the
     // dev boards' place.
     { name: "Masked Pieces", panelId: "masked-play-panel", Screen: MaskedPlay },
+    // Analysis V2's Case board (CTA-186) — the app's analysis board since CTA-192.
+    { name: "Analysis V2 case", panelId: "analysis-case-panel", Screen: AnalysisCase },
   ];
 
 const renderBoard = (Screen: () => ReactNode) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/dev"]}>
-        <RightPanelProvider>
-          <Screen />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -159,13 +171,20 @@ describe("the one panel skeleton", () => {
     expect(seen).toEqual(BOARDS.map((board) => board.panelId));
   });
 
-  it("gives every board the Moves and Engine tabs, through the same slot", () => {
-    // The tab strip is the skeleton's; what goes in it is the screen's. Two
-    // tabs are common to all of them because all are boards with an engine.
-    for (const { Screen } of BOARDS) {
+  it("gives every board the Moves tab through the same slot — and an Engine tab only to the Play boards (CTA-181)", () => {
+    /*
+      The tab strip is the skeleton's; what goes in it is the screen's. Moves
+      is common to all of them. Since CTA-181 the search settings are the top
+      bar's Engine menu and no analysis board has an Engine tab: only Play
+      with Engine and Masked Pieces keep one, for the opponent's strength.
+    */
+    const PLAY_BOARDS = ["play-with-engine-panel", "masked-play-panel"];
+    for (const { Screen, panelId } of BOARDS) {
       const { unmount } = renderBoard(Screen);
-      const ids = screen.getByTestId("panel-tab-ids").textContent ?? "";
-      expect(ids.split(",")).toEqual(expect.arrayContaining(["moves", "engine"]));
+      const ids = (screen.getByTestId("panel-tab-ids").textContent ?? "").split(",");
+      expect(ids).toContain("moves");
+      if (PLAY_BOARDS.includes(panelId)) expect(ids, panelId).toContain("engine");
+      else expect(ids, panelId).not.toContain("engine");
       unmount();
     }
   });

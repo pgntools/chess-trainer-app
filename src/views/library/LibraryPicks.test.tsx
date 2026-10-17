@@ -5,8 +5,8 @@ import { indexedRowOf, numberedRows } from "../../lib/collectionIndex";
 import { loadUploadedCollections, peekUploadedGames, peekUploadedRows } from "../../lib/libraryCollectionStore";
 import { filteredRows } from "../../lib/libraryCollections";
 import { peekShippedGames } from "../../lib/shippedCollections";
-import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
-import { createAnalysisFolder, loadAnalysisFolders, MAX_ANALYSIS_FOLDERS } from "../../lib/savedAnalysisFolderStore";
+import { loadAnalysisCases } from "../../lib/analysisCaseStore";
+import { createAnalysisProject, loadAnalysisProjects } from "../../lib/analysisProjectStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import {
   GAMES,
@@ -20,9 +20,9 @@ import {
   resetLibrary,
 } from "./libraryTestKit";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -41,7 +41,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 /*
-  The Library (CTA-75), through its screens — here a collection's picks: downloaded, analysed into Saved analyses, saved as a new collection. The other
+  The Library (CTA-75), through its screens — here a collection's picks: downloaded, analysed into Analysis as Cases (CTA-192), saved as a new collection. The other
   Library screen tests are `Library.test.tsx`, `LibraryFilters.test.tsx`,
   `LibraryPicks.test.tsx` and `LibraryImport.test.tsx`, one file once,
   split so the suite's shards can share it (CTA-124); what they share is
@@ -121,32 +121,56 @@ describe("analysing the picks (CTA-77)", () => {
     expect(analyse()).toBeEnabled();
   });
 
-  it("saves the picks into one new folder, in collection order, named for the collection and the filters", async () => {
+  /** The Project picker the picks open, and its submit — "Add N cases". */
+  const picker = () => screen.findByRole("dialog", { name: /games? to Analysis$|^Open in Analysis$/ }, { timeout: 10_000 });
+  const add = async () => {
+    const dialog = await picker();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^(Add \d+ cases?|Open)$/ }));
+  };
+
+  it("puts the picks into a new Project named for the collection and the filters, a Game Case each, in collection order (CTA-192)", async () => {
     const mine = await upload();
     await mountTable(`/library/${mine.id}?player=Amy`);
     pick(2);
     pick(1);
     fireEvent.click(analyse());
-    // Working: it cannot be clicked twice.
-    expect(analyse()).toBeDisabled();
 
-    expect(await notice()).toHaveTextContent("2 games added to Saved analyses, in “Club games — 2 games (Amy)”.");
-    const folders = await loadAnalysisFolders();
-    expect(folders).toHaveLength(1);
-    expect(folders[0]).toMatchObject({ name: "Club games — 2 games (Amy)", parentId: null });
-    const saved = await loadSavedAnalyses();
-    expect(saved.map((row) => [row.name, row.folderId, row.pgn])).toEqual([
-      ["Zed – Amy", folders[0].id, GAMES[0]],
-      ["Amy – Bob", folders[0].id, GAMES[1]],
+    const dialog = await picker();
+    expect(dialog).toHaveAccessibleName("Add 2 games to Analysis");
+    expect(within(dialog).getByRole("textbox", { name: "The new project's name" })).toHaveValue("Club games — 2 games (Amy)");
+    await add();
+
+    expect(await notice()).toHaveTextContent("2 games added to Analysis, in “Club games — 2 games (Amy)”.");
+    const projects = await loadAnalysisProjects();
+    expect(projects).toHaveLength(1);
+    expect(projects[0]).toMatchObject({ name: "Club games — 2 games (Amy)", folderId: null });
+    const cases = await loadAnalysisCases();
+    expect(cases.map((row) => [row.name, row.projectId, row.type])).toEqual([
+      ["Zed – Amy", projects[0].id, "game"],
+      ["Amy – Bob", projects[0].id, "game"],
     ]);
-    expect(saved[0]).toMatchObject({ path: [], orientation: "white" });
-    expect(screen.getByTestId("library-picks-analyse-open")).toHaveAttribute(
-      "href",
-      `/tools/analysis/saved?folder=${folders[0].id}`,
-    );
-    // The picks stay as they were.
+    expect(cases[0].pgn).toContain("1. e4 e5");
+    expect(cases[0]).toMatchObject({ path: [], orientation: "white" });
+    expect(screen.getByTestId("library-picks-analyse-open")).toHaveAttribute("href", `/analysis/projects/${projects[0].id}`);
+    // The picks stay as they were, and the table too.
     expect(screen.getByTestId("library-picks-selected-count")).toHaveTextContent("2 selected");
+    expect(where()).toBe(`/library/${mine.id}?player=Amy`);
     expect(analyse()).toBeEnabled();
+  });
+
+  it("puts them into a Project the reader already has, when picked", async () => {
+    const studies = (await createAnalysisProject("Studies", null))!;
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    pick(1);
+    fireEvent.click(analyse());
+    const dialog = await picker();
+    fireEvent.click(within(dialog).getByTestId(`library-picks-send-projects-${studies.id}`));
+    await add();
+
+    expect(await notice()).toHaveTextContent("1 game added to Analysis, in “Studies”.");
+    expect((await loadAnalysisProjects()).map((project) => project.name)).toEqual(["Studies"]);
+    expect((await loadAnalysisCases()).map((row) => row.projectId)).toEqual([studies.id]);
   });
 
   it("leaves out a game the index could not read, and says so", async () => {
@@ -155,44 +179,34 @@ describe("analysing the picks (CTA-77)", () => {
     expect(screen.getByTestId("library-table-unreadable-2")).toBeInTheDocument();
     fireEvent.click(within(screen.getByTestId("library-picks-select-all")).getByRole("checkbox"));
     fireEvent.click(analyse());
+    await add();
 
     expect(await notice()).toHaveTextContent(
-      "1 game added to Saved analyses, in “Mixed — 1 game”. 1 game could not be read and was left out.",
+      "1 game added to Analysis, in “Mixed — 1 game”. 1 game could not be read and was left out.",
     );
-    expect((await loadSavedAnalyses()).map((row) => row.pgn)).toEqual([GAMES[0]]);
+    expect((await loadAnalysisCases()).map((row) => row.name)).toEqual(["Zed – Amy"]);
   });
 
   it("works on a shipped collection too", async () => {
     await mountTable("/library/capablanca?sort=number");
     pick(1);
     fireEvent.click(analyse());
-    expect(await notice()).toHaveTextContent("1 game added to Saved analyses, in “Capablanca — 1 game”.");
-    const [saved] = await loadSavedAnalyses();
-    expect(saved.pgn).toBe((peekShippedGames("capablanca") ?? [])[0].trim());
+    await add();
+    expect(await notice()).toHaveTextContent("1 game added to Analysis, in “Capablanca — 1 game”.");
+    const [saved] = await loadAnalysisCases();
     expect(saved.name).toBe("Capablanca, Jose – Eschevarria, C.");
+    expect(saved.source).toMatchObject({ kind: "pgn" });
+    expect((peekShippedGames("capablanca") ?? [])[0]).toContain("Capablanca, Jose");
   });
 
-  it("says why, and leaves nothing behind, when no folder can be made", async () => {
-    for (let index = 0; index < MAX_ANALYSIS_FOLDERS; index += 1) {
-      await createAnalysisFolder(`F${index}`, null);
-    }
-    const mine = await upload();
-    await mountTable(`/library/${mine.id}`);
-    pick(1);
-    fireEvent.click(analyse());
-    expect(await notice()).toHaveTextContent(`at most ${MAX_ANALYSIS_FOLDERS} folders`);
-    expect(await loadSavedAnalyses()).toEqual([]);
-    expect(screen.queryByTestId("library-picks-analyse-open")).toBeNull();
-  });
-
-  it("takes the folder back out when the games cannot be stored", async () => {
+  it("says why in the picker, and takes the new Project back, when the Cases cannot be stored", async () => {
     const put = IDBObjectStore.prototype.put;
     vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
       this: IDBObjectStore,
       value: unknown,
       key?: IDBValidKey,
     ) {
-      // The analyses' records carry a PGN; the folder's does not.
+      // A Case's record carries a PGN; a Project's does not.
       if ((value as { value?: { pgn?: string } }).value?.pgn !== undefined) {
         throw new DOMException("full", "QuotaExceededError");
       }
@@ -202,10 +216,12 @@ describe("analysing the picks (CTA-77)", () => {
     await mountTable(`/library/${mine.id}`);
     pick(1);
     fireEvent.click(analyse());
-    expect(await notice()).toHaveTextContent("storage may be full");
+    await add();
+    expect(await screen.findByTestId("library-picks-send-problem")).toHaveTextContent("the browser refused it");
     vi.restoreAllMocks();
-    expect(await loadAnalysisFolders()).toEqual([]);
-    expect(await loadSavedAnalyses()).toEqual([]);
+    expect(await loadAnalysisProjects()).toEqual([]);
+    expect(await loadAnalysisCases()).toEqual([]);
+    expect(screen.queryByTestId("library-picks-analyse-notice")).toBeNull();
   });
 });
 

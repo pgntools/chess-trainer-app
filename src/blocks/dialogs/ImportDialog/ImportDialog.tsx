@@ -42,7 +42,7 @@ export type ImportDialogProps = {
    * The prefix of every id it sets: the dialog `<testId>-dialog`, a category
    * `<testId>-<category>` (its box `-tick`, `-count`, `-choice`, `-preview`,
    * `-refused`), a clash `<testId>-<category>-conflict-<i>` (`-toggle`,
-   * `-effective`, `-choice`), `<testId>-shipped`, `<testId>-games-drops`,
+   * `-effective`, `-choice`), `<testId>-shipped`, `<testId>-skipped-analyses`, `<testId>-games-drops`,
    * `<testId>-cancel`, `<testId>-run`.
    */
   testId: string;
@@ -167,6 +167,12 @@ function ImportDialog({ fileName, dump, current, caps, onCancel, onImport, testI
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {t("settings.import.dialog.from", { date: exported.toLocaleDateString(i18n.language), version: dump.appVersion })}
           </Typography>
+        )}
+        {/* An export from before CTA-192: its saved analyses are no longer supported. */}
+        {dump.skippedAnalyses > 0 && (
+          <InlineAlert severity="info" dense testId={`${testId}-skipped-analyses`}>
+            {t("settings.import.dialog.skippedAnalyses", { count: dump.skippedAnalyses })}
+          </InlineAlert>
         )}
 
         {EXPORT_CATEGORIES.map((category, at) => {

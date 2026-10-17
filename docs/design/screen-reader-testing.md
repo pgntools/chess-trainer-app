@@ -264,7 +264,7 @@ Its patterns and blocks, each on its page, the way a screen would use them:
 4. Header: **"Toggle light and dark mode, button"**; Space switches the
    scheme, the focus stays on it. The language select names itself.
 
-### 3.7 Saved analyses — `/tools/analysis/saved` (CTA-113)
+### 3.7 Saved analyses (CTA-113) — removed in CTA-192, kept as the record of the check
 
 Seed: save two analyses, one in a folder.
 
@@ -285,7 +285,7 @@ Seed: save two analyses, one in a folder.
 8. The side panel: **"New analysis"**, level 2; the position editor's fields,
    the FEN and PGN boxes named, **Start**.
 
-### 3.8 The Analysis Board — `/tools/analysis` (CTA-113)
+### 3.8 The Analysis Board (CTA-113) — removed in CTA-192, kept as the record of the check
 
 1. **"Analysis Board, heading level 1"** (out of sight; the shell's).
 2. The panel: **"Board panel, tab list"**; each tab named, the selected one
@@ -342,8 +342,10 @@ Seed: a folder "Openings" holding one upload.
    ascending"**, "Games", "Added".
 4. A folder row: **"Open Openings, button, collapsed"**; Enter: **expanded**,
    its collections appear under it. Its actions, each named by the folder:
-   "Add a collection here", "New sub-folder", "Download", "Rename", "Move
-   to…", "Delete".
+   "Download", "Rename", "Move to…", "Delete" (CTA-231: no "Add a
+   collection here" or "New sub-folder" — the header's **New folder** asks
+   for the name, then **"Make it in, list"**: "Top level" (current), then
+   every folder, indented).
 5. A collection row: its name **a link**; its actions "Download ‹name›",
    "Move ‹name› to…", "Delete ‹name›". Delete asks: **"Delete ‹name›?"**, a
    red confirm; Escape returns the focus.

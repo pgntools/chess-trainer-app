@@ -6,31 +6,20 @@ import { newGameParams, newGameRequestOf } from "./newGameLink";
 const params = (query: string) => new URLSearchParams(query);
 
 describe("newGameParams — the Lobby's Start link (CTA-82)", () => {
-  it("writes every field, the side, the eval bar and the lines' start", () => {
-    const written = newGameParams(
-      { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 5, depth: 8, moveTimeMs: 2500 },
-      "black",
-      false,
-      false,
-    );
+  it("writes the strength, the side, the eval bar and the lines' start — the search settings are the top bar's (CTA-181)", () => {
+    const written = newGameParams({ skillLevel: 5, elo: 2100 }, "black", false, false);
     expect(Object.fromEntries(written)).toEqual({
       side: "black",
       skill: "5",
       elo: "2100",
-      depth: "8",
-      movetime: "2500",
-      lines: "3",
-      threads: "1",
-      hash: "16",
       evalbar: "0",
       variations: "0",
     });
   });
 
   it("reads back what it wrote", () => {
-    const settings = { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 3, multiPv: 5, threads: 2, hashMb: 64 };
-    expect(newGameRequestOf(newGameParams(settings, "white", true, false))).toEqual({
-      settings: { skillLevel: 3, elo: 2100, depth: 14, moveTimeMs: 1000, multiPv: 5, threads: 2, hashMb: 64 },
+    expect(newGameRequestOf(newGameParams({ skillLevel: 3, elo: 1800 }, "white", true, false))).toEqual({
+      settings: { skillLevel: 3, elo: 1800 },
       side: "white",
       evalBar: true,
       variations: false,
@@ -61,16 +50,18 @@ describe("newGameRequestOf — reading a link", () => {
   });
 
   it("drops an unreadable field and keeps the others", () => {
-    expect(newGameRequestOf(params("skill=abc&depth=12&movetime=&lines=NaN&side=purple&evalbar=yes"))).toEqual({
-      settings: { depth: 12 },
+    expect(newGameRequestOf(params("skill=abc&elo=1900&side=purple&evalbar=yes"))).toEqual({
+      settings: { elo: 1900 },
     });
   });
 
   it("clamps a number out of range and rounds a fraction", () => {
-    expect(
-      newGameRequestOf(params("skill=99&depth=0&movetime=-5&lines=50&threads=9&hash=1e6")).settings,
-    ).toEqual({ skillLevel: 20, depth: 1, moveTimeMs: 0, multiPv: 10, threads: 4, hashMb: 256 });
+    expect(newGameRequestOf(params("skill=99")).settings).toEqual({ skillLevel: 20 });
     expect(newGameRequestOf(params("skill=7.6")).settings).toEqual({ skillLevel: 8 });
+  });
+
+  it("reads an older link's search settings as nothing — they are the reader's global ones (CTA-181)", () => {
+    expect(newGameRequestOf(params("depth=8&movetime=2500&lines=5&threads=12&hash=4096")).settings).toEqual({});
   });
 
   it("carries the Elo an Elo-driven engine is asked for (CTA-153), clamped into its range", () => {

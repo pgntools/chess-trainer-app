@@ -22,6 +22,7 @@ import {
   saveRepertoire,
 } from "../../lib/savedRepertoireStore";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import Repertoires from "./Repertoires";
 import RepertoireBoard from "./RepertoireBoard";
@@ -95,31 +96,42 @@ export const storeMultiGameRepertoire = async (id: string, text: string, name = 
 
 /**
  * The section's five routes, mounted at `path`, as `routes.tsx` mounts them —
+ * with the shell's right panel and the board's left one (the player's
+ * `RepertoireDetails`, CTA-206), wide —
  * once both stores' first reads have landed (IndexedDB), so a test asserts
  * the screen rather than its "reading" line. What the routes show before the
  * read is asserted on its own (`Repertoires.test.tsx`).
  */
-export const renderSection = async (path: string, extra?: ReactNode) => {
+export const renderSection = async (path: string, extra?: ReactNode, options?: SectionOptions) => {
   await Promise.all([loadSavedRepertoires(), loadRepertoireFolders()]);
-  return renderSectionNow(path, extra);
+  return renderSectionNow(path, extra, options);
+};
+
+/** How the shell is drawn around the routes. */
+type SectionOptions = {
+  /** Under the shell's breakpoint: the board's left panel a drawer (the screen asks `useShellCompact` itself). */
+  compact?: boolean;
 };
 
 /** The section's routes mounted at once — before the stores have been read. */
-export const renderSectionNow = (path: string, extra?: ReactNode) =>
+export const renderSectionNow = (path: string, extra?: ReactNode, { compact = false }: SectionOptions = {}) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[path]}>
-        <RightPanelProvider>
-          <Routes>
-            <Route path="/repertoires" element={<Repertoires />} />
-            <Route path="/repertoires/new" element={<RepertoireUpload />} />
-            <Route path="/repertoires/:id" element={<RepertoireBoard />} />
-            <Route path="/repertoires/:id/settings" element={<RepertoireSettingsScreen />} />
-            <Route path="/repertoires/:id/games/:game" element={<RepertoireGame />} />
-          </Routes>
-          <RightPanelOutlet />
-          {extra}
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Routes>
+              <Route path="/repertoires" element={<Repertoires />} />
+              <Route path="/repertoires/new" element={<RepertoireUpload />} />
+              <Route path="/repertoires/:id" element={<RepertoireBoard />} />
+              <Route path="/repertoires/:id/settings" element={<RepertoireSettingsScreen />} />
+              <Route path="/repertoires/:id/games/:game" element={<RepertoireGame />} />
+            </Routes>
+            <BoardLeftPanelOutlet compact={compact} />
+            <RightPanelOutlet />
+            {extra}
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );

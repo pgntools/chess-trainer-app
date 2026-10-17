@@ -133,6 +133,16 @@ describe("a Blog article (CTA-126)", () => {
     await expectNoAxeViolations();
   });
 
+  it("draws a Markdown table as a table, its header row as column headers (remark-gfm, CTA-174)", async () => {
+    renderAt("/blog/guides/local-engine", "article");
+    const table = (await screen.findAllByRole("table"))[0];
+    expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Key", "Default", "What it does"]);
+    expect(within(table).getAllByRole("row").length).toBeGreaterThan(1);
+    // No line of the source's pipes is left as prose.
+    expect(screen.queryByText(/\| --- \|/)).toBeNull();
+    await expectNoAxeViolations();
+  });
+
   it("shows its English document left to right, as English, under Hebrew", async () => {
     await i18n.changeLanguage("he");
     renderAt("/blog/writing-an-article/guide", "article");

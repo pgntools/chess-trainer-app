@@ -45,6 +45,7 @@ yarn check:pages                                         holds dist/ to it (CI, 
 | `BASE_PATH` | `vite.config.ts`, `e2e/a11y/env.ts` | `/chess-trainer-app/` | The sub-path the host serves under — `/` for chessapp.dev. Baked into every asset URL, so **each host is a build of its own**. |
 | `DEPLOY_TARGET` | `scripts/prerender.mjs`, `vite.config.ts` (`preview`) | `gh` | `gh` — `404.html` + a refresh page per old Blog address; `swa` — `staticwebapp.config.json` (the fallback, the 301s, headers incl. COOP / COEP), `sitemap.xml`, `robots.txt` (+ `404.html`). |
 | `CANONICAL_URL` | `scripts/prerender.mjs` | `https://chessapp.dev/` | The canonical host: every canonical, `og:url`, `hreflang` and image URL, **on both hosts**. |
+| `SITE_OPERATOR_NAME`, `SITE_OPERATOR_ADDRESS`, `SITE_PRIVACY_EMAIL` (+ `_<LANG>`, e.g. `_HE`) | `vite.config.ts` (also from `.env.local`) | unset | The site's operator, filled into the legal pages (CTA-182), a language's own value first. Unset, the build has no `/privacy` or `/cookies` — not pre-rendered, not in the sitemap, no footer link; `check:pages` holds it. The deploys pass every `SITE_*` repository variable, any language's ([`docs/in-app-pages.md`](../../docs/in-app-pages.md) §5). |
 
 - **Which pages**: `prerenderedPages()` in `src/entry-server.tsx` — the routes
   table's static paths (not `/settings`, which shows its first tab), the
@@ -53,7 +54,15 @@ yarn check:pages                                         holds dist/ to it (CI, 
   `shippedCollections`. Not a reader's record, not a single Library game
   (decided): those, and any unknown path, reach the app through the host's
   fallback. A new static route is pre-rendered with no edit; a new param route
-  is not, unless listed there.
+  is not, unless listed there. **`/jobs` and `/jobs/settings`** (the Jobs
+  module, CTA-221 — Jobs V2's `/analysis/jobs` before, an unknown route since)
+  are such static routes: pre-rendered as their reading state (the jobs are
+  the reader's, read once the runtime is started in an effect); a job's own
+  page (`/jobs/<id>`), a Project's and a Case's are the reader's records,
+  never pre-rendered; `/jobs` has no share card of its own (the site's,
+  `src/assets/share/sections.ts`). Nothing of the jobs runtime runs under
+  Node — it is made lazily, touching nothing, and the shell starts it from an
+  effect.
 - **How**: react-router's static handler under the base + language prefix,
   the same tree as `main.tsx`'s, and React 19's `prerender` with an unbounded
   `progressiveChunkSize` — it waits for every lazy article chunk and writes
@@ -144,8 +153,10 @@ the language**:
   never its own `beforeunload` effect.
 - **Adding a language**: the catalog and `supportedLanguages` as ever; its
   `OG_LOCALES` entry (`documentHead.ts`, a compile error without it); its
-  prefix is then live, pre-rendered, and in Static Web Apps' fallback
-  exclusions.
+  legal documents (`app-pages/<page>.<lang>.mdx`, a test fails without) and,
+  if its operator's name or address differ, its `SITE_*_<LANG>` variables —
+  no code or workflow edit (CTA-182); its prefix is then live, pre-rendered,
+  and in Static Web Apps' fallback exclusions.
 
 ## 5. The two hosts
 
@@ -154,6 +165,7 @@ the language**:
 | URL / base | pgntools.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
 | Unknown path | `404.html` (the template), status 404 | `navigationFallback` → `/app-shell.html`, status 200; `/blog/*` excluded → `404.html`, status 404 |
 | Old Blog address | a refresh page + canonical | a 301 in `staticwebapp.config.json` |
+| Built-in sign-in (`/.auth/…`, sets a cookie) | none | blocked: a 404 route per `scripts/swaBlockedAuth.mjs`, first in `routes`, held by `check:pages` (CTA-159 — the Cookies Notice says no cookies; [`docs/privacy-policy-checks.md`](../../docs/privacy-policy-checks.md) §2) |
 | `sitemap.xml`, `robots.txt` | not possible (a project site) | written |
 
 ### Cross-origin isolation on the swa host (CTA-154)
@@ -212,8 +224,9 @@ the repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
   lang dir>`, content in `#root`; `404.html` the template; on `swa` the
   sitemap exactly the self-canonical pages; and **on `swa`** (CTA-154) COOP and
   COEP in `globalHeaders`, the Stockfish workers and `.wasm` files in `dist/`
-  and outside the fallback, and no pre-rendered page loading a sub-resource
-  from another origin.
+  and outside the fallback, no pre-rendered page loading a sub-resource
+  from another origin, and (CTA-159) a 404 route for each of the host's
+  built-in sign-in routes.
 - The browser pass visits Hebrew at `/he/…` addresses (`open(…, { language })`),
   and its **`static` project** (`e2e/a11y/static.spec.ts`) opens every
   `dist/**/index.html` **without the app** — every script request refused,

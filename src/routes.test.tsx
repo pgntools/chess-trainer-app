@@ -46,9 +46,11 @@ describe("every route's page title (CTA-112)", () => {
     ["/engine/play", "Play with Engine — chessapp.dev"],
     ["/engine/games", "Lobby — chessapp.dev"],
     ["/engine/masked", "Masked Pieces — chessapp.dev"],
-    ["/tools/analysis", "Analysis Board — chessapp.dev"],
-    ["/tools/analysis/saved", "Saved analyses — chessapp.dev"],
-    ["/tools/analysis/saved/a1/settings", "Analysis settings — chessapp.dev"],
+    ["/analysis", "Projects — chessapp.dev"],
+    ["/analysis/projects/p1", "Project — chessapp.dev"],
+    ["/analysis/projects/p1/cases/c1", "Case — chessapp.dev"],
+    ["/jobs", "Jobs — chessapp.dev"],
+    ["/jobs/settings", "Jobs settings — chessapp.dev"],
     ["/openings", "Openings explorer — chessapp.dev"],
     ["/repertoires", "My repertoires — chessapp.dev"],
     ["/repertoires/new", "New repertoire — chessapp.dev"],
@@ -61,16 +63,23 @@ describe("every route's page title (CTA-112)", () => {
     ["/library/tal/12", "Library game — chessapp.dev"],
     ["/settings", "Settings — chessapp.dev"],
     ["/settings/export", "Settings — chessapp.dev"],
+    ["/privacy", "Privacy Policy — chessapp.dev"],
+    ["/cookies", "Cookies Notice — chessapp.dev"],
     ["/dev/design/tables", "Design system — chessapp.dev"],
   ])("%s is “%s”", async (path, title) => {
     await i18n.changeLanguage("en");
     expect(titleAt(path)).toBe(title);
   });
 
-  it("makes the front page and every Blog route an article, and no other (CTA-130)", () => {
+  it("makes the front page, every Blog route and the legal pages an article, and no other (CTA-130, CTA-159)", () => {
     for (const route of leaves(appRoutes)) {
       const handle = route.handle as ShellHandle | undefined;
-      const article = route.index === true || route.path === "/blog" || (route.path ?? "").startsWith("/blog/");
+      const article =
+        route.index === true ||
+        route.path === "/blog" ||
+        (route.path ?? "").startsWith("/blog/") ||
+        route.path === "/privacy" ||
+        route.path === "/cookies";
       expect(handle?.article === true, `route ${route.path ?? "(index)"}`).toBe(article);
       // An article is the full body: no board square, no aside.
       if (article) expect(handle?.fullWidth, `route ${route.path ?? "(index)"}`).toBe(true);

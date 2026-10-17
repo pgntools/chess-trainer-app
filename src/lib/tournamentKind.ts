@@ -1,3 +1,4 @@
+import { isLichessExport } from "./arena";
 import { gameTag, type GameHeaders } from "./gameModel";
 import { readPgnTags } from "./pgn";
 import { playerOf, roundPartsOf } from "./tournament";
@@ -24,14 +25,16 @@ import { playerOf, roundPartsOf } from "./tournament";
  *    twice);
  * 5. **no round numbers at all, and more games than players** → an
  *    **arena** (CTA-142: Lichess writes `Round "-"`, and its players play as
- *    many games as the clock allows, the same opponents again);
+ *    many games as the clock allows, the same opponents again) — a
+ *    **Lichess arena** where every game is a Lichess export's (`Site` on
+ *    lichess.org, timed: CTA-204, scored as Lichess arena points);
  * 6. else a **Swiss** — and for teams, a team event's standings.
  *
  * A partial file (the top boards of a Swiss) still reads as a Swiss: its
  * rounds' players are not each among the round before's.
  */
 
-export type TournamentKind = "match" | "doubleElimination" | "knockout" | "teamKnockout" | "roundRobin" | "swiss" | "teamSwiss" | "arena";
+export type TournamentKind = "match" | "doubleElimination" | "knockout" | "teamKnockout" | "roundRobin" | "swiss" | "teamSwiss" | "arena" | "lichessArena";
 
 /**
  * What a guess was read from (CTA-142) — the numbers its `reason` is made
@@ -136,7 +139,9 @@ export const guessTournamentKind = (games: readonly GameHeaders[]): TournamentGu
 
   // No round anywhere, and the players played more games than there are of them: an arena's pairing on the clock.
   if (!teams && rounds.length === 0 && pairings.length > competitors.size) {
-    return { kind: "arena", reason: `${competitors.size} players, ${pairings.length} games and no rounds: an arena`, facts };
+    return isLichessExport(games)
+      ? { kind: "lichessArena", reason: `${competitors.size} players, ${pairings.length} games and no rounds, every one on lichess.org: a Lichess arena`, facts }
+      : { kind: "arena", reason: `${competitors.size} players, ${pairings.length} games and no rounds: an arena`, facts };
   }
 
   const roundsWords = rounds.length === 0 ? "" : `, ${rounds.length} rounds`;

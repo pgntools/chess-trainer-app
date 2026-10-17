@@ -1,3 +1,32 @@
+---
+paths:
+  - "src/views/board/**"
+  - "src/views/shared/**"
+  - "src/views/explorer/**"
+  - "src/views/engine/**"
+  - "src/views/analysisV2/**"
+  - "src/views/openings/**"
+  - "src/views/repertoires/**"
+  - "src/views/library/**"
+  - "src/views/home/frontPage/**"
+  - "src/views/dev/themeEditor/PreviewBoard.tsx"
+  - "src/lib/uciEngine*"
+  - "src/lib/workerTransport*"
+  - "src/lib/engineTypes*"
+  - "src/lib/engineAnalysis*"
+  - "src/lib/engines/**"
+  - "src/lib/evalSources/**"
+  - "src/lib/gameTree*"
+  - "src/lib/gameNavigation*"
+  - "src/lib/capturedPieces*"
+  - "src/lib/pieceMask*"
+  - "src/lib/boardShapes*"
+  - "src/lib/demoTree*"
+  - "public/stockfish/**"
+  - "docs/engine.md"
+  - "docs/vendor/react-chessboard/**"
+---
+
 # Chessboard rules & patterns
 
 How **this project** builds and operates chess boards: the library
@@ -7,7 +36,7 @@ board screen or changing one.
 
 - **UI library:** [`react-chessboard`](https://react-chessboard.vercel.app/?path=/docs/get-started--docs) **v5** (`^5.12.1`)
 - **Rules engine:** [`chess.js`](https://www.npmjs.com/package/chess.js) **v1** (`^1.4.0`)
-- **Analysis engine:** Stockfish WASM worker, wrapped by [`src/lib/engine.ts`](../../src/lib/engine.ts)
+- **Analysis engine:** Stockfish 19 WASM workers, behind the engine registry [`src/lib/engines/`](../../src/lib/engines/) ([`docs/engine.md`](../../docs/engine.md))
 - **React 19** is required by react-chessboard v5.
 
 ---
@@ -18,20 +47,22 @@ Everything about the library is already on disk. **Do not read `node_modules`
 source and do not web-search for react-chessboard questions** — answer from
 these instead.
 
-**Loaded every session:**
+**The board's own three** — path-scoped too (CTA-162), so Read one by hand
+when the work is board-shaped but sits outside its paths:
 
-| File | Covers |
-| --- | --- |
-| **this file** | project conventions, the engine wrapper and its protocol, the layout rules, testing a board, the board core |
-| [`react-chessboard-options-api.md`](./react-chessboard-options-api.md) | **every `options.*` key** — type, default, purpose |
-| [`react-chessboard-types-and-helpers.md`](./react-chessboard-types-and-helpers.md) | exported helpers (`generateBoard`, `fenStringToPositionObject`, `chessColumnToColumnIndex`, …) and every handler-arg / data type |
+| File | Loads | Covers |
+| --- | --- | --- |
+| **this file** | the board screens, the core, `views/shared/`, the explorer, the front page's embeds, the engine layer, `public/stockfish/`, `docs/engine.md` | project conventions, the engine wrapper and its protocol, the layout rules, testing a board, the board core |
+| [`react-chessboard-options-api.md`](./react-chessboard-options-api.md) | where `react-chessboard` itself is imported (`PATHS` in `docs/vendor/react-chessboard/mdx2rules.py`) | **every `options.*` key** — type, default, purpose |
+| [`react-chessboard-types-and-helpers.md`](./react-chessboard-types-and-helpers.md) | the same | exported helpers (`generateBoard`, `fenStringToPositionObject`, `chessColumnToColumnIndex`, …) and every handler-arg / data type |
 
-**Loaded when you work on their paths** (each file's `paths:` frontmatter):
+**Each module's reference, on its paths** (each file's `paths:` frontmatter):
 
 | File | Module |
 | --- | --- |
 | [`tree-views.md`](./tree-views.md) | `src/views/explorer/` — how a board shows its game tree (move list, map, comments, next-move arrows) |
-| [`analysis-board.md`](./analysis-board.md) | the Analysis Board, Saved analyses, the `?game=` hand-off |
+| [`analysis-v2.md`](./analysis-v2.md) | Analysis — Projects, Cases and a Case's board, its Jobs tab, the hand-off of a game from any screen |
+| [`jobs.md`](./jobs.md) | Jobs — the background jobs on `@pgntools/jobs-runtime`: the kinds, the engine session, the screens, the deletion rule, testing |
 | [`play-with-engine.md`](./play-with-engine.md) | Play with Engine, the Lobby, the played games |
 | [`masked-pieces.md`](./masked-pieces.md) | Masked Pieces — Play with Engine in a costume |
 | [`repertoires.md`](./repertoires.md) | the Repertoires section — the list, the player, the trainer and its games |
@@ -87,7 +118,7 @@ return <Chessboard options={chessboardOptions} />;
 - **Always set `options.id`** to a stable string, **unique on the page** (the
   default `"chessboard"` collides; the id is also the DOM id and is used by
   drag sensors). A list screen that renders a board per card takes the item's
-  id — `saved-analyses-preview-<id>`, `repertoires-preview-<id>`; the front page's demo boards (CTA-126) take
+  id — `repertoires-preview-<id>`; the front page's demo boards (CTA-126) take
   theirs from what they show — `front-page-game-<reference, slugified>`,
   `front-page-repertoire-<id>` (or `-sample-<sample>`), so a page embeds each
   item once.
@@ -176,7 +207,7 @@ whose explorer edits the tree, which switches them off
 right-clicks into the move's comment as `[%cal]` / `[%csl]`, every shape then
 drawn from the comment (CTA-143, [`tree-views.md`](./tree-views.md) §2). Every board's next-move
 arrows come from one helper, `nextMoveArrowsOf`
-(`views/tools/analysis/nextMoveArrows.ts`).
+(`views/shared/nextMoveArrows.ts`).
 
 ### 3.5 Promotion
 
@@ -217,32 +248,60 @@ write a colour literal in a board file.**
   `chess` group): react-chessboard's options and SVG attributes take no
   `var()`.
 
+### 3.7 Overlays — what is drawn over the board
+
+react-chessboard draws arrows and square styles; anything else on the board
+is an **overlay**: an absolutely positioned, `aria-hidden`,
+`pointer-events: none` SVG in the board's relative box, a `0 0 8 8` viewBox
+(one unit a square, so it scales and measures nothing), turned with the
+board's orientation. A game board passes it as `BoardShell`'s /
+`EngineBoardSquare`'s `overlay` slot — the tree view's `overlay` part,
+drawn before the promotion picker; `ExcerptBoard` (the Blog's embeds)
+renders its own inside its `ForceLTR` box. Bottom to top:
+
+| Layer | Component | Since |
+| --- | --- | --- |
+| The play-chance / width-sized arrows | `views/explorer/ChanceArrows.tsx` | CTA-71, CTA-98 |
+| The PGN's `[%csl]` circles | `views/shared/ShapeCircles.tsx` | CTA-126, CTA-143 |
+| The move mark's badge on the moved-to square | `views/shared/MoveGlyphBadge.tsx` | CTA-168 |
+| The promotion picker (not an overlay — it takes clicks) | `views/shared/PromotionPicker.tsx` | |
+
+Text in an overlay is pinned LTR with the SVG `direction` attribute, which
+the RTL stylis plugin never sees.
+
 ---
 
 ## 4. Stockfish engine integration
 
 **The engine is pluggable** (CTA-152; the whole picture — the builds, the
-registry, how to add one, the planned hosted engine — is
+registry, how to add one, the engine server's native engines (§8) — is
 [`docs/engine.md`](../../docs/engine.md)). A board sees an **`EngineHandle`**
 (`src/lib/engineTypes.ts`); `UciEngine` (`src/lib/uciEngine.ts`) is the UCI
 protocol over a **`UciTransport`**, and `WorkerTransport`
 (`src/lib/workerTransport.ts`) is the local Web Worker — **nothing outside it
-assumes a Worker**. `src/lib/engine.ts`'s default export, `Engine`, is the 2019
-build (a `UciEngine` over a `WorkerTransport`) and stays the default, so
-`import Engine from "…/lib/engine"` and every test's `vi.mock("…/lib/engine")`
-mean what they always did. The choice between builds is the registry,
-`src/lib/engines/` (`EngineDescriptor`: id, name, version, requirements,
-capabilities, `create()`); `useEngineModule` builds the handle from it (§9.2.1).
+assumes a Worker**. The engines are the registry, `src/lib/engines/`
+(`EngineDescriptor`: id, name, version, requirements, capabilities, `create()`)
+— Stockfish 19 Lite, single-thread (the default) and multi-thread (on a
+cross-origin-isolated page); `useEngineModule` builds the handle from it
+(§9.2.1).
 
-The worker scripts + wasm live in `public/stockfish/` (the 2019 build in its
-root, each newer build in a folder named by its id — files, versions, licences
-and what was measured on each: its `README.md`), served under Vite's `base` — so
-a worker URL is built from `import.meta.env.BASE_URL`, never hardcoded to the
-site root. The app deploys to GitHub Pages at `/chess-trainer-app/`, where a
-bare `/stockfish/stockfish.wasm.js` 404s, and `new Worker()` reports that as an
-async `error` event rather than throwing — the board simply never evaluates.
+The worker scripts + wasm live in `public/stockfish/`, each build in a folder
+named by its id (files, versions, licences and what was measured on each: its
+`README.md`), served under Vite's `base` — so a worker URL is built from
+`import.meta.env.BASE_URL`, never hardcoded to the site root. The app deploys to
+GitHub Pages at `/chess-trainer-app/`, where a bare `/stockfish/…` 404s, and
+`new Worker()` reports that as an async `error` event rather than throwing — the board simply never evaluates.
 **Nothing in this layer runs at module scope** (the pre-render imports it under
 Node; `engines/noWorkerAtImport.test.ts`).
+
+**Every board's engine is built behind the eval sources** (CTA-196,
+`withEvalSources`, `src/lib/evalSources/`, [`docs/engine.md`](../../docs/engine.md)
+§10): an analysis search asks the sources the reader turned on (the lichess
+evaluation API) first, and a hit at the target depth comes out of
+`onMessage` as the engine's own lines and `bestmove` would (stamped `fen`,
+and `evalSource`); a board whose engine chooses its move in a game passes
+`useEngineModule({ evalSources: false })` (`usePlayGame`), and a
+strength-limited engine is never answered.
 
 ### API
 
@@ -250,53 +309,57 @@ What follows is `EngineHandle` — every engine, whatever it runs on.
 
 | Method | Notes |
 | --- | --- |
-| `descriptor.create()` / `new Engine()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
-| `search(fen, { depth = 12, movetime })` | Depth is clamped to the engine's `capabilities.maxDepth` (24 for every shipped build); `movetime` is milliseconds, omitted when 0. **May not start immediately** — §4.1. |
+| `descriptor.create()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
+| `search(fen, { depth, movetime })` / `search(fen, { infinite: true })` | To a depth — required, the board's own setting, never a wrapper default — clamped to the engine's `capabilities.maxDepth` (`DEFAULT_MAX_DEPTH`, 99, for every shipped build), with `movetime` in milliseconds (omitted when 0), whichever comes first; or **until stopped** (`go infinite` — an analysis board's infinite analysis, CTA-160; it ends only with `stop()`, so never on a board waiting for the engine's move). **May not start immediately** — §4.1. |
 | `onMessage(cb) => unsubscribe` | Parsed UCI messages. **You must call the unsubscribe.** |
-| `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `false` means this build will not take it — no such option, or pinned. |
+| `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `value` a number, a boolean or words (`UciOptionValue`, CTA-179). `false` means this build will not take it — no such option, pinned, a button, a file path in a browser build (`UciEngineConfig.refuses`), or words with a line break. |
 | `whenOptionsReady(cb) => unsubscribe` | Runs `cb` once `options` is complete, at once if the handshake already landed. |
-| `options` / `supportsOption(name)` | What the **running worker** declared in its own `uci` reply. |
-| `stop()` | The engine returns the bestmove for the depth reached. |
+| `options` | What the **running worker** declared in its own `uci` reply. |
+| `stop()` | Drops a waiting search and ends the running one — which still answers with the bestmove for the depth reached. |
 | `terminate()` | `quit` + `worker.terminate()`. Call on unmount. |
 
 A parsed message (`EngineMessage`) has `bestMove` (`"e2e4"`, `"e7e8q"`),
 `ponder`, `positionEvaluation` (centipawns, a **string**), `possibleMate`,
-`pv`, `depth`, `multipv` (1-based) and `fen` — **the position this result is
+`pv`, `depth`, `multipv` (1-based), where an `info` line reports them the
+search's progress — `nodes`, `nps`, `time` (ms), `seldepth`, `hashfull`,
+`currmove` / `currmovenumber` (CTA-190, read before the `pv` only, absent
+otherwise) — and `fen` — **the position this result is
 for**, stamped on by the wrapper. Without it a result for the position on
 screen cannot be told from one still draining out of the search it replaced.
 
 ### 4.1 The protocol discipline — why `search` and `setOption` are deferred
 
-**The 2019 build in `public/stockfish/` can abandon a running search when it
-receives a `setoption` while searching** — and `setoption name Threads value 1`,
-its own default, is fatal to it at any time: no `bestmove`, no further `info`,
-and the board never evaluates again. It is silent, so it looks like a broken
-worker. (Re-tested in CTA-152: the Stockfish 19 builds keep searching through a
-mid-search `setoption` and take `Threads`; the 2019 build's `Threads` case
-reproduced, a mid-search `Skill Level` / `MultiPV` did not abandon it that run.
-**The rule below is generic anyway** — a hosted or future engine has not been
-measured — and it is the same rule for every engine; re-test each new binary,
-`docs/engine.md` §6.)
+**UCI permits `setoption` only while the engine is idle, and an engine that
+takes one mid-search badly abandons the search** — no `bestmove`, no further
+`info`, and the board never evaluates again. It is silent, so it looks like a
+broken worker. The app's first engine (Stockfish 2019, removed in CTA-160) did
+exactly that, and stopped answering for good after `setoption name Threads
+value 1`, its own pinned default. The shipped Stockfish 19 builds were measured
+to survive both (CTA-152) — **the rule below is generic anyway**: a hosted or
+future engine has not been measured, so it is the same rule for every engine;
+re-test each new binary, `docs/engine.md` §6.
 
 `UciEngine` therefore buffers everything and posts it only when the engine can
-take it: nothing before `uciok`, nothing while a search runs (a `stop` goes
-instead, and the `bestmove` that ends the search resumes the queue). Options go
-to an idle engine, and a waiting search starts only afterwards.
+take it: nothing before `uciok`, nothing while a search runs (**one** `stop`
+goes instead, and the `bestmove` that ends the search resumes the queue).
+Options go to an idle engine, and a waiting search starts only afterwards.
 
 - **Call `search()` whenever the position changes; do not sequence it
   yourself.** A second call before the first has started replaces it.
-- **A pinned option is never sent.** An option whose `min` equals its `max`
-  can only be a no-op — except that `setoption name Threads value 1`, the 2019
-  build's own declared default, is itself fatal to it. `setOption` returns
-  `false` for those.
-- **Never hardcode the option roster.** On the 2019 build `Threads` and `Hash`
-  are pinned (`min 1 max 1`, `min 16 max 16`) and there is no `UCI_Elo` or
-  `UCI_LimitStrength`, so strength is `Skill Level` only and any Elo shown is
-  an estimate; the Stockfish 19 builds declare `UCI_LimitStrength` and
-  `UCI_Elo` (1320–3190), an adjustable `Hash`, and — the multi-thread one — an
-  adjustable `Threads`. Read `engine.options` and render three states: absent,
-  pinned, adjustable (`views/engine/play/EngineSettings.tsx`). Swapping the
-  binary then changes the UI with no code change.
+- **A pinned option is never sent**, nor one the engine did not declare. An
+  option whose `min` equals its `max` can at best be a no-op — and was fatal
+  once (above). `setOption` returns `false` for those, and queues nothing, so
+  it stops no search.
+- **An unchanged option is not posted again.** A board re-requests every
+  option whenever a setting moves; `setoption name Hash` clears the hash table.
+- **Never hardcode the option roster.** The Stockfish 19 builds declare
+  `Skill Level`, `UCI_LimitStrength` and `UCI_Elo` (1320–3190), an adjustable
+  `Hash`, and `Threads` pinned to 1 (single-thread) or 1–32 (multi-thread);
+  another engine may have no `UCI_Elo` at all, and then strength is
+  `Skill Level` and any Elo shown is an estimate. Read `engine.options` and
+  render three states: absent, pinned, adjustable
+  (`views/engine/play/EngineSettings.tsx`). Swapping the binary then changes
+  the UI with no code change.
 
 ### Rules for using it from React
 
@@ -304,13 +367,13 @@ All of these live in `useEngineModule` (§9.2.1); a board never writes them
 again.
 
 1. **Create the engine lazily in a ref, resolved at call time — never during
-   render**, not `useMemo`, not module scope: `getEngine()` returns the ref's
+   render**, not `useMemo`, not module scope: `ensureEngine()` returns the ref's
    handle for the descriptor `resolveEngine(choice)` named at render, building
    it with `descriptor.create()` when there is none (and terminating one built
    for another descriptor — one engine at a time).
    Reading the ref during render dies under StrictMode: its mount → unmount →
    remount runs the cleanups and then the effects again **with no render in
-   between**, so every effect keeps the terminated instance. `getEngine()`
+   between**, so every effect keeps the terminated instance. `ensureEngine()`
    rebuilds it.
 2. **Subscribe in an effect, unsubscribe on cleanup**, and declare that effect
    **first**, so on a StrictMode remount it rebuilds the worker before the
@@ -350,7 +413,7 @@ what shares it.
   The position editor and the preview boards carry none. A strip's left end
   can carry a **player plate** (CTA-105) — the player's result, Elo and name
   — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
-  which only the Library's game board and the Analysis Board (CTA-148) pass; the plate truncates where the
+  which only the Library's game board and Analysis's Case board pass; the plate truncates where the
   row runs short, the pieces keep the right edge, and the height arithmetic
   above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
@@ -360,7 +423,7 @@ what shares it.
   (`alignContent: "start"` does not stop it), the cards are squashed and
   clipped by `Card`'s `overflow: hidden`, and nothing ever overflows to scroll.
 - **A position turns the board; a game does not.** A `?fen=` arrival faces the
-  side to move; a game (`?game=`, a Library game, a loaded PGN) opens facing
+  side to move; a game (a Game Case, a Library game, a loaded PGN) opens facing
   White, because a PGN's side to move at ply 0 says nothing about which side is
   studied. `useBoardCore`'s `loadFen` turns, `loadTree` and `reset` do not.
 - **`options.pieces` is the only honest place to disguise a piece**
@@ -422,8 +485,18 @@ around the board, so mock the component and assert what it was handed. The
 game boards share one stub, `reactChessboardMock()` in
 [`views/board/boardTestHarness.tsx`](../../src/views/board/boardTestHarness.tsx)
 (`boardOptions()` reads the last options — how drops, positions, orientation
-and arrows are asserted), beside `FakeEngine` (the `lib/engine` stand-in) and
-`openingsMock`.
+and arrows are asserted), beside `openingsMock` and **the engine seam**:
+`builtinEnginesMock` replaces `lib/engines/builtin`, so every shipped
+descriptor's `create()` returns a `FakeEngine` declaring what that build
+declares (`engine.descriptor?.id` says which) — the default engine, a reader's
+choice (`crossOriginIsolated` stubbed for the multi-thread build) and a switch
+between them, all faked the one way:
+
+```ts
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
+```
 
 - **Stub what the screen actually imports.** A spare-piece screen needs
   `ChessboardProvider` (keeping the options), `Chessboard` and `SparePiece`
@@ -439,7 +512,7 @@ and arrows are asserted), beside `FakeEngine` (the `lib/engine` stand-in) and
 
 ## 9. The board core
 
-Every game board — the Analysis Board, Play with Engine, Masked Pieces, the
+Every game board — Analysis's Case board, Play with Engine, Masked Pieces, the
 Library's game board, the Openings explorer and the repertoire player — is
 **composed from one core** in `src/views/board/core/`: a base hook, capability
 modules the screen opts into, and one shell/panel layer with slots. The
@@ -514,6 +587,7 @@ Everything every board has, and nothing any single board has:
 | `playVariation` | `(sans) => void` | Replay a SAN prefix under the node on screen (clicking an engine line, the trainer's reply, a book move). |
 | `loadTree` / `loadFen` / `reset` | | Replace the whole game; only `loadFen` turns the board. |
 | `replaceTree` | `(tree) => void` | Replace the tree with **an edit of itself** (promote, delete from here, a comment) without stepping to the start: the node on screen stays when it survived, else its nearest surviving ancestor. |
+| `annotateTree` | `(edit: (tree) => tree) => void` | An edit that **keeps every node** (a comment, a tag) applied to the tree as it stands when it lands, with no step and without marking the board dirty — for a writer that is not a click, whose callback may be renders old (the engine's `[%eval]`, CTA-167). |
 | `dirty` / `markDirty` | | Whether this board is the reader's own work. |
 | `pgn` | `string` | `treeToPgn(tree)`, memoised on the tree. |
 
@@ -552,11 +626,13 @@ const engine = useEngineModule({
   fen: string,                          // the position ON SCREEN — never the live one
   depth: number,
   moveTimeMs: number,
-  uciOptions: Readonly<Record<string, number>>,   // name → requested value
-  onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
+  infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time; no board asks for it since CTA-185
+  uciOptions: Readonly<Record<string, UciOptionValue>>,   // name → requested value: a number, a boolean, words (CTA-179)
+  onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,   // the numbers, held to the declared bounds
   onBestMove?: (bestMove: string, searchedFen: string) => void,
+  onSearchFinished?: (finished: { fen, score, depth, engine }) => void,  // CTA-167 — absent: nothing called
 });
-// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis }
+// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis, searching, searchProgress }
 ```
 
 It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; **the
@@ -571,10 +647,46 @@ engine's lines and keeping the scores already recorded; the
 **`uci` handshake** — what the worker declared is `engineOptions`, and the
 requested values are **clamped into those bounds** and reported through
 `onUciOptionsReady` (the module never learns what a setting *means*);
+**the engine's preset** (CTA-179, [`docs/engine.md`](../../docs/engine.md) §9) —
+the running engine's selected preset, read from its store, met against what
+the engine declared once the handshake lands and sent beside the board's
+options, which always win (a name in `uciOptions`, and Threads, Hash, MultiPV,
+is never sent from it); a change applies from the next search, an option it
+stops setting goes back to its default, and no file path ever reaches a
+browser build — so a board needs no line of its own for it;
 `setOption` pushed before the search effect; searching the position on screen,
 stopping when switched off, never searching a terminal position; **per-FEN
-evals** (the score a search *finished* with, recorded at its `bestmove`); and
+evals** (the score a search *finished* with, recorded at its `bestmove`) —
+and, for a caller that passes `onSearchFinished` (CTA-167, the Analysis
+Board's `[%eval]` writer), each finished search reported with its score, the
+depth of its last scored line and the engine, **after** `onBestMove` (a reply
+sets the tree it played into, and what is written must land on that tree). A
+search ended by a change of position or the switch going off still finished,
+at the depth it reached (the wrapper stamps its `bestmove` with its own FEN);
+one stopped before its first scored line reports nothing. And
 scores normalised against the searched FEN's turn.
+
+**`searching`** (CTA-181) says a search is running for the position on screen —
+on, not terminal, and the search last asked for not yet answered with its
+`bestmove` (an infinite one never is until stopped). The board's session
+publishes it with the switch to the shell (`usePublishBoardEngineState`,
+`views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on /
+searching. **`searchProgress`** (CTA-195) is where that search stops — its
+target depth, held to the engine's `capabilities.maxDepth`, and its move time —
+while `searching`, and absent under infinite analysis: every board passes it to
+`BoardPanel` (`searchProgress`), whose variations block's depth chip then reads
+"Depth 18/24" and fills toward it (a `ProgressChip`, the further along of the
+depth and the move-time clock), "Depth 24" again once the search answers.
+**What a board searches with is the reader's global search settings**
+(depth, move time, lines, Threads, Hash — `useEngineSearchSettings`, every
+search stopping at its depth or move time since CTA-185,
+the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
+board passes them in and keeps no copy; nothing it reads back through
+`onUciOptionsReady` is written into them (only Play's strength takes the
+clamp). The engine's on / off is the board header's play / pause
+(`BoardEngineControls`, its menu the eval bar; the Case board's, the
+repertoire player's and the Library game's on / off a header switch, the eval
+bar their left panel's Settings tab's — and the Case board's Write evaluations).
 
 **The engine's reply is `onBestMove`, and that is the whole Play/Analysis
 difference.** A board that passes none has no branch that moves a piece. One
@@ -602,14 +714,14 @@ useAutosave({ enabled: boolean, record: T | undefined, save: (record: T) => void
 Write-on-change and nothing else. `record` is `undefined` while there is
 nothing worth writing; **the store's own idempotency** keeps a mount or a
 settings clamp from re-ordering a list. The record is built by the screen.
-Play with Engine and Masked Pieces use it; the Analysis Board, the Library and
+Play with Engine, Masked Pieces and Analysis V2's Case board (CTA-186) use it; the Library and
 the repertoires save **explicitly**, and the Openings explorer keeps nothing.
 
 #### 9.2.4 Where a board writes
 
 Each board writes its own store through its own record constructor, over
 `lib/idbRecordStore.ts` ([`database.md`](./database.md)): the played games
-(`lib/playedGameStore.ts`), the saved analyses, the repertoires, the Library's
+(`lib/playedGameStore.ts`), Analysis's Cases, the repertoires, the Library's
 collections. A board under development in a Development section (§9.5) writes
 **dev-prefixed databases** over the same factory, so a bug there can never
 damage a real record.
@@ -667,7 +779,7 @@ node on screen and it is that side's turn. Play pauses on any step that is not
 one move forward, a change of side (the flip — the reader's side *is* the
 orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
-finished plays at once. The Analysis Board, the Library's game board and the
+finished plays at once. The Case board, the Library's game board and the
 Openings explorer start it off — and, since CTA-148, their engine too, so Play
 is disabled until the reader switches it on; Play with Engine starts it on. The header
 button and status line are the `PlayToggleButton` / `EngineThinking` blocks
@@ -681,7 +793,15 @@ Renders the shared `views/shared/EngineBoardSquare` (eval bar, captured
 strips, board, promotion picker) and derives its props from the core and the
 modules; the captured-pieces summary is computed here from the core's line.
 The screen's `boardOptions` slot takes arrows, `pieces`, anything else; the
-panel is portalled into the shell's right-hand aside (`RightPanel`).
+panel is portalled into the shell's right-hand aside (`RightPanel`). **A line
+hovered or focused in the pinned variations box draws its first move as one
+arrow** (CTA-201) — any move of the line under the pointer or the focus; the
+panel reports the first move's squares (`onHoverVariationMove`, which the
+shell owns: a screen cannot pass it), the shell appends it to the screen's
+arrows in `chess.arrowPalettes.classic.hovered` (standing in for a screen
+arrow on the same squares), and the screen's arrows are back as they were
+when the hover ends. Every board, Masked Pieces too (the true squares, never
+a name).
 
 ```
 BoardShell
@@ -716,6 +836,8 @@ BoardShell
 | `mask` | `PieceMask?` | Masked notation in the block (Masked Pieces). |
 | `showVariations` | `boolean?` | Whether the block shows at all — on by default. While the lines are hidden — by this, or by the block's own header checkbox — the status row's score chip hides with them (CTA-91), on every board; the row itself, and the engine-off dash, stay. |
 | `initialShowLines` | `boolean?` | The seed for the block's own show-lines checkbox (CTA-90) — what a new game starts with; the header checkbox stays the live control. |
+| `searchProgress` | `SearchProgress?` | The engine module's `searchProgress` (CTA-195): the block's depth chip fills toward the target while present. Absent: "Depth N", as before. |
+| `onHoverVariationMove` | `((move: MoveSquares \| null) => void)?` | The block's line under the pointer or the focus (CTA-201) — its first move's two squares, whichever of its moves is hovered, `null` when the hover, the position or the block goes. `BoardShell` passes its own and draws the arrow. Absent: nothing reported. |
 | `tabs` | `readonly { id, label, content, disabled? }[]` | One is rendered at a time unless `keepMounted` names it; the screen keeps `activeTab` off a disabled tab. |
 | `keepMounted` | `readonly string[]?` | Tabs that mount on first open and stay mounted, hidden — for a body whose mount is the cost (a 9,000-move list). Showing one again scrolls its current move into view. |
 | `activeTab` / `onTabChange` | | The screen's state. |
@@ -733,12 +855,23 @@ the detail.
 
 | Board | Session | Engine reply | Book | Saving | Tabs | Tree view |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
-| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
+| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (the strength alone, CTA-181; no Map, CTA-91) | explorer, as the Case board, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
-| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
-| **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings · Engine | the full explorer; editing and comments in the player only |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: a new Case in Analysis) | Moves · Export (no Map since CTA-212; Back, the game's title and caption, the tags (Info, where a game opens), the next-move arrows, the move marks, the eval bar and previous / next at its foot its left panel's `LibraryGameDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-209) | as the Case board |
+| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to Analysis as a Case | Book · Moves · Map · Load · Export | explorer, as the Case board |
+| **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (CTA-186, shipped in CTA-192) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Export (the engine's on / off a header switch, its eval bar and Write evaluations its left panel's Case view's Settings tab, CTA-199 — no `BoardEngineControls`; how it draws, Display, there too) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
+| **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map (the session's settings — the eval bar too —, the games and Jobs its left panel's `RepertoireDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-206) | the full explorer; editing and comments in the player only |
+
+**No analysis board has an Engine tab** (CTA-181): the search settings are the
+top bar's Engine menu, one set for every board; each board's header carries
+the engine's play / pause and its menu (`BoardEngineControls` — the eval bar,
+and on the Case board, its Settings tab instead, *Write evaluations into the game*;
+the Case board, the repertoire player and the Library's game board have an on /
+off switch instead, their eval bar their left panel's Settings tab's — CTA-199,
+CTA-206, CTA-209). Play with Engine
+and Masked Pieces keep an Engine tab for the opponent's strength alone. Clear
+moved to the Load tab (the Openings explorer); the repertoire player's went
+in CTA-206 (its changes strip's Discard does that).
 
 Next-move arrows are one helper, `nextMoveArrowsOf` — the mainline's move
 green, side lines blue, the hovered one in the hover colour — so a change of
@@ -786,7 +919,7 @@ a second panel, or a locale block repeating `moveList.*` / `variations.*` /
 - **Repeat the layout arithmetic** of §5 outside `EngineBoardSquare.tsx`.
 - **Mirror under RTL.** A panel token that must stay LTR takes the `dir`
   attribute, not a CSS declaration (the RTL stylis plugin flips it).
-- **Share an `options.id`** — `analysis`, `play-with-engine`, `masked-play`,
+- **Share an `options.id`** — `analysis-case`, `play-with-engine`, `masked-play`,
   `openings`, `library-game`, `repertoire-board`, `repertoire-game`, and the
   front page's `front-page-game-…` / `front-page-repertoire-…` (CTA-126).
 - **Change a shared piece incompatibly.** Under `views/shared/`,

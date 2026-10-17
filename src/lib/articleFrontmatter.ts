@@ -66,6 +66,18 @@ export type ArticleFrontmatter = {
 
 export type ArticleFileKind = "article" | "folder";
 
+/**
+ * **The in-app pages' folder** (CTA-159) — `articles/app-pages/`: MDX the app
+ * links to itself (the Privacy Policy, the Cookies Notice), written in the MDX
+ * editor like an article but **not part of the Blog**: not listed in its
+ * index or the sidebar, not at `/blog/app-pages/…`, not in its sitemap entries.
+ * Their pages are `/privacy` and `/cookies` (`views/legal/`).
+ */
+export const APP_PAGES_FOLDER = "app-pages";
+
+/** Whether an article's or a folder's path is an in-app page's (or the folder itself). */
+export const isAppPagePath = (path: string): boolean => path === APP_PAGES_FOLDER || path.startsWith(`${APP_PAGES_FOLDER}/`);
+
 /** Every key the schema knows, in the order the editor's form shows them and a written file lists them. */
 export const FRONTMATTER_KEYS = [
   "title",

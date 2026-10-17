@@ -42,7 +42,9 @@ The comparison ended on five open questions; each has one answer here.
 - **Purpose** — a sortable column's header: its label a `TableSortLabel`,
   `aria-sort` on the column in use.
 - **Props** — `column`, `label`, `sort`, `direction`, `onSort(column)`,
-  `align?: "start" | "end"`, `width?`, `testId` (the sort button).
+  `align?: "start" | "end"`, `width?`, `testId` (the sort button);
+  `children?` (CTA-221) — under the sort button in the same cell, its
+  column's filter (`DataTable`'s `column.filter`).
 - **Variations** — start-aligned; end-aligned (the arrow stays on the inner
   side, so the label lines up with its numbers in either direction).
 - **Replaces** — the `TableCell sortDirection` + `TableSortLabel` pair the
@@ -54,9 +56,12 @@ The comparison ended on five open questions; each has one answer here.
   off with nothing to pick), a checkbox per row whose click never reaches the
   row.
 - **Props** — `PickHeaderCell`: `total`, `picked`, `onToggleAll`, `label`,
-  `testId`. `PickCell`: `checked`, `onToggle`, `label` (the row's own name),
-  `testId`.
-- **Variations** — none / some (indeterminate) / all / nothing to pick.
+  `testId`, `state?` (CTA-147: the caller's own tri-state, for a select-all
+  whose coverage is not the pickable rows). `PickCell`: `checked`,
+  `indeterminate?` (CTA-147: some, not all, of what the row stands for), `onToggle`,
+  `label` (the row's own name), `testId`.
+- **Variations** — none / some (indeterminate) / all / nothing to pick; a
+  row standing for more than itself, partly picked.
 - **Replaces** — the Lobby's header select-all and every table's pick column;
   the collection table's empty header cell (its select-all lived in
   `SavedListExportBar`).
@@ -78,8 +83,10 @@ The comparison ended on five open questions; each has one answer here.
 - **Props** — `count`, `page`, `rowsPerPage`, `onPageChange(page)`,
   `onRowsPerPageChange(rows)`, `labelRowsPerPage`, `labelDisplayedRows?`
   (absent: the theme's locale bundle words it, as MUI's arrows' names are),
-  `testId`. Also exports `TABLE_PAGE_SIZES`, `DEFAULT_TABLE_PAGE_SIZE`.
-- **Variations** — the locale's count words; the caller's.
+  `pageSizes?` (absent: `TABLE_PAGE_SIZES`; one alone is a fixed page — no
+  select, no "Rows per page", for a narrow panel, CTA-211), `testId`. Also
+  exports `TABLE_PAGE_SIZES`, `DEFAULT_TABLE_PAGE_SIZE`.
+- **Variations** — the locale's count words; the caller's; a fixed page.
 - **Replaces** — the Lobby's 10 / 25 / 50 and the collection's 50 / 100 / 250
   `TablePagination`s.
 

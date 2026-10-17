@@ -1,22 +1,22 @@
 import type { AutocompleteOption } from "../../design-system/components/autocompletes";
+import { caseDerivedName, type AnalysisCase, type AnalysisProject } from "../../lib/analysisProjects";
 import { sourceAddressOf, sourcePathOf } from "../../lib/embedSource";
 import { gameTag } from "../../lib/gameModel";
 import type { CollectionSummary } from "../../lib/libraryCollections";
 import { readPgnTags } from "../../lib/pgn";
 import type { PlayedGame } from "../../lib/playedGames";
-import { savedAnalysisDerivedName, type SavedAnalysis } from "../../lib/savedAnalyses";
 import type { SavedRepertoire } from "../../lib/savedRepertoires";
 
 /**
  * **The records an address can name, found by their name** (CTA-150) — the
  * Components gallery's "An address in the app" field, which takes a pasted
  * address as ever and, besides, the first letters of a record's name: a
- * Library collection (shipped or uploaded), a saved analysis, a repertoire
+ * Library collection (shipped or uploaded), an Analysis case, a repertoire
  * or a game played against the engine, each offered as its canonical path
  * (`sourcePathOf`) under its kind's heading.
  *
  * Pure: the stores are read by the dialog. {@link addressEntriesOf} works
- * the names out **once per read** (a store may hold 20,000 analyses, so a
+ * the names out **once per read** (a store may hold 10,000 Cases, so a
  * name is a tag scan, never a parse, and never repeated per keystroke);
  * {@link addressOptionsOf} then narrows them by a typed text and cuts each
  * group short.
@@ -25,7 +25,9 @@ import type { SavedRepertoire } from "../../lib/savedRepertoires";
 /** What the dialog has read, one list per store. */
 export type AddressRecords = {
   collections: readonly CollectionSummary[];
-  analyses: readonly SavedAnalysis[];
+  cases: readonly AnalysisCase[];
+  /** The Projects the Cases are in — a Case is found by its Project's name too. */
+  projects: readonly AnalysisProject[];
   repertoires: readonly SavedRepertoire[];
   playedGames: readonly PlayedGame[];
 };
@@ -34,7 +36,7 @@ export type AddressRecords = {
 export type AddressEntry = { option: AutocompleteOption; haystack: string };
 
 /** The kinds' headings, in the order the list shows them. */
-export const ADDRESS_GROUPS = ["Library", "Saved analyses", "Repertoires", "Played games"] as const;
+export const ADDRESS_GROUPS = ["Library", "Analysis cases", "Repertoires", "Played games"] as const;
 
 /** How many of a group the list shows at once — the rest are reached by typing more. */
 export const ADDRESS_GROUP_LIMIT = 8;
@@ -45,18 +47,20 @@ const entryOf = (group: (typeof ADDRESS_GROUPS)[number], value: string, label: s
 });
 
 /** An untitled record's name, as the app's own lists put it. */
-const UNTITLED_ANALYSIS = "Analysis board";
+const UNTITLED_CASE = "Game";
 const UNTITLED_REPERTOIRE = "An untitled repertoire";
 
 /** The day a game was first written down, for telling games with the same players apart. */
 const dateOf = (iso: string): string => iso.slice(0, 10);
 
 /** Every record as an entry, grouped in {@link ADDRESS_GROUPS}' order. */
-export const addressEntriesOf = ({ collections, analyses, repertoires, playedGames }: AddressRecords): readonly AddressEntry[] => {
+export const addressEntriesOf = ({ collections, cases, projects, repertoires, playedGames }: AddressRecords): readonly AddressEntry[] => {
   const library = collections.map((summary) => entryOf("Library", sourcePathOf({ kind: "collection", collection: summary.id }), summary.name, summary.id));
-  const analysed = analyses.map((saved) => {
-    const name = saved.name || savedAnalysisDerivedName(readPgnTags(saved.pgn)) || UNTITLED_ANALYSIS;
-    return entryOf("Saved analyses", sourcePathOf({ kind: "analysis", id: saved.id }), name, saved.description);
+  const projectNames = new Map(projects.map((project) => [project.id, project.name]));
+  const analysed = cases.map((record) => {
+    const derived = caseDerivedName(record);
+    const name = record.name || (derived.kind === "game" ? derived.text : `Position, move ${derived.moveNumber}`) || UNTITLED_CASE;
+    return entryOf("Analysis cases", sourcePathOf({ kind: "case", projectId: record.projectId, caseId: record.id }), name, projectNames.get(record.projectId) ?? "");
   });
   const kept = repertoires.map((saved) => entryOf("Repertoires", sourcePathOf({ kind: "repertoire", id: saved.id }), saved.name.trim() || UNTITLED_REPERTOIRE));
   const played = playedGames.map((game) => {

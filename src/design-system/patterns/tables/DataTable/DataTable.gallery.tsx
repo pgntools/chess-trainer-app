@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 
-import { SearchField } from "../../../components/forms";
+import { SearchField, SelectField } from "../../../components/forms";
 import { DEFAULT_TABLE_PAGE_SIZE, useTableUrlState, type SortDirection } from "../../../components/tables";
 import { ActionBar, IconAction } from "../../../components/toolbars";
 import type { GalleryModule } from "../../../gallery/types";
@@ -229,6 +229,36 @@ const gallery: GalleryModule<PatternSectionId> = {
                 clearLabel="Clear"
                 testId="gallery-data-table-filter"
               />
+            ),
+          };
+        }),
+    },
+    {
+      name: "A filter above its column (column.filter, CTA-221) — the city's, under City's header",
+      render: () =>
+        local(SIXTY, (state, set) => {
+          const cities = [...new Set(SIXTY.flatMap((row) => (row.city === undefined ? [] : [row.city])))].sort();
+          return {
+            rows: state.words === "" ? SIXTY : SIXTY.filter((row) => row.city === state.words),
+            filtered: state.words !== "",
+            columns: COLUMNS.map((column) =>
+              column.id === "city"
+                ? {
+                    ...column,
+                    filter: (
+                      <SelectField
+                        label="City"
+                        labelHidden
+                        value={state.words}
+                        onChange={(value) => set({ words: value, page: 0 })}
+                        emptyOption="Any city"
+                        options={cities.map((city) => ({ value: city, label: city }))}
+                        fullWidth
+                        testId="gallery-data-table-city-filter"
+                      />
+                    ),
+                  }
+                : column,
             ),
           };
         }),

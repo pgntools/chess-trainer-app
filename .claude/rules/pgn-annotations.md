@@ -6,6 +6,8 @@ paths:
   - "src/lib/playChance*"
   - "src/lib/gamesTag*"
   - "src/lib/nextMoveWeights*"
+  - "src/lib/engineEvals*"
+  - "src/lib/computerAnalysis*"
   - "src/views/explorer/AnnotationsBar.tsx"
   - "src/views/explorer/CommentDialog.tsx"
   - "src/views/explorer/NagDialog*"
@@ -74,7 +76,7 @@ annotations. Every board reads through `parsePgnTree` / `parsePgnTrees`
   comes back out as `$1`. Every PGN reader takes both.
 - A `; line comment` is written as `{ … }`; a `}` inside one is dropped (it
   would close the brace).
-- Export options (`PgnExportOptions`, the Analysis Board's Export tab, CTA-73)
+- Export options (`PgnExportOptions`, every board's Export tab, `PgnExportPanel`, CTA-73)
   strip **all comments** (and with them every command and tag of §2–§3), **all
   NAGs**, or **all side lines**.
 
@@ -113,20 +115,24 @@ The PGN-spec embedded command form, as lichess, ChessBase and the chess.com
 exports write them. `readComment` takes every one out of the prose and shows
 it as a **chip** in the comment block (`AnnotationsBar`): the key's label,
 then the value, pinned LTR. The value is **shown as written, never
-interpreted** — no `[%eval]` feeds the eval bar today. Two readings go
-beyond the chip: the Analysis Board's arrows, which can be sized by
+interpreted** — no `[%eval]` feeds the eval bar today — save that an
+`[%eval]` value with a depth after a comma (`0.17,20`) is two chips, Eval
+and Depth (CTA-167). Two readings go
+beyond the chip: the Case board's arrows, which can be sized by
 `[%eval]` (CTA-98, §3), and lichess's shapes, `[%cal]` / `[%csl]`, which
-**every board draws instead of a chip** (CTA-143, below).
+**every board draws instead of a chip** (CTA-143, below). One command is
+also **written** by the app: `[%eval]`, the Case board's engine
+evaluations (CTA-167, below).
 
 | Command | Example | Chip label (`annotations.keys.*`) | Does anything else read it? |
 | --- | --- | --- | --- |
-| `%eval` | `[%eval 6.91]`, `[%eval #-3]` | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3) |
+| `%eval` | `[%eval 6.91]`, `[%eval #-3]`, `[%eval 0.17,20]` (a depth: Eval and Depth chips) | Eval | **yes** — the Case board's *Evaluation* arrow widths (§3); **written** by its engine (CTA-167, below) |
 | `%clk` | `[%clk 0:22:33]` | Clock | no |
 | `%emt` | `[%emt 0:00:12]` | Time spent | no |
 | `%cal` | `[%cal Ge2e4,Rd7d5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn on every explorer board and an article's `<InlinePgnGame>` (below), and written by drawing on an editing board |
 | `%csl` | `[%csl Gd4,Re5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn as circles, as `%cal` |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
-| `%games` | `[%games 12]` | Games | **yes** — the Analysis Board's *Games* arrow widths (§3) |
+| `%games` | `[%games 12]` | Games | **yes** — the Case board's *Games* arrow widths (§3) |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
@@ -188,6 +194,23 @@ reads empty — the block lists no row for it and is not shown where it is all
 there is — and `hasComments` (the move list's comment mark) does not count
 it. The board says what it says.
 
+### `[%eval]` written — an analysis board's engine (CTA-167), `lib/engineEvals.ts`
+
+A Case board's Settings tab (the legacy Analysis Board's engine menu until CTA-192) has **Write evaluations into the game**
+(off by default — [`analysis-v2.md`](./analysis-v2.md) §3.3). While it is
+on, each search that **finishes** — at the moment `useEngineModule` records
+the score in `evalsByFen` (`onSearchFinished`) — is written into the tree:
+
+| | |
+| --- | --- |
+| **Format** | `[%eval <pawns>,<depth>]`: White's view (the engine's `Score`, already normalised), two decimals (`0.17`, `-1.50`), a mate as `#N` signed by who mates (`#3`, `#-2`), then the depth that search's last scored line reached. The depth after the comma is chessops' and python-chess's form; lichess exports write `[%eval 0.17]` with none. `formatEval`. |
+| **On which move** | The move that leads to the searched position — the node the position was **last on screen at** (the search may end after the reader moved on). The start position, which no move leads to, writes into the game's opening comment (`tree.comments`), as its shapes do (CTA-149). A node that no longer leads to the searched position (another game loaded) is not written to. |
+| **Placement** | Into the move's existing `[%eval]` (the first one, in whichever comment), else **first** in its first comment, else a comment of its own. The prose and every other command (`[%cal]`, `[%clk]`, `prc:`, `[%games]` …) are untouched. `withEval`. |
+| **Override** | A new evaluation replaces the stored one only when its depth is **greater than or equal to** the stored depth; a stored `[%eval]` with **no** depth (a lichess import) is always replaced; a shallower search never overwrites a deeper one. A write that would change nothing is the same tree back — no spurious change. |
+| **The engine** | The game's `[Annotator "…"]` tag, set or updated when an evaluation is written (`annotatorOf`): the running engine's descriptor name, with its version after it unless the name already says it — `Stockfish 19 Lite`, `Stockfish 19 Lite (multi-thread)`. PGN has no per-move engine command. |
+| **What counts as finished** | A search that ends with a `bestmove` after at least one scored top line: to its depth or time, or **ended early** — by a change of position (the wrapper stamps its `bestmove` with the FEN it was searching) or by the engine switched off — at the depth it reached. Play too. A search stopped before its first scored line is not written. |
+| **An edit like any other** | `recordEvaluation` → `setComments` (and the tag), applied to the latest tree by the core's `annotateTree` (a writer that is not a click — its callback may be renders old). Pure and id-preserving, so the board's "changed", Save, Discard and Export-with-comments behave as for a typed comment. |
+
 ### The engine-evaluation shapes analysis exports write
 
 Two plain-text shapes are also read out of the prose, into chips:
@@ -199,7 +222,7 @@ Two plain-text shapes are also read out of the prose, into chips:
 
 The assessment is optional; it is one of `+-` `-+` `+/-` `-/+` `+/=` `=/+`
 `=` `∞`. The trailing shape's eval counts as the move's evaluation for the
-Analysis Board's arrows, as `[%eval]` does (`evalOf`, `lib/nextMoveWeights.ts`).
+Case board's arrows, as `[%eval]` does (`evalOf`, `lib/nextMoveWeights.ts`).
 
 ---
 
@@ -220,7 +243,7 @@ from either convention reads the same.
 | **Means** | How often the repertoire trainer plays that move there. The four rules — no marks: by lines within 8 plies; all marked: scaled to 100%; some marked: the rest share the remainder by lines; `prc:0`: never (unless all are 0) — are in the module note of `lib/playChance.ts`. |
 | **Set by** | The move menu's *Play chances…* (`PlayChanceDialog`, per branch, `setPlayChances`) — or typed into a comment. |
 | **Shown** | A *Play chance* chip, never as prose (`withoutPlayChance`). With `arrows.chances`, and **only where the branch carries a mark**, the board's arrows become the **chance overlay** (`ChanceArrows`: white, magenta border, width by chance) and the next-moves bar prints each move's percentage — the repertoire player. |
-| **Offered on** | Boards where a trainer plays by it; the Analysis Board turns the menu item off (`playChances: false`, CTA-73). |
+| **Offered on** | Boards where a trainer plays by it; the Case board turns the menu item off (`playChances: false`, CTA-73). |
 | **Also written by** | The Library opening board's *Save tree as PGN* (CTA-99), as `[%prc P]` — each move's share of its position's games, `round(child / parent × 100)`, in one comment after `[%games N]` when both are asked for. |
 
 ### `games` — how many games went through a move (CTA-98), `lib/gamesTag.ts`
@@ -232,7 +255,7 @@ from either convention reads the same.
 | **On which move** | The move it counts — the candidate at a branch — as `prc`. |
 | **Read** | `gamesOf(node)`: its `comments`, then `preComments`; **the first one wins**. |
 | **Shown** | A *Games* chip (`annotations.keys.games`), never as prose (`withoutGames`). |
-| **Means** | With the Analysis Board's width source on *Games*, each tagged move's arrow is its share of the tagged moves' games at the branch. The repertoire player still sizes by `prc` only (`arrows.chances`). |
+| **Means** | With the Case board's width source on *Games*, each tagged move's arrow is its share of the tagged moves' games at the branch. The repertoire player still sizes by `prc` only (`arrows.chances`). |
 | **Export** | Comment text: the Export tab's *comments off* strips it with every other comment. |
 
 ### The arrows these weigh — one overlay, three kinds of source
@@ -244,7 +267,7 @@ knows nothing of where it came from:
 | --- | --- | --- |
 | Repertoire player | the move's play chance | `prc` marks → `playChances` (`useVariationsExplorer`, `arrows.chances`) |
 | Library collection lobby's opening board | the share of the position's games that played the move | `child.count / node.count`, counted from the collection's rows (`lib/openingTree.ts`, `OpeningFilterBoard.tsx`, CTA-92) — **not** from any PGN annotation |
-| Analysis Board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move, `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
+| Case board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move (within 1 cp the best group, widest and in the mainline colour; the rest thinner by loss in the side-line colour — CTA-180), `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
 
 ### Written today: the Library's `[%games N]` (CTA-99)
 
@@ -255,7 +278,7 @@ played the move from that position — on every move below the board's position,
 in the command form, first in the move's one comment
 (`{ [%games 12] [%prc 40] }` when `prc` is asked for too). It is **read** by
 `gamesOf` (CTA-98): a *Games* chip in the comment block, and — opened on the
-Analysis Board with its width source on *Games* — each move's arrow sized by
+Case board with its width source on *Games* — each move's arrow sized by
 its share. `mergeTrees` writes it too (§1 *Merging*, CTA-101).
 
 ---
@@ -320,32 +343,166 @@ touched by it:
 - **Set by** the move menu's *Add annotation…* (`NagDialog`); every toggle is
   one `setNags` edit.
 
+### On the board — the move-mark badge (CTA-168)
+
+The move on screen's **move mark** is also drawn on the board, lichess's way:
+a round badge with the glyph in the top-right corner of the square the move
+landed on (the moved piece). `moveMarkBadge(nags)` picks it — the first move
+mark in print order, its glyph and tone; `□` takes the good tone and `⊗` the
+blunder one, the two marks with no family of their own. **Position and
+feature glyphs stay off the board.** `views/shared/MoveGlyphBadge.tsx` draws
+it — an SVG over the board's relative box like `ShapeCircles` (a `0 0 8 8`
+viewBox, turned with the orientation, `pointer-events: none`,
+`aria-hidden`: the move list reads the glyph out), the disc the theme's
+`chess.nag` token for its tone in the scheme on screen, the glyph white or
+black by `getContrastText`, pinned LTR with the SVG `direction` attribute.
+It is drawn on **every explorer board** (`useVariationsExplorer`'s `overlay`,
+`${testId}-move-glyph`, above the PGN's circles, whether or not the comment
+block is shown — the list shows the glyph either way; the explorer's
+`moveMarks: false` leaves it off, which a Case board's *move marks* switch on its Display tab — kept per Case in its
+`display` — and the Library game board's switch on its Moves tab pass) and on the Blog's
+`<InlinePgnGame>` boards (`ExcerptBoard`); below the promotion picker. A
+move with no move mark draws nothing, and an `$N` edit through *Add
+annotation…* redraws it at once.
+
 ---
 
 ## 5. Where the code is
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node. |
-| `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
+| `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node; `parsePgnTree`'s optional `PgnMoveCache` (CTA-208) — a move already played from a position, in an earlier game of a batch, taken from it rather than from chess.js (the first 24 plies; the same tree either way). |
+| `src/lib/pgnGames.ts` | A file of thousands of games read in two steps (CTA-208): `indexPgnGames` (each game's text and tags, no move read) and `parsePgnGameEntries` (every tree, in slices that give the page back, with progress, abort and one move cache) — Analysis's New case. |
+| `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `addLine` (a whole line in one rebuild, as `addMove` would add it — CTA-172); `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
 | `src/lib/openingTreePgn.ts` | The Library's *Save tree as PGN*: an opening tree's counts written as `[%games N]` / `[%prc P]` (§3). |
 | `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips; `[%cal]` / `[%csl]` out of the prose, no chip), `annotationsAt`; the NAG table and its rules. |
 | `src/lib/boardShapes.ts` | `[%cal]` / `[%csl]`: `shapesOf` (reading), `toggleShape` (a drawn shape written into the comments), `clearShapes` (*Remove all*), `brushOfKeys`, `withoutShapes` (what `hasComments` reads) — CTA-126, CTA-143. |
 | `src/views/explorer/ShapesDialog.tsx` | The move menu's *Arrows and circles…* (CTA-143). |
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
-| `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
+| `src/lib/nextMoveWeights.ts` | The Case board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
+| `src/lib/engineEvals.ts` | `[%eval]` **written** (CTA-167): `formatEval`, `withEval` (placement and the override by depth), `annotatorOf` / `withAnnotator`, `recordEvaluation` (§2). |
+| `src/lib/computerAnalysis.ts` | **Computer analysis**, the pure core (CTA-172, §6): the options and their normaliser, `analysisPositionsOf`, the search rules `shouldStopEarly` / `prunedLines` / `withSearchInfo`, `moveVerdicts`, `playerReports`, the lichess accuracy. |
+| `src/lib/computerAnalysisTree.ts` | The light / medium / full trees (`computerAnalysisTree`), the opening-comment report, the `AnalysedPlies` / `AnalysedSide` scope tags, and the read-back: `reportFromTree`, `evalSeriesOf` (§6). |
 | `src/lib/pgnComments.ts` | `reflowComment` — hard-wrapped comment text back into paragraphs. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block: prose, chips, glyphs. |
 | `src/views/explorer/CommentDialog.tsx`, `NagDialog.tsx`, `PlayChanceDialog.tsx` | The three editors, opened from the move menu. |
 | `src/views/explorer/ChanceArrows.tsx` + `chanceArrows.ts` | The weight-per-move arrow overlay. |
 | `src/views/shared/NagGlyphs.tsx`, `nagToneSx.ts` | Glyphs after a SAN, and the move marks' colours. |
+| `src/views/shared/MoveGlyphBadge.tsx` | The move mark drawn on the board's moved-to square (CTA-168), over `moveMarkBadge`. |
 
 Tests: `lib/pgnAnnotations.test.ts` (parse, write, merge, the merge's
 `games` counting, edits), `lib/gameTree.test.ts` (the counting's placement),
-`lib/moveAnnotations.test.ts`, `lib/playChance.test.ts`,
+`lib/moveAnnotations.test.ts` (`moveMarkBadge` too), `views/shared/MoveGlyphBadge.test.tsx`
+(the badge's placement, tone and absence), `lib/playChance.test.ts`,
 `lib/nextMoveWeights.test.ts` (the `games` and `[%eval]` readers, the widths),
+`lib/engineEvals.test.ts` (the `[%eval]` writer: format, placement, override,
+the Annotator, round trip), `lib/computerAnalysis.test.ts` (the search rules,
+the verdicts and accuracy, each variant's PGN, the read-back — of a lichess
+export too), `lib/gameTreeEdit.test.ts` (`addLine`),
 `lib/boardShapes.test.ts` (reading, and `toggleShape`'s add / remove /
 recolour and round trip), `views/explorer/NagDialog.test.tsx`,
 `views/explorer/useVariationsExplorer.test.tsx` (the shapes drawn and written),
 `views/explorer/ShapesDialog.test.tsx` (the menu's dialog).
+
+---
+
+## 6. Computer analysis — the annotated variants (CTA-172)
+
+A **computer analysis** runs the engine once over a game's mainline (a
+background job, CTA-171) and writes up to three annotated trees from that
+one run. The rules are a port of the reader's Python tool
+(`game-anal-v1`'s `main.py` / `utils.py`), and the code is pure:
+`lib/computerAnalysis.ts` (the options, the positions, the search rules, the
+verdicts, the report) and `lib/computerAnalysisTree.ts` (the trees and the
+read-back).
+
+### What is searched, and what a move is worth
+
+| | |
+| --- | --- |
+| **The moves analysed** | The mainline moves the options leave in: an eval-only `side` (`w` / `b`), from `fromMove` + `fromColour`, to `toMove` (inclusive, both colours; `null` to the end). |
+| **The positions searched** (`analysisPositionsOf`) | From the position before the first analysed move to the one after the last, every one in between. A move's best is line 1 of the position before it, and its eval is **line 1 of the position after it**, so that last position is searched too. A position whose move is not analysed (the other side's, under an eval-only side) is asked for one line. A mate or stalemate on the board is never searched (`terminalResultOf`). Each position carries the `[%eval]` the tree already has for it (`storedEval`, with its depth when written), so a job may skip a search that is already deep enough. |
+| **Scores** | White's view, as `scoreFromUci` made them. The search rules compare from **the side to move's** view, and a mate counts ±10000 less its distance (python-chess's `score(mate_score=10000)`). `mate 0` (the side to move is mated) is −10000 for that side. |
+| **The early stop** (`shouldStopEarly`) | Once the search reaches `minDepth` (clamped to at most the depth) and line 1 has a score, it stops as soon as any other line is more than `variationRangeCp` (100) below line 1. `main.py` hard-coded `min_depth` 24 against a depth of 20, so its stop never fired. The default here is the depth itself, which keeps that behaviour. |
+| **The prune** (`prunedLines`) | Line 1, then every line up to the first one more than `variationRangeCp` below it. |
+| **The loss** (`moveVerdicts`) | Best minus played, in White's view and signed for the mover, each score first clamped to ±1000; at least 0. |
+| **The kind** | Above `thresholds.blunder` (300) a blunder, above `mistake` (100) a mistake, above `inaccuracy` (50) an inaccuracy. **A missed mate**: the mover had a forced mate, and the move gave it up, turned it into the other side's, or made it longer. A missed mate's loss is 0. A move that mates is a mate delivered, never a missed one. |
+| **The best alternative** | The first pruned line whose first move is not the move played, in SAN: "… X was best." |
+| **The report** (`playerReports`) | Per side, over its analysed moves only: inaccuracies, mistakes, blunders, missed mates, ACPL (the average loss, rounded), and accuracy by **lichess's formula** over that ACPL, `103.1668 · e^(−0.004354 · ACPL) − 3.1669`, clamped to 0–100. A side with no analysed move has no report. |
+
+**Where the port departs from `main.py`**: `main.py` took the played move's
+eval from the position *before* the move, the same line its best came from,
+so every loss came out 0 and nothing was ever classified. Here the eval is
+the next position's line 1, as above. `main.py` also read a mating move as a
+missed mate.
+
+### The three variants
+
+Each variant is the **source tree with everything it had** (side lines,
+comments, NAGs), plus:
+
+| | light | medium | full |
+| --- | --- | --- | --- |
+| `[%eval]` | every move whose position was searched | the same | the same |
+| NAG and comment | every classified move | the same | the same |
+| Engine lines, as side lines | the best line that is not the move played | every pruned line that is not the move played | the same as medium |
+| …on | classified moves | classified moves | every analysed move |
+| `Annotator` | `<engine> [light]` | `<engine> [medium]` | `<engine> [full]` |
+| Scope tags | `AnalysedPlies`, `AnalysedSide` | the same | the same |
+
+- **`[%eval]`** through `withEval` (§2's format, placement and override by
+  depth, so a deeper eval the source had stays): line 1 of each searched
+  position, on the move leading to it, or the opening comment for the start
+  position. That includes **a move outside the analysis** whose position
+  was searched, such as the other side's under an eval-only side, or the move
+  just before the start move. The eval is all such a move gets: no NAG, no
+  comment, no line. It is there because the next move's loss is measured
+  from it.
+- **NAGs**: `?!` ($6), `?` ($2), `??` ($4), and `??` for a missed mate. The
+  verdict's NAG **replaces a move-quality NAG** the move had (§4's Move
+  Assessment section, `$1`–`$9`); the other NAGs stay.
+- **The comment**, after the move's own: `Inaccuracy. Nf3 was best.`,
+  `Mistake.`, `Blunder. g6 was best.`, `Missed mate in 2! Qxf7# was best.`
+- **Engine lines**: added with `addLine` (one rebuild a line), **cut at the
+  first move that does not play**. A move already in the tree is followed,
+  not added twice. A line's first move carries the line's `[%eval]`.
+- **The opening comment**: the start position's `[%eval]` when it was
+  searched, then the report as a comment of its own:
+
+  ```
+  { Computer analysis (light), Stockfish 19 Lite, depth 20. White (Alice): 1 inaccuracy, 0 mistakes, 0 blunders, 1 missed mate, ACPL 12, accuracy 95%. Black (Bob): not analysed. }
+  ```
+
+- **The scope**, as two header tags: `[AnalysedPlies "19-80"]`, the mainline
+  plies analysed (inclusive), and under an eval-only side `[AnalysedSide
+  "White"]` (or `"Black"`), removed again by a run over both sides. They
+  are tags and not a `[%cmd]` in the comment because the PGN standard lets
+  a reader ignore a tag it does not know, out of sight, whereas some readers
+  print an unknown comment command as text. They keep the moves outside the
+  analysis, which carry an `[%eval]` (above), out of the read-back report.
+- **Analysing an output again** replaces this writer's verdict comments and
+  report rather than adding a second set.
+
+### Reading it back — `reportFromTree`, `evalSeriesOf`
+
+A Case shows its report and graph **from the tree alone**, with
+no job record, and so does **a lichess export** (`[%eval]` on every move
+with no depth, its own NAGs and comments, no scope tags):
+
+- **The moves in the report**: the mainline moves with an `[%eval]`, inside
+  the scope tags' plies and side when the tree has `AnalysedPlies`, and
+  every such move when it has none.
+- **The kind** comes from the NAGs (`??` over `?` over `?!`). A `??` whose
+  evals show a mate given up is a missed mate.
+- **The loss** comes from the evals: the previous move's `[%eval]` (the
+  opening comment's at the first move) against this one's, by the rule
+  above. A move with no eval before it (a lichess export's first move)
+  counts, but not in the ACPL.
+- **The graph's points** (`evalSeriesOf`): the opening comment's eval when
+  there is one, then every mainline move with an `[%eval]`, each with its
+  node id (where a click takes the board), White's-view centipawns clamped
+  to ±1000 (a mate at ±1000), and its kind in scope.
+
+For this writer's own trees the read-back **is** the run's `playerReports`
+(held by `computerAnalysis.test.ts`, after a PGN round trip too).

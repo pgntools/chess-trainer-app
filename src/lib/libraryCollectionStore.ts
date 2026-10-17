@@ -8,6 +8,8 @@ import {
   type TournamentFormat,
 } from "./libraryCollections";
 import { committed, done } from "./idb";
+import { LIBRARY_COLLECTION_ENTITY } from "./jobs/entityTypes";
+import { removeUnfinishedJobsOf } from "./jobs/subjectDeletion";
 import {
   LIBRARY_CHANNEL,
   LIBRARY_COLLECTIONS_STORE,
@@ -267,6 +269,11 @@ const settle = async (
  * Keep a new collection: its games and their index rows (one per game, in
  * order — `buildCollectionIndex`'s), filed in `folderId` (`null`, the top
  * level, by default). Newest first in the list.
+ *
+ * **A collection whose id is already kept is already added** (CTA-221): the
+ * stored one is answered as it is, nothing overwritten — so a job's output,
+ * its id derived from the job's, applied twice makes one collection. A fresh
+ * id (the default) behaves as it always did.
  */
 export const addCollection = async (
   name: string,
@@ -289,21 +296,33 @@ export const addCollection = async (
     tournament: settings.tournament,
     sharedEvent: canBeTournament(rows),
   };
+  let kept: StoredSummary | undefined;
   try {
     const db = await openDb();
     const tx = db.transaction([COLLECTIONS, INDEXES, GAMES], "readwrite");
-    tx.objectStore(COLLECTIONS).put(summary);
-    tx.objectStore(INDEXES).put({ id, rows: [...rows] } satisfies StoredIndex);
-    tx.objectStore(GAMES).put({ id, games: [...games] } satisfies StoredGames);
-    await committed(tx);
+    const outcome = committed(tx);
+    const existing: unknown = await done(tx.objectStore(COLLECTIONS).get(id));
+    if (isStoredSummary(existing)) {
+      kept = existing;
+    } else {
+      tx.objectStore(COLLECTIONS).put(summary);
+      tx.objectStore(INDEXES).put({ id, rows: [...rows] } satisfies StoredIndex);
+      tx.objectStore(GAMES).put({ id, games: [...games] } satisfies StoredGames);
+    }
+    await outcome;
   } catch {
     return { problem: "storage" };
   }
+  if (kept !== undefined) return { collection: summaryOf(kept) };
   await settle(id, rows, games);
   return { collection: summaryOf(summary) };
 };
 
-/** Forget one, games and index with it. An unknown id is a no-op, not an error. */
+/**
+ * Forget one, games and index with it — and its unfinished jobs (the Jobs
+ * module's deletion rule, CTA-221 — a running one aborted; finished ones
+ * kept). An unknown id is a no-op, not an error.
+ */
 export const removeCollection = async (id: string): Promise<LibraryCollectionProblem | undefined> => {
   try {
     const db = await openDb();
@@ -314,6 +333,7 @@ export const removeCollection = async (id: string): Promise<LibraryCollectionPro
     return "storage";
   }
   await settle(id, null, null);
+  await removeUnfinishedJobsOf([{ type: LIBRARY_COLLECTION_ENTITY, id }]);
   return undefined;
 };
 

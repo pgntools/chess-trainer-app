@@ -54,6 +54,9 @@ const COMMAND = /\[%([A-Za-z][\w-]*)\s*([^\]]*)\]/g;
 /** The commands the board draws rather than the block reads (CTA-143). */
 const SHAPE_COMMANDS = new Set(["cal", "csl"]);
 
+/** An `[%eval]` value with a depth after it — `0.17,20`, `#-3,18`. */
+const EVAL_WITH_DEPTH = /^\s*([^,\s]+)\s*,\s*(\d+)\s*$/;
+
 /** The assessment glyphs an analysis export writes before its number. */
 const ASSESSMENT = String.raw`(\+-|-\+|\+\/-|-\/\+|\+\/=|=\/\+|=|∞)`;
 
@@ -75,7 +78,11 @@ export const readComment = (raw: string): ReadComment => {
   if (games !== undefined) attributes.push({ key: "games", value: String(games) });
 
   let text = withoutGames(withoutPlayChance(raw)).replace(COMMAND, (_, key: string, value: string) => {
-    if (!SHAPE_COMMANDS.has(key.toLowerCase())) attributes.push({ key, value: value.trim() });
+    if (SHAPE_COMMANDS.has(key.toLowerCase())) return " ";
+    // `[%eval 0.17,20]` — chessops' and python-chess's depth after the comma (CTA-167): two chips.
+    const evalDepth = key.toLowerCase() === "eval" ? EVAL_WITH_DEPTH.exec(value) : null;
+    if (evalDepth !== null) attributes.push({ key, value: evalDepth[1] }, { key: "depth", value: evalDepth[2] });
+    else attributes.push({ key, value: value.trim() });
     return " ";
   });
 
@@ -283,3 +290,23 @@ const NAG_TONES: Readonly<Record<number, NagTone>> = {
 };
 
 export const nagTone = (nag: number): NagTone | undefined => NAG_TONES[nag];
+
+/**
+ * The two move marks with no colour family of their own take the nearest
+ * one on the board's badge: `□` (only move) good, `⊗` (worst move) blunder.
+ */
+const BADGE_TONES: Readonly<Record<number, NagTone>> = { 7: "good", 8: "good", 9: "blunder" };
+
+/**
+ * **The move mark the board draws** (CTA-168) — lichess's badge on the
+ * square a move landed on: the move's first move mark in print order, its
+ * glyph and its colour family. `undefined` for a move with none — position
+ * and feature glyphs stay off the board, as on lichess.
+ */
+export const moveMarkBadge = (
+  nags: readonly number[] | undefined,
+): { nag: number; glyph: string; tone: NagTone } | undefined => {
+  const nag = nagsInPrintOrder(nags ?? []).find(isMoveMark);
+  if (nag === undefined) return undefined;
+  return { nag, glyph: nagGlyph(nag), tone: nagTone(nag) ?? BADGE_TONES[nag] };
+};

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  activeFilterCount,
   activeFilterSummary,
   batchFolderNameOf,
   collectionIdOfStem,
@@ -12,6 +13,7 @@ import {
   collectionFacetsOf,
   collectionRowsOf,
   collectionMetadataOf,
+  collectionSourcesOf,
   dateBounds,
   eventGroupsOf,
   openingLabelOf,
@@ -24,6 +26,8 @@ import {
   isPotentialTournament,
   readsAsTournament,
   sharedEventOf,
+  sourceLinkHref,
+  sourceTagsOf,
   sortedRows,
   formatOfKind,
   TOURNAMENT_FORMATS,
@@ -93,6 +97,65 @@ describe("collectionRowOf", () => {
     expect(row.eco).toBeUndefined();
     expect(collectionRowOf(C, 3).date).toBeUndefined();
     expect(collectionRowOf("1. e4 *", 4).result).toBe("*");
+  });
+});
+
+describe("where the games come from — their Source tags (CTA-233)", () => {
+  const twic = (issue: number, extra = "") =>
+    `[Event "Open"]\n[SourceTitle "The Week in Chess ${issue}"]\n[Source "Mark Crowther"]\n[SourceDate "2026.09.${issue - 1655}"]\n${extra}[White "A"]\n[Black "B"]\n[Result "1-0"]\n\n1. e4 e5 1-0`;
+
+  it("reads every tag whose name starts Source, a placeholder or an empty one left out", () => {
+    expect(sourceTagsOf({ SourceTitle: " TWIC 1662 ", Source: "Mark Crowther", SourceDate: "????.??.??", SourceQuality: "", SourceURL: "https://x", White: "A" })).toEqual({
+      SourceTitle: "TWIC 1662",
+      Source: "Mark Crowther",
+      SourceURL: "https://x",
+    });
+    expect(sourceTagsOf({ White: "A", Source: "?" })).toBeUndefined();
+    expect(collectionRowOf(twic(1662), 1).sourceTags).toEqual({ SourceTitle: "The Week in Chess 1662", Source: "Mark Crowther", SourceDate: "2026.09.7" });
+    expect(collectionRowOf(A, 1).sourceTags).toBeUndefined();
+  });
+
+  it("follows a SourceLink only to a web address", () => {
+    expect(sourceLinkHref("https://theweekinchess.com/twic")).toBe("https://theweekinchess.com/twic");
+    expect(sourceLinkHref("http://example.com/a?b=1")).toBe("http://example.com/a?b=1");
+    for (const value of ["javascript:alert(1)", "theweekinchess.com", "/twic", "ftp://example.com/x", "data:text/html,x"]) {
+      expect(sourceLinkHref(value)).toBeUndefined();
+    }
+  });
+
+  it("is absent when no game names a source", () => {
+    expect(collectionSourcesOf([])).toBeUndefined();
+    expect(collectionSourcesOf([collectionRowOf(A, 1), collectionRowOf(B, 2)])).toBeUndefined();
+  });
+
+  it("gives one source over every game, its tags in PGN's order and any other after them by name", () => {
+    const rows = [1, 2, 3].map((number) => collectionRowOf(twic(1662, '[SourceZeta "z"]\n[SourceAlpha "a"]\n[SourceVersion "2"]\n'), number));
+    expect(collectionSourcesOf(rows)).toEqual({
+      entries: [
+        {
+          tags: [
+            { name: "SourceTitle", value: "The Week in Chess 1662" },
+            { name: "Source", value: "Mark Crowther" },
+            { name: "SourceDate", value: "2026.09.7" },
+            { name: "SourceVersion", value: "2" },
+            { name: "SourceAlpha", value: "a" },
+            { name: "SourceZeta", value: "z" },
+          ],
+          games: 3,
+        },
+      ],
+      untagged: 0,
+    });
+  });
+
+  it("lists each distinct source in the order the games meet it, with its games, and counts those naming none", () => {
+    const rows = [twic(1662), twic(1661), A, twic(1662), twic(1661), twic(1662)].map((pgn, index) => collectionRowOf(pgn, index + 1));
+    const sources = collectionSourcesOf(rows);
+    expect(sources?.entries.map((entry) => [entry.tags[0]?.value, entry.games])).toEqual([
+      ["The Week in Chess 1662", 3],
+      ["The Week in Chess 1661", 2],
+    ]);
+    expect(sources?.untagged).toBe(1);
   });
 });
 
@@ -256,6 +319,27 @@ describe("the side panel's filters", () => {
     expect(subCoded.openings).toEqual(["B13e Caro-Kann", "C44 King's Pawn Game", "C44r Scotch Game", "Queen's Pawn"]);
     const bare = collectionRowsOf({ games: ["1. e4 *"] });
     expect(collectionFacetsOf(bare)).toEqual({ players: [], openings: [], events: [], results: ["*"], dates: undefined });
+  });
+});
+
+describe("activeFilterCount — the folded panel's badge (CTA-230)", () => {
+  const none = { player: [], color: "", opening: "", event: "", from: "", to: "", result: "", line: "" } as const;
+
+  it("is zero with nothing on, and counts each filter once", () => {
+    expect(activeFilterCount({ ...none, player: [] })).toBe(0);
+    expect(activeFilterCount({ ...none, player: ["Tal", "Smyslov"] })).toBe(1);
+    expect(activeFilterCount({ ...none, player: ["Tal"], color: "white" })).toBe(2);
+    expect(activeFilterCount({ ...none, player: [], opening: "B9", event: "Candidates", result: "1-0", line: "e4,c5" })).toBe(4);
+  });
+
+  it("counts a date range as one, whichever ends are set", () => {
+    expect(activeFilterCount({ ...none, player: [], from: "1960-01-01" })).toBe(1);
+    expect(activeFilterCount({ ...none, player: [], from: "1960-01-01", to: "1961-12-31" })).toBe(1);
+  });
+
+  it("leaves out a side with no player and blank names — the rows do not read them", () => {
+    expect(activeFilterCount({ ...none, player: [], color: "black" })).toBe(0);
+    expect(activeFilterCount({ ...none, player: [" "], opening: "  " })).toBe(0);
   });
 });
 
@@ -481,7 +565,8 @@ describe("the tournament mark, read from what is at hand (CTA-142)", () => {
 
   it("keeps CTA-121's five formats and adds the three with tables, arena last", () => {
     for (const format of ["swiss", "roundRobin", "knockout", "arena", "match"]) expect(TOURNAMENT_FORMATS).toContain(format);
-    expect(TOURNAMENT_FORMATS.at(-1)).toBe("arena");
+    // Only ever appended: the Lichess arena after the arena (CTA-204).
+    expect(TOURNAMENT_FORMATS.slice(-2)).toEqual(["arena", "lichessArena"]);
     expect(formatOfKind("teamKnockout")).toBe("teamKnockout");
   });
 });

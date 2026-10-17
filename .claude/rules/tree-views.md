@@ -6,8 +6,8 @@ paths:
   - "src/views/shared/MoveList.tsx"
   - "src/views/shared/VariationLine.tsx"
   - "src/views/shared/moveSelection.ts"
-  - "src/views/tools/analysis/nextMoveArrows.ts"
-  - "src/views/tools/analysis/NextMovesBar.tsx"
+  - "src/views/shared/nextMoveArrows.ts"
+  - "src/views/shared/NextMovesBar.tsx"
 ---
 
 # Tree views — how a board screen shows its game tree
@@ -16,7 +16,7 @@ How a board screen **attaches a view of its game tree** — the move list, the
 map, the comments, the next-move arrows — instead of wiring them inline. The
 shared explorer in [`src/views/explorer/`](../../src/views/explorer/)
 implements it, and every board that shows a game tree is built on it: the
-Analysis Board, Play with Engine and Masked Pieces, the Library's game board,
+Analysis's Case board, Play with Engine and Masked Pieces, the Library's game board,
 the Openings explorer and the repertoire player with its games.
 
 What a move's annotations *are* — comments, `[%cmd]`s, the `prc` tag, NAG
@@ -66,8 +66,12 @@ What the seam decides, and why:
   part (the map's zoom, the list's menu); state that means something to the
   screen stays in the screen (the open tab, the arrows switch).
 - **Keyboard navigation is the source's**: `useTreeNavigation`, under
-  `useBoardCore`, binds ← → Home End (the line) and ↑ ↓ (the sibling moves,
-  wrapping) for every board. A view never binds keys.
+  `useBoardCore`, binds ← → (the line), Home End (the branch: Home to the
+  innermost side line's first move, climbing a level when pressed there —
+  `branchStartOf` in `lib/gameTree.ts`; End to the line's end), PgUp PgDown
+  (the game's start and the mainline's end, CTA-165) and ↑ ↓ (the sibling
+  moves, wrapping) for every board; a key with nowhere to go is still taken,
+  so the panel does not scroll. A view never binds keys.
 
 ### Adding a mode
 
@@ -95,9 +99,11 @@ const parts = useVariationsExplorer({
   onEditTree?: (next: GameTree) => void,  // the one switch for every edit — `core.replaceTree`
   playChances?: boolean,                  // the menu's *Play chances…* (default on); off where no trainer plays by them
   annotations?: boolean,                  // the comment block — and the PGN's [%cal]/[%csl] shapes (CTA-143)
+  moveMarks?: boolean,                    // the move on screen's mark on the board (CTA-168) — default on
   arrows?: {
     show: boolean; chances?: boolean; required?: readonly VariationNode[];
     widthSource?: ArrowWidthSource,       // CTA-98: what sizes the arrows — absent/"none", colour only
+    engineMoves?: readonly WeightedMove[], // CTA-197: moves by their squares (the engine's lines' first), drawn in place of the continuations — absent/empty, today's arrows
     palette?: ArrowPaletteId,             // CTA-98: the arrows' colours — absent, "classic"
   },
   map?: { tree?: GameTree; nodeId?: string | null; coverage?: MapCoverage; addedIds?: ReadonlySet<string>; linked?: boolean },
@@ -114,6 +120,7 @@ const parts = useVariationsExplorer({
 | **Side lines hung under their move**, clickable | `moves` | always | `TreeMoveList` → `VariationLine` |
 | **Comment marker** on a commented move — not on one whose comments only draw shapes (CTA-143) | `moves` | always | `hasComments`, `annotatedPlies`, `markCommentedNodes` |
 | **Annotation glyphs** (NAGs, CTA-97) after the SAN — in the mainline's cells, the side lines and the map's labels, on every board, read-only ones included: the move mark first (`!` `!!` green, `?` orange, `??` red, `!?` magenta, `?!` blue, a shade per scheme), then the evaluation and the features, plain; a code outside the table as `$N` | `moves`, `map` | always | `NagGlyphs` + `nagToneSx.ts` (`views/shared/`), the map's `.map-nag` tspans, over `lib/moveAnnotations.ts`'s table (`nagGlyph`, `nagsInPrintOrder`, `nagTone`); a mainline cell reads `GameMove.nags` (`mainlineGame` carries it), a side-line token and a map label their node's |
+| **The move mark on the board** (CTA-168): the move on screen's first move mark (`!!` `!` `!?` `?!` `?` `??`, `□` / `⊗` too) as lichess's round badge in the top corner of the square it landed on, in the theme's `chess.nag` tone, above the PGN's circles; nothing for a move without one | `overlay` (`${testId}-move-glyph`) | `moveMarks` (on by default; a Case's Display switch and the Library game's) | `MoveGlyphBadge` (`views/shared/`) over `moveMarkBadge` ([`pgn-annotations.md`](./pgn-annotations.md) §4) |
 | **Evals** on the mainline's cells only | `moves` | `evalsByFen` | `MoveList`'s `mainlineEvalsOnly` |
 | **Masked notation** — every printed move in coordinates when the mask hides its piece | all but `arrows` / `overlay` | `mask` | `maskSanLine` / `maskNodeSan`; [`masked-pieces.md`](./masked-pieces.md) §4 |
 | **Extension tint** on moves added this session | `moves` | `extensionIds` | the selection store |
@@ -124,10 +131,11 @@ const parts = useVariationsExplorer({
 | **The PGN's shapes** (CTA-143): the `[%cal]` arrows and `[%csl]` circles of the comments at the position on screen (the game's opening comment at the start), in the theme's `chess.drawing` brushes — **with** the next-move arrows, the required move's and the chance / width overlay, a later arrow on the same squares drawn over an earlier | `arrows`, `overlay` (`${testId}-shape-circles`) | `annotations` | `shapesOf` (`lib/boardShapes.ts`), `ShapeCircles` (`views/shared/`) |
 | **Drawing shapes into the comment** (CTA-143, a lichess study's): a right-drag an arrow, a right-click a circle, the brush by the modifiers (plain green, Shift red, Alt blue, both yellow); drawn again it comes off, in another brush recoloured; the arrow previewed while drawing. The library's own right-drag arrows are off (`allowDrawingArrows: false`), so nothing lingers in its state — every shape is drawn from the comment. A board that does not edit keeps the library's temporary drawing | `boardOptions` (`onSquareMouseDown`, `onMouseOverSquare`, `onSquareMouseUp`), `arrows` | `onEditTree` and `annotations` | `toggleShape`, `brushOfKeys` + `setComments` ([`pgn-annotations.md`](./pgn-annotations.md) §2) |
 | **Comment editing** in the block (add, edit, delete) | `annotations` | `onEditTree` | `CommentDialog` + `setComments` |
-| **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/tools/analysis/NextMovesBar.tsx` |
-| **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/tools/analysis/nextMoveArrows.ts` |
+| **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/shared/NextMovesBar.tsx` |
+| **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/shared/nextMoveArrows.ts` |
 | **Play-chance arrows**: white with a magenta border, width by chance, a percentage per move in the bar | `overlay` (+ `nextMoves`) | `arrows.chances`, and only where the branch carries a `prc` mark | `ChanceArrows` over `chanceArrows.ts` |
 | **Width-sized arrows** (CTA-98): each continuation sized by a tag in its comment (`eval`, `games`, `prc`) or by the lines ahead, filled in the palette's colours; a move without the tag, where others have it, gray and half-transparent; a branch where none has it draws the ordinary arrows | `overlay` | `arrows.widthSource`, only while `arrows.show` | `ChanceArrows` with its `colors` (`weightedArrowColors`), over `lib/nextMoveWeights.ts` |
+| **Engine-move arrows** (CTA-197, a Case board's *Variations*): moves by their squares, not tree nodes — the engine's listed lines' first moves — sized and coloured by quality as under `eval`, **in place of** the continuations' arrows; a hovered continuation among them answers in the overlay, one that is not keeps its library arrow | `overlay` (`${testId}-engine-arrows-overlay`) | `arrows.engineMoves`, only while `arrows.show` | `ChanceArrows` over `engineLineWeights` (`lib/nextMoveWeights.ts`) |
 | **Arrow palette** (CTA-98): the mainline / side-line / hovered colours of every next-move arrow, library or overlay | `arrows`, `overlay` | `arrows.palette` | `NEXT_MOVE_ARROW_PALETTES` (`nextMoveArrows.ts`) |
 | **Required moves**: purple, in place of every other arrow | `arrows` | `arrows.required` | `REQUIRED_MOVE_ARROW_COLOR` |
 | **Map**: the tree as an SVG — tab and full screen, zoom, pan, fit, "where am I", following the reader, move labels, dots coloured by side | `map` | `map` | `TreeMap` over `lib/treeMap.ts` |
@@ -156,7 +164,8 @@ repertoire games pass nothing; a game never writes.
   menu and the comment block uses `dir="ltr"`, comment prose `dir="auto"`.
   The glyphs sit inside the SAN's own `dir="ltr"` token.
 - **One set of arrows at a time**: required moves beat the chance overlay,
-  which beats the width-sized overlay, which beats the library arrows. **The
+  which beats the engine-move overlay, which beats the width-sized overlay,
+  which beats the library arrows. **The
   PGN's shapes are not in that contest** (CTA-143): they are drawn beside
   whichever set won, the circles composed into the same `overlay`. The
   screen passes `widthSource: "none"` for a tag its tree does not carry —
@@ -169,8 +178,8 @@ repertoire games pass nothing; a game never writes.
 | Board | Options | Placement |
 | --- | --- | --- |
 | **Repertoire player** | `onEditTree` (player only), `annotations` (player, once read), `arrows: { show, chances, required }`, `map: { tree, nodeId, coverage, addedIds, linked }` (none in Get to the end), `extensionIds` | `moves` behind "reading…", `map` once read, `nextMoves` on the Moves tab with Autoplay off |
-| **Analysis Board** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `arrows: { show, widthSource, palette }` (its Arrows tab, CTA-98), `map: { addedIds, linked: true }`, `extensionIds` (the same set) | Moves and Map tabs (kept mounted); footer: `annotations`, the changes strip, Play's status line, `nextMoves` (Moves tab) |
-| **Library game** | as the Analysis Board, with `arrows: { show }` — classic, colour only | as the Analysis Board |
+| **Analysis case** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` and `arrows: { show, widthSource, engineMoves, palette }` (its Display tab, kept with the Case — [`analysis-v2.md`](./analysis-v2.md) §3.4), `map: { linked: true }` | Moves and Map tabs (kept mounted); footer: `annotations`, Play's status line, `nextMoves` (Moves tab) |
+| **Library game** | as the Analysis case, with `arrows: { show }` — classic, colour only — `moveMarks` from its Moves tab's switch, and `addedIds` / `extensionIds` against the game as it arrived | as the Analysis case, and the changes strip |
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |
@@ -242,7 +251,7 @@ const parts = usePuzzleView({
 | `src/views/explorer/TreeMap.tsx` | The map: `MapViewport`, the full-screen dialog, links and the menu. The pure layout and viewport arithmetic are `src/lib/treeMap.ts`, with `MapCoverage`. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block, presentational; the reading is `lib/moveAnnotations.ts`. |
 | `src/views/explorer/ChanceArrows.tsx` + `chanceArrows.ts` (+ tests) | The play-chance overlay and its geometry; its optional per-arrow `colors` and `weightedArrowColors` draw the width-sized arrows (CTA-98). |
-| `src/views/tools/analysis/nextMoveArrows.ts`, `NextMovesBar.tsx` | The next-move arrows and bar, imported by the explorer. |
+| `src/views/shared/nextMoveArrows.ts`, `NextMovesBar.tsx` | The next-move arrows and bar, imported by the explorer. |
 | `src/views/shared/MoveList.tsx`, `VariationLine.tsx`, `moveSelection.ts`, `moveContextMenu.ts`, `moveTokenSx.ts` | The shared tokens under every list. |
 | `src/views/shared/NagGlyphs.tsx`, `nagToneSx.ts` | A move's glyphs after its SAN, and the move marks' colours (the map's labels share them). |
 

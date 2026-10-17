@@ -1,16 +1,16 @@
 import { buildExport, zipExport, type ExportSource } from "../../src/lib/dataExport";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../src/lib/analysisSettings";
 import { DEFAULT_ENGINE_SETTINGS } from "../../src/lib/engineSettings";
 import { MASK_PRESETS } from "../../src/lib/pieceMask";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../src/lib/repertoireSettings";
 import type { PlayedGame } from "../../src/lib/playedGames";
-import type { SavedAnalysis } from "../../src/lib/savedAnalyses";
+import type { AnalysisCase, AnalysisProject, CaseDisplay } from "../../src/lib/analysisProjects";
 import type { SavedRepertoire } from "../../src/lib/savedRepertoires";
 
 /*
   The data every page is checked with (CTA-116): what a reader who has used the
   app for a while would have — a game still on, a finished one, a masked one and
-  one that cannot be read; a saved analysis in a folder; a repertoire; an
+  one that cannot be read; an Analysis project at the top level and one in a
+  folder, their cases a game and a position (CTA-192); a repertoire; an
   uploaded collection in a folder. It is the app's **own export**, built by its
   own builder (`buildExport`, `zipExport`), and put in through Settings →
   Import (`seed.setup.ts`) — so the seeding uses no store and no schema of its
@@ -20,7 +20,9 @@ import type { SavedRepertoire } from "../../src/lib/savedRepertoires";
 */
 
 export const SEED = {
-  analysisId: "e2e-analysis",
+  /** An Analysis project at the top level, and its game case (CTA-192). */
+  projectId: "e2e-project",
+  caseId: "e2e-case",
   repertoireId: "e2e-repertoire",
   collectionId: "ue2e-friday",
   /** A collection marked as a tournament (CTA-142) — its own view, a tab per route. */
@@ -74,31 +76,55 @@ const PGN_ANALYSIS = game(
   "1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 { the Bishop's Gambit, Kieseritzky's Gambit line } 5. Bxb5 Nf6 (5... Bb7 6. Nf3) 6. Nf3 Qh6 *",
 );
 
-const ANALYSIS: SavedAnalysis = {
-  id: SEED.analysisId,
-  pgn: PGN_ANALYSIS,
-  settings: DEFAULT_ANALYSIS_SETTINGS,
-  path: ["e4", "e5", "f4"],
-  orientation: "white",
-  description: "The Immortal Game's opening — where White stands after 4… b5.",
+const DISPLAY: CaseDisplay = {
   showArrows: true,
   arrowWidthSource: "none",
   arrowPalette: "classic",
-  name: "King's Gambit, Bishop's line",
-  folderId: null,
-  savedAt: AT,
+  showMoveMarks: true,
+  showEvalBar: true,
+  showVariations: true,
+  writeEvals: true,
+};
+
+const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+const PROJECT: AnalysisProject = { id: SEED.projectId, name: "King's Gambit", folderId: null, createdAt: AT, updatedAt: LATER };
+
+const PROJECT_IN_A_FOLDER: AnalysisProject = { id: "e2e-project-filed", name: "Nimzo-Indian", folderId: "e2e-folder-openings", createdAt: AT, updatedAt: AT };
+
+/** A Game case — the reader standing at 2. f4. */
+const GAME_CASE: AnalysisCase = {
+  id: SEED.caseId,
+  name: "",
+  type: "game",
+  projectId: SEED.projectId,
+  source: { kind: "pgn", pgn: PGN_ANALYSIS, startPath: [], fen: START },
+  pgn: PGN_ANALYSIS,
+  path: ["e4", "e5", "f4"],
+  orientation: "white",
+  display: DISPLAY,
+  merges: [],
+  order: 1,
+  createdAt: AT,
   updatedAt: LATER,
 };
 
-const ANALYSIS_IN_A_FOLDER: SavedAnalysis = {
-  ...ANALYSIS,
-  id: "e2e-analysis-filed",
-  pgn: game({ Event: "Analysis", White: "?", Black: "?", Result: "*" }, "1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 *"),
-  path: ["d4", "Nf6", "c4"],
-  description: "",
-  name: "Nimzo-Indian",
-  folderId: "e2e-folder-openings",
-  savedAt: AT,
+const NIMZO_FEN = "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4";
+
+/** A Position case, from a FEN, facing the side to move. */
+const POSITION_CASE: AnalysisCase = {
+  id: "e2e-case-position",
+  name: "The Nimzo-Indian's starting position",
+  type: "position",
+  projectId: PROJECT_IN_A_FOLDER.id,
+  source: { kind: "fen", fen: NIMZO_FEN },
+  pgn: `[SetUp "1"]\n[FEN "${NIMZO_FEN}"]\n\n*`,
+  path: [],
+  orientation: "white",
+  display: DISPLAY,
+  merges: [],
+  order: 1,
+  createdAt: AT,
   updatedAt: AT,
 };
 
@@ -191,8 +217,6 @@ const CUP_GAMES = CUP_PAIRINGS.map(([round, white, black, result], index) =>
 
 const SOURCE: ExportSource = {
   playedGames: PLAYED_GAMES,
-  analyses: [ANALYSIS, ANALYSIS_IN_A_FOLDER],
-  analysisFolders: [{ id: "e2e-folder-openings", name: "Openings", parentId: null, savedAt: AT, updatedAt: AT }],
   repertoires: [REPERTOIRE, REPERTOIRE_IN_A_FOLDER],
   repertoireFolders: [{ id: "e2e-folder-black", name: "Black", savedAt: AT, updatedAt: AT }],
   collections: [
@@ -218,6 +242,12 @@ const SOURCE: ExportSource = {
     },
   ],
   collectionFolders: [{ id: "e2e-folder-club", name: "Club", parentId: null, savedAt: AT, updatedAt: AT }],
+  enginePresets: [],
+  enginePresetSelections: [],
+  // Analysis V2 (CTA-186, shipped in CTA-192): a Project at the top level and one in a folder.
+  projectFolders: [{ id: "e2e-folder-openings", name: "Openings", parentId: null, savedAt: AT, updatedAt: AT }],
+  analysisProjects: [PROJECT, PROJECT_IN_A_FOLDER],
+  analysisCases: [GAME_CASE, POSITION_CASE],
 };
 
 /** The seed as one export zip: every category, the shipped collections left out. */
@@ -225,7 +255,7 @@ export const seedZip = (): Uint8Array =>
   zipExport(
     buildExport(
       SOURCE,
-      { collections: true, games: true, analyses: true, repertoires: true, shippedCollections: false },
+      { collections: true, games: true, repertoires: true, enginePresets: true, analysisProjects: true, shippedCollections: false },
       { appVersion: "0.0.0-e2e", now: new Date(AT) },
     ),
   );

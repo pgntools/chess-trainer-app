@@ -8,6 +8,7 @@ import i18n from "../../../i18n";
 import { DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import { MASK_PRESETS } from "../../../lib/pieceMask";
+import { loadEngineSearchSettings } from "../../../lib/engineSearchInEffect";
 import { findPlayedGame, playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
 import { playedGameOf, type PlayedGameMask } from "../../../lib/playedGames";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -15,9 +16,9 @@ import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
@@ -104,6 +105,8 @@ const storedMasked = (id: string, mask: PlayedGameMask) =>
 
 beforeEach(async () => {
   FakeEngine.reset();
+  // A record opened is compared with the settings in effect — its route reads the presets first (CTA-185), as the shell has by then.
+  await loadEngineSearchSettings();
   await i18n.changeLanguage("en");
 });
 
@@ -305,10 +308,7 @@ describe("Masked Pieces — the game view's shape", () => {
     );
     mount("/engine/masked?saved=done");
     expect(screen.getByTestId("masked-play-ended")).toHaveTextContent("Game over · 0-1");
-    expect(screen.getByTestId("masked-play-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent("play/games/done")}`,
-    );
+    expect(screen.getByTestId("masked-play-open-analysis")).toHaveTextContent("Open in analysis");
   });
 });
 
@@ -316,8 +316,8 @@ describe("Masked Pieces — accessibility (CTA-109)", () => {
   it("passes axe with its Masking tab open, the engine's reply played", async () => {
     mount();
     drag("e2", "e4");
-    // Answered, so Play's thinking spinners (views/tools/analysis/, not
-    // migrated here — a known gap in ACCESSIBILITY.md) are not on screen.
+    // Answered, so Play's thinking spinners (not migrated here — a known gap
+    // in ACCESSIBILITY.md) are not on screen.
     const engine = FakeEngine.latest();
     act(() => {
       engine.say({ fen: engine.lastSearch, uciMessage: "info", depth: 12, multipv: 1, positionEvaluation: "20", pv: "e7e5" });

@@ -90,6 +90,55 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/masked/play")).toEqual([]);
   });
 
+  it("draws Analysis as one row to the Projects lobby, after the Library — shipped, not a dev-only spread (CTA-192, CTA-227)", () => {
+    const ids = navFolders().map((folder) => folder.id);
+    expect(ids.indexOf("analysis-v2")).toBe(ids.indexOf("library") + 1);
+    const analysis = navFolders().find((folder) => folder.id === "analysis-v2");
+    expect(analysis?.singleEntry).toBe(true);
+    expect(analysis?.labelKey).toBe("nav.folders.analysisV2");
+    expect(navItemsInFolder("analysis-v2").map((item) => [item.to, item.labelKey])).toEqual([["/analysis", "nav.analysisProjects"]]);
+    // Folded to one top-level screen row, named by the folder, with its icon,
+    // right after the Library — no folder to open, no nested "Projects".
+    const tree = navTree();
+    const library = tree.findIndex((node) => node.kind === "folder" && node.id === "library");
+    expect(tree[library + 1]).toMatchObject({
+      kind: "screen",
+      to: "/analysis",
+      labelKey: "nav.folders.analysisV2",
+      icon: analysis?.icon,
+    });
+    expect(tree[library + 1].children).toBeUndefined();
+    expect(folderPath("/analysis")).toEqual([]);
+    // The legacy Analyses folder went with its screens.
+    expect(ids).not.toContain("analysis");
+  });
+
+  it("draws Jobs as one row to every job, after Analysis — the Jobs settings off the sidebar (CTA-221, CTA-228)", () => {
+    const ids = navFolders().map((folder) => folder.id);
+    expect(ids.indexOf("jobs")).toBe(ids.indexOf("analysis-v2") + 1);
+    const jobs = navFolders().find((folder) => folder.id === "jobs");
+    expect(jobs?.singleEntry).toBe(true);
+    expect(jobs?.labelKey).toBe("nav.folders.jobs");
+    expect(navItemsInFolder("jobs").map((item) => [item.to, item.labelKey])).toEqual([["/jobs", "nav.jobs"]]);
+    // Folded to one top-level screen row, named by the folder, with its icon,
+    // right after Analysis's — no folder to open, no nested "Settings".
+    const tree = navTree();
+    const analysis = tree.findIndex((node) => node.to === "/analysis");
+    expect(tree[analysis + 1]).toMatchObject({
+      kind: "screen",
+      to: "/jobs",
+      labelKey: "nav.folders.jobs",
+      icon: jobs?.icon,
+    });
+    expect(tree[analysis + 1].children).toBeUndefined();
+    expect(folderPath("/jobs")).toEqual([]);
+    // The Jobs settings are the Jobs screen's to reach, not a sidebar row's.
+    expect(folderPath("/jobs/settings")).toEqual([]);
+    expect(navItems().map((item) => item.to)).not.toContain("/jobs/settings");
+    // Jobs V2's address is no screen's.
+    expect(folderPath("/analysis/jobs")).toEqual([]);
+  });
+
   it("files Export, Import, Storage, Appearance and Engine in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-153)", () => {
     const settings = navFolders().find((folder) => folder.id === "settings");
     expect(settings).toMatchObject({ labelKey: "nav.folders.settings" });
@@ -365,6 +414,38 @@ describe("collapseLeafCategories folds a redundant category folder", () => {
       kind: "folder",
       id: "top",
     });
+  });
+
+  it("never folds a folder marked keepFolder — one screen in it or not", () => {
+    const top: NavTreeNode = {
+      kind: "folder",
+      id: "top",
+      labelKey: "top",
+      icon,
+      children: [
+        {
+          kind: "folder",
+          id: "top/kept",
+          label: { en: "Kept" },
+          icon,
+          keepFolder: true,
+          children: [{ kind: "screen", id: "/kept/only", label: { en: "Only" }, icon, to: "/kept/only" }],
+        },
+      ],
+    };
+    expect(collapseLeafCategories([top])[0].children?.[0]).toMatchObject({
+      kind: "folder",
+      id: "top/kept",
+      children: [{ kind: "screen", to: "/kept/only" }],
+    });
+  });
+
+  it("keeps every Blog folder a folder — Guides among them", () => {
+    // A folder of one stays one too (the test above); Guides is not always that small, drafts counted.
+    const blog = navTree().find((node) => node.id === "blog");
+    const guides = blog?.children?.find((node) => node.id === "blog/guides");
+    expect(guides).toMatchObject({ kind: "folder", keepFolder: true });
+    expect(guides?.children?.map((node) => node.to)).toContain("/blog/guides/local-engine");
   });
 });
 

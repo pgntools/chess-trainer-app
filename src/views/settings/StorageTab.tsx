@@ -9,8 +9,8 @@ import {
   subscribeUploadedCollections,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
+import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
 import { playedGamesSnapshot, subscribePlayedGames } from "../../lib/playedGameStore";
-import { savedAnalysesSnapshot, subscribeSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { savedRepertoiresSnapshot, subscribeSavedRepertoires } from "../../lib/savedRepertoireStore";
 import {
   estimatedLibraryGamesPayload,
@@ -18,6 +18,7 @@ import {
   readBrowserStorage,
   type BrowserStorageEstimate,
 } from "../../lib/storageDiagnostics";
+import { useJobRecords } from "../jobs/useJobs";
 import { RightPanel } from "../main/rightPanel";
 
 /**
@@ -33,8 +34,9 @@ import { RightPanel } from "../main/rightPanel";
  * The quota is not shown; a note says it is in the browser's developer
  * tools.
  *
- * The reader's data is **four sections, one per database's heavy store** —
- * Engine games, Analyses, Repertoires and Library games — separated by a
+ * The reader's data is **five sections, one per database** — Engine games,
+ * Repertoires, Library games, Analysis's Cases, and the background jobs
+ * (`chessapp.backgroundJobs`, CTA-221) — separated by a
  * bolder line. The folders and the collections' summaries are tiny beside
  * what they file, and the shipped collections are fetched over the
  * network, not stored: none of them is listed — the origin usage's business
@@ -67,15 +69,28 @@ function StorageTab() {
   const { t } = useTranslation();
 
   const playedGames = useRows(subscribePlayedGames, playedGamesSnapshot);
-  const analyses = useRows(subscribeSavedAnalyses, savedAnalysesSnapshot);
   const repertoires = useRows(subscribeSavedRepertoires, savedRepertoiresSnapshot);
+  const cases = useRows(subscribeAnalysisCases, analysisCasesSnapshot);
+  // The jobs runtime's records (CTA-221) — their files are counted by the sizes their outputs say.
+  const jobs = useJobRecords();
   // The summaries are not shown — they are tiny beside their games — but the
   // games row counts and sizes are derived from them.
   const collections = useRows(subscribeUploadedCollections, uploadedCollectionsSnapshot);
 
   const playedPayload = usePayload(playedGames);
-  const analysesPayload = usePayload(analyses);
   const repertoiresPayload = usePayload(repertoires);
+  const casesPayload = usePayload(cases);
+  const jobRecordsPayload = usePayload(jobs);
+  const jobsPayload = useMemo(
+    () =>
+      jobs === undefined || jobRecordsPayload === undefined
+        ? undefined
+        : jobs.reduce(
+            (total, job) => total + job.outputs.reduce((files, output) => files + (output.kind === "artifact" ? output.size : 0), 0),
+            jobRecordsPayload,
+          ),
+    [jobs, jobRecordsPayload],
+  );
 
   const [browser, setBrowser] = useState<BrowserStorageEstimate | undefined>();
   // The Library's games, estimated from the indexes — kept beside the
@@ -110,17 +125,20 @@ function StorageTab() {
   const gamesPayload = games !== undefined && games.collections === collections ? games.payload : undefined;
 
   /*
-    The reader's data, four sections — one per database's heavy store: the
-    engine's played games (chessapp.engine), the analyses
-    (chessapp.analyses), the repertoires (chessapp.repertoires) and the
-    Library's games (chessapp.library). The folders and the collections'
+    The reader's data, five sections — one per database: the engine's
+    played games (chessapp.engine), the repertoires (chessapp.repertoires),
+    the Library's games (chessapp.library), Analysis's Cases
+    (chessapp.analysisProjects) and the background jobs
+    (chessapp.backgroundJobs, CTA-221 — a job's checkpoint, and the files it
+    made). The folders, the Projects, the links and the collections'
     summaries are tiny beside what they file, and are not listed.
   */
   const categories: StorageCategory[] = [
     { id: "playedGames", section: "engine", records: playedGames?.length, payload: playedPayload },
-    { id: "analyses", section: "analyses", records: analyses?.length, payload: analysesPayload },
     { id: "repertoires", section: "repertoires", records: repertoires?.length, payload: repertoiresPayload },
     { id: "collectionGames", section: "library", records: gamesCount, payload: gamesPayload },
+    { id: "analysisCases", section: "analysisProjects", records: cases?.length, payload: casesPayload },
+    { id: "jobs", section: "backgroundJobs", records: jobs?.length, payload: jobsPayload },
   ];
 
   return (

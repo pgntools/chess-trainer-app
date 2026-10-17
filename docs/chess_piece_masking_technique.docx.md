@@ -184,7 +184,7 @@ reaches, the stored record, the invariants, tests and recipes — is
 | The saved game | [`src/lib/playedGames.ts`](../src/lib/playedGames.ts) (`PlayedGame.mask`) over `playedGameStore.ts` |
 | Route and sidebar entry | `/engine/masked`, in the **Engine** folder beside Play with Engine and Saved games |
 
-Nothing in `chess.js`, `lib/engine.ts`, `lib/gameTree.ts`, the board core or the
+Nothing in `chess.js`, the engine (`lib/uciEngine.ts`), `lib/gameTree.ts`, the board core or the
 PGN path knows the feature exists — §7 and §13 turned into an arrangement of
 files. The mask is read at render time on the board (`options.pieces`, the
 captured strips, the material diff) and in the notation, and nowhere else.

@@ -57,6 +57,17 @@ export type Analysis = {
   lines: EngineLine[];
 };
 
+/**
+ * **A search under way, and where it stops** (CTA-195) — what the variations
+ * box's depth chip fills toward: the depth the search was asked for (clamped to
+ * the engine's `maxDepth`) and its move time, 0 for none — it stops at
+ * whichever comes first. Only a bounded search has one.
+ */
+export type SearchProgress = {
+  targetDepth: number;
+  moveTimeMs: number;
+};
+
 /** Nothing said yet — the state before a search, and after one is abandoned. */
 export const EMPTY_ANALYSIS: Analysis = { fen: "", depth: 0, lines: [] };
 
@@ -150,6 +161,23 @@ export const formatScore = (score: Score | null): string => {
 };
 
 /**
+ * A count the engine reports — nodes, nodes per second — as it is read at a
+ * glance: `"950"`, `"12.3k"`, `"2.4M"`, `"1.1G"` (CTA-190, a Jobs V2 job's
+ * live progress). One decimal, a trailing `.0` dropped.
+ */
+export const formatEngineCount = (value: number): string => {
+  if (!Number.isFinite(value) || value < 1000) return String(Math.max(0, Math.round(Number.isFinite(value) ? value : 0)));
+  const units = ["k", "M", "G", "T"];
+  let scaled = value;
+  let unit = -1;
+  while (unit < units.length - 1 && Math.round(scaled / 100) >= 10) {
+    scaled /= 1000;
+    unit += 1;
+  }
+  return `${scaled.toFixed(1).replace(/\.0$/, "")}${units[unit]}`;
+};
+
+/**
  * How much of the evaluation bar White fills, as a fraction in `[0, 1]`.
  *
  * The centipawn curve is the logistic one lichess uses, so the bar moves the way
@@ -216,6 +244,39 @@ export const pvToSan = (fen: string, pv: string): string[] => {
   }
 
   return san;
+};
+
+/** A move as the board draws it: the square it leaves and the one it lands on. */
+export type MoveSquares = { from: string; to: string };
+
+/**
+ * The squares of a line's move `index` (0-based), by replaying the SANs before
+ * it from `fen` (CTA-201) — the variations box hands the board its line's
+ * first move this way when the line is hovered. `null` where the line will
+ * not play that far: the line and the position have come apart, as `pvToSan`
+ * puts it.
+ */
+export const lineMoveSquares = (
+  fen: string,
+  san: readonly string[],
+  index: number,
+): MoveSquares | null => {
+  if (index < 0 || index >= san.length) return null;
+
+  let chess: Chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return null;
+  }
+
+  try {
+    for (let i = 0; i < index; i++) chess.move(san[i]);
+    const { from, to } = chess.move(san[index]);
+    return { from, to };
+  } catch {
+    return null;
+  }
 };
 
 /**

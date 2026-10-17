@@ -5,12 +5,13 @@ not the whole folder. If the answer is a project convention rather than a
 library fact, it is in [`.claude/rules/chessboard.md`](../../../.claude/rules/chessboard.md)
 instead.
 
-## Already in context — don't open these
+## Generated into the rules — read those, not these
 
 `D_OptionsApi.mdx` and `E_FunctionsAndTypes.mdx` are **generated into
-`.claude/rules/` and loaded every session**. If your question is "what does
-option X do", "what's its default", or "what's the shape of type Y", you
-already have the answer — see
+`.claude/rules/`**, which loads them whenever the work touches a file that
+imports `react-chessboard` (or this folder). If your question is "what does
+option X do", "what's its default", or "what's the shape of type Y", the answer
+is in context there — elsewhere, Read the rules file rather than the `.mdx`:
 [`react-chessboard-options-api.md`](../../../.claude/rules/react-chessboard-options-api.md)
 and
 [`react-chessboard-types-and-helpers.md`](../../../.claude/rules/react-chessboard-types-and-helpers.md).

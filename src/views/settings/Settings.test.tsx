@@ -5,16 +5,16 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { strFromU8, unzipSync } from "fflate";
 
 import i18n from "../../i18n";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { createAnalysisProject } from "../../lib/analysisProjectStore";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import type { ExportManifest } from "../../lib/dataExport";
+import { createEnginePreset, selectEnginePreset } from "../../lib/enginePresetStore";
 import { DEFAULT_ENGINE_SETTINGS } from "../../lib/engineSettings";
 import { addCollection, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
 import { createLibraryFolder } from "../../lib/libraryFolderStore";
 import { downloadBinaryFile } from "../../lib/pgnExport";
 import { savePlayedGame } from "../../lib/playedGameStore";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../lib/repertoireSettings";
-import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import { createRepertoireFolder } from "../../lib/savedRepertoireFolderStore";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
 import { shippedCollections } from "../../lib/shippedCollections";
@@ -34,6 +34,11 @@ vi.mock("../../lib/pgnExport", async (importOriginal) => ({
   downloadBinaryFile: vi.fn(() => true),
 }));
 
+// The Engine tab's options form builds the chosen engine for its handshake (CTA-179): a `FakeEngine`, no Worker.
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
+
 const download = vi.mocked(downloadBinaryFile);
 
 const AT = "2026-09-01T00:00:00.000Z";
@@ -48,23 +53,8 @@ const seed = async () => {
     savedAt: AT,
     updatedAt: AT,
   });
-  for (const id of ["a1", "a2"]) {
-    await saveAnalysis({
-      id,
-      pgn: pgn(`Analysis ${id}`),
-      settings: DEFAULT_ANALYSIS_SETTINGS,
-      path: [],
-      orientation: "white",
-      description: "",
-      showArrows: true,
-      arrowWidthSource: "none",
-      arrowPalette: "classic",
-      name: id,
-      folderId: null,
-      savedAt: AT,
-      updatedAt: AT,
-    });
-  }
+  // Two Analysis projects (CTA-186, shipped in CTA-192).
+  for (const name of ["Openings", "Endgames"]) await createAnalysisProject(name, null);
   const folder = await createRepertoireFolder("Openings");
   for (const [id, folderId] of [["r1", folder?.id ?? null], ["r2", null], ["r3", null]] as const) {
     await saveRepertoire({
@@ -84,6 +74,9 @@ const seed = async () => {
   const club = await createLibraryFolder("Club", null);
   const blitz = await createLibraryFolder("Blitz", club?.id ?? null);
   await addCollection("Friday", [pgn("Friday")], [indexedRowOf(pgn("Friday"))], undefined, undefined, blitz?.id ?? null);
+  // An engine preset, run by the default engine (CTA-179).
+  const deep = await createEnginePreset("deep-analysis", { "Move Overhead": 100, UCI_ShowWDL: true });
+  if ("id" in deep) await selectEnginePreset("stockfish-19-lite-single", deep.id);
 };
 
 const renderAt = (path: string) =>
@@ -141,9 +134,10 @@ describe("the Export tab", () => {
     renderAt("/settings/export");
 
     await waitFor(() => expect(count("games")).toHaveTextContent("(1)"));
-    await waitFor(() => expect(count("analyses")).toHaveTextContent("(2)"));
+    await waitFor(() => expect(count("analysisProjects")).toHaveTextContent("(2)"));
     await waitFor(() => expect(count("repertoires")).toHaveTextContent("(3)"));
     await waitFor(() => expect(count("collections")).toHaveTextContent("(2)"));
+    await waitFor(() => expect(count("enginePresets")).toHaveTextContent("(1)"));
 
     await userEvent.click(box("settings-export-collections"));
     await userEvent.click(box("settings-export-shipped"));
@@ -153,7 +147,7 @@ describe("the Export tab", () => {
   it("starts with nothing ticked and Export off; the shipped box waits on Collections", async () => {
     renderAt("/settings/export");
     const run = await screen.findByTestId("settings-export-run");
-    for (const category of ["collections", "games", "analyses", "repertoires"]) {
+    for (const category of ["collections", "games", "repertoires", "enginePresets", "analysisProjects"]) {
       expect(box(`settings-export-${category}`)).not.toBeChecked();
     }
     expect(run).toBeDisabled();
@@ -197,6 +191,24 @@ describe("the Export tab", () => {
     const friday = manifest.files.find((file) => file.path === "collections/club/blitz/friday.pgn");
     expect(friday?.kind === "collection" && friday.collection.folderPath).toEqual(["Club", "Blitz"]);
     expect(strFromU8(files["games.pgn"])).toBe(`${pgn("Played")}\n`);
+  });
+
+  it("downloads the engine presets, with the one each engine runs (CTA-179)", async () => {
+    await seed();
+    renderAt("/settings/export");
+
+    await userEvent.click(box("settings-export-enginePresets"));
+    await userEvent.click(screen.getByTestId("settings-export-run"));
+    await screen.findByTestId("settings-export-done");
+
+    const { files, manifest } = downloaded();
+    expect(Object.keys(files).sort()).toEqual(["engine-presets.json", "manifest.json"]);
+    expect(manifest.categories).toEqual(["enginePresets"]);
+    const file = JSON.parse(strFromU8(files["engine-presets.json"])) as { presets: { name: string; values: object }[]; selections: object[] };
+    expect(file.presets.map((preset) => [preset.name, preset.values])).toEqual([
+      ["deep-analysis", { "Move Overhead": 100, UCI_ShowWDL: true }],
+    ]);
+    expect(file.selections).toEqual([expect.objectContaining({ id: "stockfish-19-lite-single" })]);
   });
 
   it("says so, and keeps the screen, when the browser refuses the download", async () => {

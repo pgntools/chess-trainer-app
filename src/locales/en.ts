@@ -8,7 +8,7 @@ const en = {
     brandMark: "CT",
     brandText: "chessapp.dev",
   },
-  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  /** The notice the app opens with until it is dismissed, for 30 days (CTA-155, CTA-210) — `blocks/dialogs/DevelopmentNoticeDialog`. */
   developmentNotice: {
     title: "{{name}} is still in development",
     badge: "Early beta",
@@ -43,8 +43,6 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
-    analysisBoard: "Analysis Board",
-    savedAnalyses: "Saved analyses",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -70,6 +68,10 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
+    /** Analysis V2 (CTA-186): its Projects browser — and Jobs V2 beside it (CTA-188). */
+    analysisProjects: "Projects",
+    /** The Jobs module (CTA-221): every background job — its folder drawn as one row (CTA-228), named by `nav.folders.jobs`. */
+    jobs: "Jobs",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",
@@ -77,7 +79,6 @@ const en = {
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
-      analysisBoard: "Analysis Board",
       openings: "Openings",
       repertoires: "Repertoires",
       /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
@@ -91,6 +92,9 @@ const en = {
       settings: "Settings",
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
+      analysisV2: "Analysis",
+      /** The Jobs module (CTA-221). */
+      jobs: "Jobs",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -103,7 +107,9 @@ const en = {
       missing: "The game this page embeds is not here.",
       label: "{{players}} — game board",
       start: "Play the game's first move",
-      open: "Open on the Analysis Board",
+      open: "Open in Analysis",
+      /** The new project offered for a game an article embeds, opened in Analysis (CTA-192). */
+      projectName: "Games from articles",
       white: "White",
       black: "Black",
     },
@@ -176,6 +182,8 @@ const en = {
     last: "To the last move shown",
     flip: "Flip the board",
     unreadable: "This game's PGN does not read.",
+    white: "White",
+    black: "Black",
   },
   demoBoard: {
     reset: "Back to the start",
@@ -198,9 +206,6 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
-    analysisBoard: "Analysis Board",
-    savedAnalyses: "Saved analyses",
-    analysisSettings: "Analysis settings",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -210,14 +215,24 @@ const en = {
     library: "Library",
     addCollection: "Add collection",
     collection: "Collection",
-    collectionSettings: "Collection settings",
     libraryGame: "Library game",
     settings: "Settings",
     designSystem: "Design system",
     themeEditor: "Theme editor",
+    /** Analysis V2 (CTA-186). */
+    analysisProjects: "Projects",
+    analysisProject: "Project",
+    analysisCase: "Case",
+    /** The Jobs module (CTA-221). */
+    jobs: "Jobs",
+    job: "Job",
+    jobsSettings: "Jobs settings",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
+    /** The legal pages (CTA-159), reached from the footer. */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
   /**
    * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
@@ -231,8 +246,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
-    analysisBoard: "Analyse a game or a position with Stockfish: side lines, comments, arrows and the engine's best lines, kept in your browser.",
-    savedAnalyses: "Your analysis boards, kept in your browser and filed in folders.",
+    analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
     newRepertoire: "Bring in an opening repertoire from a PGN file or pasted text.",
@@ -242,6 +256,11 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+    jobs: "Your background jobs — a case's computer analysis, a repertoire's evaluation — with their progress, the engine live, and what they made.",
+    job: "One background job: its progress, the engine live, why it failed or waits, what it made, and its history.",
+    jobsSettings: "How new background jobs start: the default engine and preset, and the evaluation sources they ask first.",
+    privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
+    cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
   /**
    * **A shared link's image** (CTA-136, `lib/shareImage.ts`): the words read
@@ -252,7 +271,7 @@ const en = {
     defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
     sections: {
       engine: "Play with Engine — a chessboard beside the section's name",
-      analysis: "Analysis Board — a chessboard beside the section's name",
+      analysis: "Analysis V2 — a chessboard beside the section's name",
       openings: "Openings explorer — a chessboard beside the section's name",
       repertoires: "Repertoires — a chessboard beside the section's name",
       library: "Library — a chessboard beside the section's name",
@@ -349,6 +368,13 @@ const en = {
      */
     title: "Variations",
     depth: "Depth {{depth}}",
+    /**
+     * The depth chip while the engine searches (CTA-195): the depth reached
+     * over the depth the search stops at — the numbers inside `<ltr>`, pinned
+     * left to right — and its spoken name, the same in words.
+     */
+    depthProgress: "Depth <ltr>{{depth}}/{{target}}</ltr>",
+    depthProgressName: "Depth {{depth}} of {{target}}",
     thinking: "Waiting for the engine…",
     partial: "{{shown}} of {{requested}} lines so far.",
     /**
@@ -370,6 +396,57 @@ const en = {
     },
   },
   /** What the engine forms (`blocks/forms`) say about an option they cannot drive. */
+  /**
+   * The top bar's Engine menu (CTA-181, `views/main/EngineMenu.tsx`): the
+   * search settings every board uses, the engine running and its preset.
+   */
+  engineMenu: {
+    title: "Engine",
+    /** The header's icon — its name says the board on screen's engine. */
+    label: {
+      off: "Engine settings — engine off",
+      on: "Engine settings — engine on",
+      searching: "Engine settings — engine searching",
+    },
+    /** The header's button's words (CTA-185) — its name is `label.*`, which says the engine's state too. */
+    button: "Engine",
+    engine: "Engine",
+    preset: "Preset",
+    /** The link to Settings → Engine at the popup's foot (CTA-189). */
+    advancedSettings: "Advanced settings",
+    /** An eval source's connection beside its switch at the popup's foot (CTA-199). */
+    evalSource: { disabled: "Off", "not-connected": "Not connected", connected: "Connected" },
+    /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
+    depthTyped: "Search depth, typed",
+    moveTimeTyped: "Move time in seconds, typed",
+    threadsTyped: "Threads, typed",
+    hashTyped: "Hash (MB), typed",
+    /** The Hash slider's round sizes (CTA-185) — its marks, and its value read aloud. */
+    hashGb: "{{gb}}GB",
+    hashMb: "{{mb}}MB",
+    /** The move-time box's unit. */
+    seconds: "s",
+  },
+  /** A board's engine controls (CTA-181, the `BoardEngineControls` block): the play / pause and its menu. */
+  boardEngine: {
+    toggle: "Engine analysis",
+    menu: "Board engine options",
+  },
+  /** "Engine options changed" (CTA-181): a record opened whose search settings differ from the ones in effect. */
+  engineChanged: {
+    title: "Engine options changed",
+    message: {
+      analysis: "This analysis was saved with other engine settings than the ones in effect now:",
+      game: "This game was played with other engine settings than the ones in effect now:",
+    },
+    /** One row: the setting, the record's value, the current one. */
+    change: "{{setting}}: {{recorded}} → {{current}}",
+    use: "Use these settings",
+    dismiss: "Dismiss",
+    /** What "Use these settings" holds to the engine running. */
+    held: "This engine takes less: {{settings}}.",
+    heldTo: "{{setting}} would be {{value}}",
+  },
   engineOption: {
     /** Shown under a control the running engine build does not have. */
     unsupported: "This engine build has no \"{{option}}\" option.",
@@ -396,8 +473,6 @@ const en = {
     breadcrumb: "Folders",
     folder: {
       openNamed: "Open folder {{name}}",
-      newNamed: "New folder in {{name}}",
-      uploadNamed: "Upload a collection into {{name}}",
       downloadNamed: "Download {{name}} as PGN",
       renameNamed: "Rename {{name}}",
       moveNamed: "Move {{name}}",
@@ -640,6 +715,10 @@ const en = {
    * numbers, and stay language-independent.
    */
   playEngine: {
+    sendTo: {
+      /** The new project offered for a game against the engine opened in Analysis. */
+      projectName: "Games against the engine",
+    },
     tabs: {
       engine: "Engine",
       /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
@@ -678,27 +757,27 @@ const en = {
       /** The footer's line for an ending decided on the board (CTA-91). */
       ended: "Game over · {{result}}",
       /**
-       * The game-over button (CTA-91): the ended game, opened on the
-       * Analysis Board.
+       * The game-over button (CTA-91): the ended game, opened in Analysis
+       * as a new case (CTA-192).
        */
       openAnalysis: "Open in analysis",
     },
     settings: {
-      /** The engine's on/off switch above the tab strip — the tab's own name. */
-      engineOn: "Engine",
       strength: "Strength",
       /** The engine has no ELO setting, so the figure is named as an estimate. */
       strengthValue: "Level {{level}} (≈{{elo}} Elo)",
       /** An engine that takes its strength as an Elo (CTA-153): the slider is the Elo itself, not an estimate. */
       strengthElo: "Strength (Elo)",
       strengthEloValue: "{{elo}} Elo",
-      depth: "Search depth",
-      moveTime: "Move time",
+      /** CTA-181: the engine's preset has UCI_LimitStrength off, so an Elo would do nothing. */
+      strengthOff: "The engine's preset has UCI_LimitStrength off, so the engine plays at the preset's strength and the Elo does nothing.",
+      strengthOffLink: "Turn it on in Settings → Engine",
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
-      multiPv: "Variations to show",
-      threads: "Threads",
-      hash: "Hash (MB)",
+      /** A neutral caption under the Threads slider (CTA-163). */
+      threadsHelp: "Engine CPU cores",
+      /** A neutral caption under the Hash slider (CTA-163). */
+      hashHelp: "Engine memory (RAM)",
       playAs: "Play as",
       white: "White",
       black: "Black",
@@ -792,8 +871,7 @@ const en = {
     /** A row whose PGN will not parse has no pairing to name it by. */
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
-    engine: "Stockfish level {{level}}",
-    /** An engine other than the default (CTA-153): its own name, and how its strength was set. */
+    /** The engine (CTA-153): its own name, and how its strength was set — a Skill Level, or an Elo. */
     engineNamed: "{{name}} level {{level}}",
     engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",
@@ -823,160 +901,7 @@ const en = {
       storage: "The game could not be saved — this browser's storage refused it.",
     },
   },
-  /**
-   * The **Saved analyses** screen — the boards the reader has worked on at the
-   * Analysis Board (`views/tools/analysis/saved/`): how many side lines were
-   * tried, and how far in the reader had got.
-   */
-  savedAnalyses: {
-    title: "Saved analyses",
-    count: "Analyses: {{count}}",
-    loading: "Reading your saved analyses…",
-    empty:
-      "No saved analyses yet. Work on a board at the Analysis Board and save it, and it appears here.",
-    hint: "Every analysis you save on the Analysis Board is kept here — side lines, comments and all — filed into your folders. Open one to pick it up where you left it.",
-    /** Said plainly: this is a browser, not a backup — as the Uploads screen does. */
-    storage:
-      "Saved analyses are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
-    /**
-     * A board that is not a game: one begun from an empty board or from a
-     * position carries no players to name it by, so it is named for what it is.
-     */
-    untitled: "Analysis board",
-    /** Plural forms, because a one-move analysis is a real row here. */
-    moves_one: "{{count}} move",
-    moves_other: "{{count}} moves",
-    /** Every move past the mainline — the side lines the reader tried and kept. */
-    variations_one: "{{count}} variation",
-    variations_other: "{{count}} variations",
-    /** Where the reader stopped, as a half-move count from the start position. */
-    atPly: "at ply {{ply}}",
-    /** A stored record whose PGN no longer parses: it can only be deleted. */
-    unreadable: "This analysis could not be read.",
-    /**
-     * The three-way view toggle in the top bar: the list the screen shipped
-     * with, and the library list screen's own two board sizes.
-     */
-    view: {
-      label: "View",
-      list: "List",
-      compact: "Small boards",
-      comfortable: "Big boards",
-    },
-    /** Opens it on the Analysis Board — the one destination (CTA-73). */
-    open: "Open",
-    /**
-     * The top-bar button to the Analysis Board — the screen the sidebar's
-     * single Analysis entry hides (CTA-58), so the board is reached from here.
-     */
-    new: "New",
-    /**
-     * The panel's new-analysis form (CTA-87): the shared position editor, and
-     * the Start that opens the board on the edited position.
-     */
-    newAnalysis: {
-      title: "New analysis",
-      start: "Start",
-      /** Above Start while the position in the editor cannot be analyzed. */
-      illegal: "Start is off until the position in the board editor can be analyzed.",
-      /** The editor's resets, in the form's header — the panel says "board", the buttons need not. */
-      new: "New",
-      clear: "Clear",
-      flip: "Flip",
-      /** The `.pgn` file pick beside the FEN field. */
-      pgnFile: "PGN",
-      /** The paste box under the editor — the file pick is above it, so no "or". */
-      pasteLabel: "Paste PGN text",
-    },
-    /** Picking analyses and taking them out as one `.pgn`, side lines and all. */
-    select: "Select this analysis",
-    selectAll: "Select all analyses",
-    selected: "{{count}} selected",
-    /** The pager under the list and the table (CTA-113) — the design system's page sizes. */
-    rowsPerPage: "Analyses per page",
-    /**
-     * The list view's games table (CTA-144): one row per analysis, its columns
-     * the game's own fields read off its tags, every one a sort header.
-     */
-    table: {
-      label: "Saved analyses in this folder",
-      actions: "Actions",
-      columns: {
-        name: "Name",
-        white: "White",
-        whiteElo: "Elo",
-        black: "Black",
-        blackElo: "Elo",
-        result: "Result",
-        date: "Date",
-        event: "Event",
-        round: "Round",
-        eco: "ECO",
-        opening: "Opening",
-        moves: "Moves",
-        updated: "Updated",
-      },
-      /** The words box over the table — names, players, event, opening and notes. */
-      filter: "Filter analyses",
-      filterClear: "Clear the words",
-      /** The filter leaves no row — told apart from an empty folder. */
-      noMatch: "No analysis matches the filter.",
-      clearFilter: "Clear the filter",
-      /** A folder row's chevron — it opens or closes the folder in place. */
-      expand: "Open {{name}}",
-      collapse: "Close {{name}}",
-      /** Read with the table: how its folders, sort and picks are worked. */
-      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
-    },
-    download: "Download selected as PGN",
-    deleteSelected: "Delete selected",
-    /** Deleting the picks, asked first — the repertoires' dialog with these words. */
-    bulkDelete: {
-      title_one: "Delete {{count}} analysis?",
-      title_other: "Delete {{count}} analyses?",
-      text: "They are removed from this browser. This can't be undone.",
-      confirm: "Delete",
-    },
-    /**
-     * The nested folders (CTA-73) — the `folder` keys the shared folder
-     * components (`views/shared/folders/`) read through `labelKey`.
-     */
-    folder: {
-      untitled: "Untitled folder",
-      root: "All analyses",
-      newFolder: "New folder",
-      renameFolder: "Rename folder",
-      moveFolder: "Move folder",
-      /** Filing one analysis — the key the shared move dialog reads. */
-      moveGame: "Move analysis",
-      /** The folder list's name in the move dialog (CTA-113). */
-      picker: "Folders",
-      deleteFolder: "Delete folder",
-      download: "Download this folder as PGN",
-      unfiled: "Unfiled",
-      topLevel: "Top level",
-      name: "Name",
-      save: "Save",
-      cancel: "Cancel",
-      deleteConfirm:
-        "Deleting this folder keeps its contents: analyses filed in it become Unfiled, and its sub-folders move up one level.",
-      deleteCounts:
-        "This folder holds {{games}} analyses and {{subFolders}} sub-folders.",
-      count_one: "{{count}} analysis",
-      count_other: "{{count}} analyses",
-      empty: "This folder is empty.",
-    },
-  },
   analysis: {
-    /** The Analysis Board's tabs (CTA-73; the Position tab CTA-87). */
-    tabs: {
-      moves: "Moves",
-      map: "Map",
-      load: "Load",
-      export: "Export",
-      engine: "Engine",
-      arrows: "Arrows",
-    },
     /**
      * The header's Play toggle (CTA-73): the engine plays the side not at
      * the bottom of the board, its best move each turn, until paused (or the
@@ -993,139 +918,16 @@ const en = {
       /** …or the reader's turn. */
       yourMove: "Your move",
     },
-    /** The header's engine switch — short, it sits beside three buttons. */
-    engineSwitch: "Engine",
-    /** Saving a board that is not a saved analysis yet: a name and a folder. */
-    save: {
-      open: "Save this analysis",
-      title: "Save analysis",
-      name: "Name",
-      folder: "Folder",
-      confirm: "Save",
-    },
-    /**
-     * The changes strip over a saved analysis — the `ChangesStrip` block with
-     * this block's words (no protection: an analysis has none).
-     */
-    changes: {
-      title: "Unsaved changes",
-      saveOpen: "Unsaved changes — save or discard them",
-      saveNothing: "No unsaved changes",
-      added_one: "{{count}} move added",
-      added_other: "{{count}} moves added",
-      edited: "Lines or comments edited",
-      update: "Update analysis",
-      updateHelp: "Make these changes part of this saved analysis.",
-      copy: "Save as copy",
-      copyHelp: "Keep the saved analysis as it is, and save a copy with your changes.",
-      discard: "Discard",
-      copyName: "{{name}} (copy)",
-      problem: {
-        storage: "It could not be saved — this browser's storage is full or unavailable.",
-        "too-many": "There is no room for another analysis in this browser.",
-      },
-    },
     /** The Load tab: a PGN (file or paste) or a FEN onto the board, unsaved. */
     load: {
       pgnTitle: "Load a game",
       pgnHelp: "It opens as a new analysis; save it to keep it. A file of several games can be merged into one tree or saved as a games collection in the Library.",
       loaded: "Loaded — a new analysis, not saved yet.",
-      /** The popup a PGN of several games opens (CTA-101). */
-      popup: {
-        title_one: "This PGN holds {{count}} game",
-        title_other: "This PGN holds {{count}} games",
-        explain:
-          "Merge them into one tree on the board, keep them as a collection of games in the Library, or save each one as an analysis.",
-        skipped_one: "{{count}} game has no moves or could not be read, and is left out of a merge.",
-        skipped_other: "{{count}} games have no moves or could not be read, and are left out of a merge.",
-        merge: "Merge games",
-        mergeHelp:
-          "One tree: the first game's line is the mainline, and wherever another game leaves it becomes a side line, each move there tagged with how many games played it. Comments and move marks are kept. Not saved until you save it.",
-        mergeUnavailable:
-          "These games start from different positions, so they cannot share one tree.",
-        collection: "Save as games collection",
-        collectionHelp:
-          "Every game is kept as it is, in a new collection at the top of the Library, named after the games' event or the file; you go to its table.",
-        /** The third choice (CTA-141): each game its own saved analysis, in a new folder. */
-        analyses: "Save to Saved analyses",
-        analysesHelp:
-          "Every game — a position on its own too — becomes a saved analysis, comments, side lines and arrows kept, in a new folder of Saved analyses; you go to the folder.",
-        folderTitle: "Save to Saved analyses",
-        folderName: "Folder name",
-        /** The folder's name when a pasted text's games share no event. */
-        folderDefault: "Analysed games",
-        folderCount_one: "{{count}} game will be saved as an analysis in a new folder.",
-        folderCount_other: "{{count}} games will be saved as analyses in a new folder.",
-        folderSkipped_one: "{{count}} game could not be read, and is left out.",
-        folderSkipped_other: "{{count}} games could not be read, and are left out.",
-        folderSave: "Save",
-        folderBack: "Back",
-        indexing: "Checking games… {{done}} of {{total}}",
-        cancel: "Cancel",
-        problem: {
-          unreadable: "No game could be read in that.",
-          index: "The games could not be checked. Nothing was saved.",
-          /** The games were checked, then the write itself failed (CTA-141). */
-          write: "The games were checked, but could not be written. Nothing was saved.",
-          storage: "It could not be saved — this browser's storage is full or unavailable.",
-          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
-          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
-          analysesStorage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
-        },
-      },
       problem: {
         empty: "There is no PGN in that.",
         "too-large": "That is too large to load.",
         unreadable: "That could not be read as PGN.",
       },
-    },
-    /** The link to a saved analysis' settings — on the board's header and every list row. */
-    settingsLink: {
-      open: "Analysis settings",
-      unsaved: "Save or discard your changes first",
-    },
-    /**
-     * The workspace an analysis opened from the saved list opens in (CTA-145):
-     * the list's tree beside the board, and the header's previous / next.
-     */
-    folderView: {
-      /** The Close button — it goes back to the list. */
-      close: "Close — back to Saved analyses",
-      /** The header button that opens the tree, under a narrow window. */
-      toggle: "Saved analyses",
-      /** The drawer's name under a narrow window. */
-      drawer: "Saved analyses",
-      /** The panel's button that folds it to a rail at the start edge. */
-      collapse: "Fold the panel away",
-      /** The rail's button that opens the panel again. */
-      expand: "Open the folder's analyses",
-      previous: "Previous analysis in the folder",
-      next: "Next analysis in the folder",
-      /** Why the others cannot be opened while the board holds unsaved changes. */
-      locked: "Save or discard your changes to open another analysis.",
-      /** A folder's row that lists more of its analyses. */
-      showMore: "Show {{count}} more",
-    },
-    /** A saved analysis' settings screen (`/tools/analysis/saved/<id>/settings`). */
-    settingsScreen: {
-      title: "Analysis settings",
-      missing: "There is no such analysis in this browser.",
-      back: "Back to saved analyses",
-      sections: {
-        general: "General",
-        board: "Board",
-        folder: "Folder",
-      },
-      name: "Title",
-      description: "Description",
-      descriptionHelp: "Your notes on this analysis — shown under its title on the board.",
-      color: "Side",
-      white: "White",
-      black: "Black",
-      colorHelp: "The side the board opens facing. Flipping the board while you work does not change it.",
-      arrowsHelp: "Whether the board opens drawing the next moves' arrows. The board's own switch changes them for a session.",
-      save: "Save",
-      cancel: "Cancel",
     },
     /** The Export tab: what the PGN keeps. */
     export: {
@@ -1142,6 +944,8 @@ const en = {
     arrows: {
       showHelp:
         "Show or hide the arrows of the moves that follow the position on screen. Off, only the move you point at in the next-moves bar gets one.",
+      moveMarksHelp:
+        "Draw the mark of the move on screen (!!, !, !?, ?!, ?, ??) on the square it landed on. The move list shows the marks either way.",
       widthSource: "Next move arrows width source",
       sources: {
         none: "None",
@@ -1149,6 +953,7 @@ const en = {
         games: "Games",
         prc: "Play chance",
         lines: "Lines ahead",
+        variations: "Variations",
       },
       sourceHelp: {
         none: "Colour only — the arrows every board draws.",
@@ -1156,11 +961,15 @@ const en = {
         games: "The [%games N] in each move's comment: each move's share of the games.",
         prc: "The prc:N in each move's comment: the play chances, scaled to 100%.",
         lines: "How many lines follow each move within the next 8 plies — no tag needed.",
+        variations: "The engine's listed lines, while it is on: each line's first move, the best the widest, the others narrower by what they give up.",
       },
       /** Under a width source no move in the tree carries. */
       unavailable: "No move in this analysis carries this tag.",
       drawnAsNone:
         "No move in this analysis carries the chosen tag, so the arrows are drawn as None until one does.",
+      /** Under Variations, while the engine is off or has no lines for the position on screen (CTA-197). */
+      drawnAsNoneEngine:
+        "The engine is off or has not reported its lines for this position yet, so the arrows are drawn as None until it does.",
       palette: "Next move arrows colours",
       palettes: {
         classic: "Classic",
@@ -1172,23 +981,27 @@ const en = {
     },
     /** The pinned next-moves bar under the moves list — a fork's choices (CTA-54). */
     nextMoves: "Next moves",
-    /** The empty-tree hint of the flowing tree view (the Openings explorer, a Library repertoire line). */
-    tree: {
-      empty: "Play a move, or set a position up from the Position tab.",
-    },
     settings: {
       title: "Analysis",
       engineOn: "Analyse with the engine",
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
+      /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
+      /** CTA-167: the Analysis Board's switch that writes each finished search into the PGN as [%eval]. */
+      writeEvals: "Write evaluations into the game",
+      writeEvalsHelp: "Each finished search is written on its move as [%eval score,depth] — a deeper search replaces a shallower one — and the engine is named in the Annotator tag.",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
       multiPv: "Variations to show",
+      threads: "Threads",
+      hash: "Hash (MB)",
       evalBar: "Show evaluation bar",
       /** The arrows of the next moves from the position on screen. */
       arrows: "Show next-move arrows",
+      /** The move on screen's mark (`!`, `??`, …) drawn on its square (CTA-168). */
+      moveMarks: "Show move marks on the board",
       clear: "Clear the board",
     },
     /** The Load and Export tabs' shared words. */
@@ -1305,7 +1118,6 @@ const en = {
       map: "Map",
       load: "Load",
       export: "Export",
-      engine: "Engine",
     },
     current: {
       /** The book has loaded, but this position is not in it. */
@@ -1325,12 +1137,15 @@ const en = {
       /** Above the list — what a click on a row does. */
       help: "Click a move to play it here. A move from an earlier position starts a side line.",
     },
-    engineSwitch: "Engine",
     controls: {
       /** Hand this position off to Play with Engine as `?fen=`. */
       playFromHere: "Play from here",
-      /** Hand the whole explored tree to the Analysis Board, as a new board. */
-      analysis: "Open on the Analysis Board — everything explored here, as a new unsaved board",
+      /** Hand the whole explored tree to Analysis, as a new case. */
+      analysis: "Open in Analysis — everything explored here, as a new case in a project",
+    },
+    sendTo: {
+      /** The new project offered when the position has no opening's name. */
+      projectName: "Openings",
     },
     /** The Load tab's merge choice — no split: nothing on this screen is saved. */
     load: {
@@ -1358,6 +1173,83 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
+    /**
+     * The collections picked (CTA-221) — the header's Merge (two or more) and
+     * Delete (CTA-232); the reader's folders too since CTA-235, a folder's box
+     * standing for everything under it.
+     */
+    picks: {
+      selectAll: "Pick every folder and collection shown",
+      pick: "Pick {{name}}",
+      picked_one: "{{count}} collection picked",
+      picked_other: "{{count}} collections picked",
+      /** With folders among the picks: `what` is the folders' and the collections' counts as a list ("1 folder and 3 collections"). */
+      pickedWith: "{{what}} picked",
+      folders_one: "{{count}} folder",
+      folders_other: "{{count}} folders",
+      collections_one: "{{count}} collection",
+      collections_other: "{{count}} collections",
+      clear: "Clear the picks",
+      merge: "Merge",
+      delete: "Delete",
+    },
+    /**
+     * **Collections merged** (CTA-232 — a job of the Jobs module before,
+     * CTA-220): the `CollectionMergeDialog` block — the collections, the
+     * dedupe mode, the name — from the lobby header's *Merge* (a collection
+     * page's *Merge with…* gone in CTA-235); the merge kept as a new collection.
+     */
+    merge: {
+      title: "Merge collections",
+      submit: "Merge",
+      cancel: "Cancel",
+      close: "Close",
+      pickTwo: "Add at least one more collection to merge.",
+      sources: "Collections to merge",
+      sourcesHelp: "Their games are written in this order.",
+      games_one: "{{formatted}} game",
+      games_other: "{{formatted}} games",
+      moveUp: "Move {{name}} up",
+      moveDown: "Move {{name}} down",
+      remove: "Remove {{name}}",
+      minimum: "At least two collections are merged, so neither of these can be removed.",
+      add: "Add a collection",
+      addPlaceholder: "Type to find one of your collections",
+      builtIn: "Built-in",
+      yours: "Your collections",
+      dedupe: "Duplicates",
+      dedupeModes: {
+        none: "Keep every game",
+        "identical-pgn": "Drop exact copies",
+        "same-game": "Drop the same game",
+      },
+      noneHelp: "Every game of every collection is kept, copies and all.",
+      identicalHelp: "A game whose PGN is word for word one already kept is left out. The same game with other comments stays.",
+      sameGameHelp: "A game with the same moves, White, Black and date as one already kept is left out, whatever its comments, glyphs or side lines. Two different games of the same players on the same day both stay.",
+      name: "Name",
+      nameHelp: "The new collection's name. Left empty: “{{name}}”.",
+      more: "{{count}} more",
+      progress: {
+        title: "Merging collections",
+        read: "Reading the collections…",
+        index: "Checking the games: {{done}} of {{total}}",
+        save: "Saving the collection…",
+      },
+      problem: {
+        read: "A collection could not be read. Nothing was made.",
+        index: "The games could not be checked. Nothing was made.",
+        storage: "It could not be saved — this browser's storage is full or unavailable.",
+      },
+      done: {
+        title: "Collections merged",
+        summary_one: "“{{name}}” holds {{formatted}} game.",
+        summary_other: "“{{name}}” holds {{formatted}} games.",
+        duplicates_one: "{{formatted}} duplicate was left out.",
+        duplicates_other: "{{formatted}} duplicates were left out.",
+        open: "Open collection",
+        download: "Download PGN",
+      },
+    },
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",
@@ -1382,6 +1274,12 @@ const en = {
     download: "Download the whole collection as PGN",
     /** An uploaded collection's row — delete it, asked first. */
     delete: "Delete collection",
+    /** The lobby's right-hand panel (CTA-230): folded to a rail on arrival, opened and folded again by these. */
+    about: {
+      title: "About the Library",
+      collapse: "Hide About the Library",
+      expand: "Show About the Library",
+    },
     hint: "A collection is one PGN file of many games — a tournament, a player's games. Open one to sort and filter its games, and open a game to analyse it: side lines, the engine, Play against it, the map and comments. File your collections in folders; the ones that ship with the app are in Built-in.",
     /**
      * The reader's folders (CTA-88) — the keys the shared folder dialogs read
@@ -1390,29 +1288,85 @@ const en = {
     folder: {
       untitled: "Untitled folder",
       newFolder: "New folder",
-      newSubFolder: "New sub-folder",
       renameFolder: "Rename folder",
       moveFolder: "Move folder",
       moveCollection: "Move collection",
       moveTo: "Move to…",
-      deleteFolder: "Delete folder",
       download: "Download everything in this folder as one PGN",
-      uploadHere: "Add a collection here",
       expand: "Open {{name}}",
       collapse: "Close {{name}}",
       topLevel: "Top level",
       name: "Folder name",
       save: "Save",
       cancel: "Cancel",
-      deleteConfirm:
-        "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
-      deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
       /** The folder list's name in the move dialog (CTA-113). */
       picker: "Folders",
+      /** New folder's parent (CTA-231): the folder list in its dialog, the top level by default. */
+      parent: "Make it in",
+    },
+    /**
+     * The collection page's own panel (CTA-229), in the main menu's place on both
+     * its views: its Close back to the Library, its name, and General and
+     * Settings (CTA-231; Options until CTA-235).
+     */
+    /** Where a collection's games come from (CTA-233): their `Source…` tags, the `CollectionSource` card on the collection page's General. */
+    collectionSource: {
+      /* `_two` is Hebrew's dual (its plural rules' "two"); English never reads it, but `he` is typed by this catalog. */
+      title_one: "Source",
+      title_other: "Sources",
+      title_two: "Sources",
+      /** The tags PGN names; any other is shown by its own name. */
+      tags: {
+        SourceTitle: "Title",
+        Source: "Publisher",
+        SourceDate: "Date",
+        SourceVersion: "Version",
+        SourceVersionDate: "Version date",
+        SourceEdition: "Edition",
+        SourceEditionDate: "Edition date",
+        SourceQuality: "Quality",
+        SourceLink: "Link",
+      },
+      games_one: "{{games}} game",
+      games_other: "{{games}} games",
+      games_two: "{{games}} games",
+      untagged_one: "{{games}} game names no source.",
+      untagged_other: "{{games}} games name no source.",
+      untagged_two: "{{games}} games name no source.",
+      /** After a `SourceLink`, for a screen reader: where it opens. */
+      newTab: "(opens in a new tab)",
+    },
+    collectionDetails: {
+      label: "Details of {{name}}",
+      /** The panel's Close, at its head: back to the Library — the page's one way back. */
+      close: "Close {{name}}",
+      /** The collection page's header button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The collection's details",
+      tabs: {
+        label: "Collection details",
+        general: "General",
+        settings: "Settings",
+      },
+      /** General (CTA-231): a collection that is not a tournament — its description and what its index says of it. */
+      general: {
+        noDescription: "No description.",
+        source: "Source",
+        sources: { shipped: "Built-in", uploaded: "Your upload" },
+        games: "Games",
+        players: "Players",
+        event: "Event",
+        events: "Events",
+        dates: "Dates",
+        elo: "Ratings",
+        added: "Added",
+      },
+      /** Settings of a shipped collection: nothing to change. */
+      readOnly: "A built-in collection is read-only: its title, description and tournament type cannot be changed.",
+      /** The settings on the Settings tab — saved where they are. */
+      saved: "Saved.",
     },
     /** The table screen — `/library/<collection>`. */
     table: {
-      back: "All collections",
       /** The games table's accessible name (CTA-113). */
       label: "Games",
       filter: "Filter games",
@@ -1438,27 +1392,25 @@ const en = {
         deleteSelected: "Delete selected games from the collection",
         pick: "Select {{title}}",
         /**
-         * The Analyse hand-off (CTA-77): the picked games saved to Saved
-         * analyses, one analysis each, in a new folder named after the
-         * collection, the count and the filters that are on.
+         * The Analyse hand-off (CTA-77, Analysis V2 since CTA-192): the picked
+         * games as cases, one each, in a project the reader picks — a new
+         * one offered, named after the collection, the count and the
+         * filters that are on.
          */
         analyse: "Analyse",
-        analyseHint: "Save the selected games to Saved analyses, each its own analysis, in a new folder",
-        analysing: "Saving the selected games to Saved analyses…",
-        /** The side a player filter names, as the folder name carries it. */
+        analyseHint: "Add the selected games to Analysis, each its own case, in a project",
+        analysing: "Reading the selected games…",
+        /** The side a player filter names, as the new project's name carries it. */
         white: "white",
         black: "black",
-        done_one: "{{count}} game added to Saved analyses, in “{{folder}}”.",
-        done_other: "{{count}} games added to Saved analyses, in “{{folder}}”.",
+        done_one: "{{count}} game added to Analysis, in “{{project}}”.",
+        done_other: "{{count}} games added to Analysis, in “{{project}}”.",
         skipped_one: "{{count}} game could not be read and was left out.",
         skipped_other: "{{count}} games could not be read and were left out.",
-        openFolder: "Open folder",
+        openProject: "Open project",
         problem: {
           read: "The games could not be read. Nothing was saved.",
           none: "None of the selected games can be read. Nothing was saved.",
-          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
-          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
-          storage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
         /**
          * The Save-as-collection hand-off (CTA-122): the picked games written
@@ -1503,18 +1455,14 @@ const en = {
         body: "They are removed from “{{name}}” in this browser, and the games after them move up. This cannot be undone.",
         problem: "They could not be deleted — this browser's storage is unavailable, or the games have changed.",
       },
-      shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Saved analyses.",
+      shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Analysis.",
       uploadedNote: "You added this collection; it is kept in this browser only. Changes to a game can update it in place or be saved as a copy next to it.",
-      /** The header's gear, to the collection's settings (CTA-121). */
-      settings: "Collection settings",
     },
     /**
      * A collection's settings — `/library/<collection>/settings` (CTA-121):
      * the `CollectionSettingsForm` block's words, and the screen's own.
      */
     settings: {
-      /** The screen's `h1`. */
-      title: "Collection settings",
       general: "General",
       name: "Title",
       nameHelp: "What the collection is called in the Library.",
@@ -1525,13 +1473,11 @@ const en = {
       tournamentHelp: "A tournament's games can be shown as standings and crosstables.",
       tournamentBlocked:
         "A collection can be marked as a tournament only when every game in it shares one Event. First narrow the collection to the games of one tournament event.",
-      /** Arena (CTA-142): markable, its view showing no standings table yet. */
-      comingLater: "no standings table yet",
       type: "Tournament type",
       save: "Save",
       cancel: "Cancel",
       problem: "The settings could not be saved — this browser's storage may be full or unavailable.",
-      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones) — every one but Arena selectable. */
+      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones; CTA-204 the Lichess arena). */
       formats: {
         swiss: "Swiss system",
         roundRobin: "Round robin",
@@ -1541,6 +1487,7 @@ const en = {
         teamSwiss: "Team Swiss / round robin",
         teamKnockout: "Team knockout",
         arena: "Arena",
+        lichessArena: "Lichess arena",
       },
       /** Each format's one-line description, under the type's radios. */
       formatDescriptions: {
@@ -1555,7 +1502,9 @@ const en = {
         teamSwiss:
           "teams meet on every board at once, a match a round, ranked by match points then board points. Best for Olympiads and team championships.",
         teamKnockout: "teams meet in matches of several legs, the loser of each out. Best for team cups and the final stages of team events.",
-        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+        arena: "continuous, time-based online pairing, scored in game points (1, ½, 0). Best for fast online play.",
+        lichessArena:
+          "Lichess's arena, scored its way: a win 2, a draw 1, double on a run of wins, berserk worth a point more. Best for a tournament exported from lichess.org.",
       },
       /**
        * The type the games look like (CTA-142, `lib/tournamentKind.ts`): the
@@ -1591,6 +1540,8 @@ const en = {
           teamSwissNoRounds: "{{competitors}} teams, each meeting a few of the others",
           /** CTA-142: no round numbers, more games than players — Lichess's arenas. */
           arena: "{{competitors}} players, {{games}} games and no rounds",
+          /** CTA-204: the same, every game a Lichess export's. */
+          lichessArena: "{{competitors}} players, {{games}} games and no rounds, every one played on lichess.org",
         },
       },
     },
@@ -1637,7 +1588,6 @@ const en = {
         misfit: "The games do not read as {{type}}.",
         misfitSuggest: "The games do not read as {{type}} — they look like {{guess}}: {{reason}}.",
         changeType: "Change the type",
-        noTable: "{{type}} has no standings table yet — every player's record is on the Participants tab.",
       },
       /** The Participants tab. */
       participants: {
@@ -1645,6 +1595,9 @@ const en = {
         teams: "Teams",
         players: "Players",
         top: "Statistics",
+        /** The right-hand panel folded to the shell's rail (CTA-231), and opened again. */
+        collapse: "Hide statistics",
+        expand: "Show statistics",
         empty: "No players in these games.",
         columns: {
           player: "Player",
@@ -1689,6 +1642,11 @@ const en = {
     filters: {
       title: "Filters",
       clear: "Clear",
+      /** The panel folded to a rail at the inline end, and opened again (CTA-230); the count is the filters still on. */
+      collapse: "Hide filters",
+      expand: "Show filters",
+      expandActive_one: "Show filters — {{count}} filter on",
+      expandActive_other: "Show filters — {{count}} filters on",
       player: "Player",
       color: "Played as",
       anyColor: "Either",
@@ -1726,10 +1684,21 @@ const en = {
         },
       },
     },
+    /** The header's Delete (CTA-232): the picked uploads — one named, several counted. */
     confirmDelete: {
       title: "Delete {{name}}?",
-      body_one: "Its {{count}} game is removed from this browser. This cannot be undone.",
-      body_other: "Its {{count}} games are removed from this browser. This cannot be undone.",
+      /** Several things, or a folder's collections with it (CTA-235): `what` is the picks' counts as a list ("2 folders and 5 collections"). */
+      titleWhat: "Delete {{what}}?",
+      /** A folder goes whole (CTA-235): its sub-folders and the uploads under it. */
+      folders_one: "The folder goes with everything in it: its sub-folders and the collections in them.",
+      folders_other: "The folders go with everything in them: their sub-folders and the collections in them.",
+      body_one: "{{count}} game is removed from this browser. This cannot be undone.",
+      body_other: "{{count}} games are removed from this browser. This cannot be undone.",
+      /** Only empty folders go. */
+      noGames: "This cannot be undone.",
+      builtInKept_one: "The built-in collection picked is read-only and stays.",
+      builtInKept_other: "The {{count}} built-in collections picked are read-only and stay.",
+      problem: "Some could not be deleted — this browser's storage is unavailable. Those left are still picked.",
       cancel: "Cancel",
       confirm: "Delete",
     },
@@ -1782,6 +1751,14 @@ const en = {
         dateHelp: "A game without a date is left out.",
         playerFilter: "Players",
         playersHelp: "Games of any of them — pick from the list or type part of a name.",
+        /** The TAGS field (CTA-234): tag pairs stamped on every imported game. */
+        tags: "Tags",
+        tagsHelp: "Added to every imported game — one tag pair per line, [Name \"Value\"]. A game's own tag of the same name takes this value.",
+        tagsProblem: {
+          syntax: "Line {{line}}: not a tag pair — write it as [Name \"Value\"].",
+          name: "Line {{line}}: a tag's name is letters, digits and _ only.",
+          escape: "Line {{line}}: inside the value, write a quote as \\\" and a backslash as \\\\.",
+        },
         several: "Each file becomes a collection of its own, named by the Event its games share, else by the file's name.",
         severalInto: "Every file's games are added to this collection.",
         /** What a split import makes of a zip's several files (CTA-127). */
@@ -1835,22 +1812,35 @@ const en = {
     game: {
       tabs: {
         moves: "Moves",
-        map: "Map",
-        info: "Info",
         export: "Export",
-        engine: "Engine",
       },
       of: "Game {{number}} of {{count}}",
       back: "Back to {{name}}",
       previous: "Previous game",
       next: "Next game",
-      engineSwitch: "Engine",
       arrows: "Next-move arrows",
+      moveMarks: "Move marks on the board",
       unreadable: "This game could not be read.",
       /** The Export tab's hand-off to the Analysis Board. */
-      openAnalysis: "Open in Analysis Board",
-      openAnalysisHelp: "Opens this game on the Analysis Board, at the position on screen.",
+      openAnalysis: "Open in Analysis",
+      openAnalysisHelp: "Opens this game in Analysis as a new case in a project, at the position on screen.",
       openAnalysisChanged: "Opens the game as the collection holds it, at the position on screen — your unsaved changes stay here.",
+      /** The left panel beside the board — the game's own view (CTA-209). */
+      details: {
+        label: "Details of {{name}}",
+        /** The board header's button that opens the panel in a drawer, under the shell's breakpoint. */
+        toggle: "The game's details",
+        tabs: {
+          label: "Game details",
+          settings: "Settings",
+          info: "Info",
+        },
+        arrowsHelp: "The next moves of the game and its side lines, as arrows on the board.",
+        moveMarksHelp: "The mark of the move on screen — !, ?? and the like — on its square.",
+        evalBarHelp: "The engine's score beside the board while the engine is on.",
+        /** The board header's engine switch — its icon's name. */
+        engine: "Engine",
+      },
     },
     /**
      * The changes strip over a game of an **uploaded** collection — Update
@@ -1881,9 +1871,9 @@ const en = {
      */
     shippedChanges: {
       title: "Unsaved changes",
-      readOnly: "This game ships with the app and cannot be changed: save your changes as a copy in Saved analyses.",
+      readOnly: "This game ships with the app and cannot be changed: save your changes as a copy in Analysis.",
       copy: "Save as copy",
-      copyHelp: "Save this game with your changes as a new analysis in Saved analyses.",
+      copyHelp: "Save this game with your changes as a new case in a project in Analysis.",
       copyName: "{{name}} (copy)",
       discard: "Discard",
       problem: {
@@ -2026,6 +2016,39 @@ const en = {
         unfinished: "a match with a game unfinished",
       },
     },
+    /**
+     * An arena's standings (CTA-204): the score sheet's column, each game's
+     * words (its number in the player's sheet), what made its score, and
+     * the legend.
+     */
+    arena: {
+      columns: {
+        sheet: "Score sheet",
+        games: "G",
+        gamesName: "Games",
+        performance: "Perf",
+        performanceName: "Performance",
+      },
+      game: {
+        white: "Game {{number}}, White against {{opponent}}: {{result}}",
+        black: "Game {{number}}, Black against {{opponent}}: {{result}}",
+      },
+      /** A game's words and what made its score, after a comma. */
+      withNotes: "{{game}}, {{notes}}",
+      notes: {
+        scored: "scored {{score}}",
+        fire: "on fire, double points",
+        berserk: "berserk",
+        berserkScored: "berserk, one point more",
+        berserkShort: "berserk, no extra point in under 7 moves",
+        quickDraw: "no points for a draw in the first 10 moves",
+        drawStreak: "no points for a draw in a draw streak",
+      },
+      legend: {
+        fire: "on fire: after two wins in a row, a win scores 4 and a draw 2",
+        berserk: "berserk: a win scores one point more",
+      },
+    },
   },
   /**
    * The **Repertoires** section (CTA-61) — the reader's own opening
@@ -2129,6 +2152,9 @@ const en = {
       save: "Save",
       cancel: "Cancel",
       problem: "It could not be saved — this browser's storage is full or unavailable.",
+      /** The popup over the board (CTA-206): these settings are kept, unlike the Settings tab's. */
+      permanentNote:
+        "These are the repertoire's own settings: saved with it, and used every time it opens. The Settings tab beside the board changes this session only.",
     },
     /**
      * A text of several games: a repertoire is one game (a mainline with side
@@ -2186,8 +2212,46 @@ const en = {
       open: "Games",
       /** The button on a list's row or card, named for its repertoire (CTA-113). */
       openNamed: "Games of {{name}}",
-      end: { title: "Get to the end" },
-      backtrack: { title: "Backtracking" },
+      end: {
+        title: "Get to the end",
+        description: "The trainer plays your repertoire's lines at random; reach the end of one to finish it.",
+      },
+      backtrack: {
+        title: "Backtracking",
+        description: "Cover every line: when one ends, play goes back to the deepest position with a line still to play.",
+      },
+    },
+    /** The left panel beside the board — the repertoire's own view and its games (CTA-206). */
+    details: {
+      label: "Details of {{name}}",
+      /** The board header's button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The repertoire's details",
+      tabs: {
+        label: "Repertoire details",
+        settings: "Settings",
+        games: "Games",
+        jobs: "Jobs",
+      },
+      /** The head's Back, on the repertoire's own view — to the list. */
+      back: "Back to the repertoires",
+      /** The head's gear: the record's own settings screen. */
+      recordSettings: "Repertoire settings",
+      evalBarHelp: "The engine's score beside the board while the engine is on.",
+      /** The board header's engine switch — its icon's name. */
+      engine: "Engine",
+      games: {
+        label: "Games of {{name}}",
+        /** On a game, the way back to the repertoire's own view. */
+        back: "Back to the repertoire",
+        backHelp: "Explore it freely, without a game's rules.",
+      },
+      jobs: {
+        /** The repertoire's jobs (CTA-221) and its one kind, the evaluation. */
+        evaluate: "Evaluate with engine…",
+        list: "This repertoire's jobs",
+        none: "No jobs for this repertoire yet.",
+        empty: "Repertoire jobs are coming: work that runs over a whole repertoire in the background will be started from here.",
+      },
     },
     play: {
       side: "Your side",
@@ -2198,11 +2262,6 @@ const en = {
       autoplayOn: "Play — the trainer answers your moves",
       autoplayOff: "Pause — you move both sides",
       download: "Download with your additions as PGN",
-      back: "Back to the board",
-      /** The engine's switch — off by default: a drill does not show the answer. */
-      engine: "Engine",
-      engineHelp:
-        "Shows the engine's best lines above the tabs and the evaluation bar. It never plays a move; its settings are in the Engine tab.",
       sideHelp:
         "The trainer plays the other side. Changing it starts again from the first move; what you added is kept.",
       /** The switch that draws the next-move arrows — off by default. */
@@ -2217,7 +2276,6 @@ const en = {
       autoplayHelp:
         "The trainer answers your moves from the repertoire, picking among its lines at random. Off, you move both sides.",
       tabs: {
-        settings: "Settings",
         score: "Score",
         map: "Map",
       },
@@ -2283,7 +2341,6 @@ const en = {
       tabs: {
         moves: "Moves",
         tree: "Tree",
-        engine: "Engine",
       },
     },
   },
@@ -2305,8 +2362,9 @@ const en = {
       categories: {
         collections: "Collections",
         games: "Games",
-        analyses: "Analyses",
         repertoires: "Repertoires",
+        enginePresets: "Engine presets",
+        analysisProjects: "Analysis projects",
       },
       includeShipped_one: "Include the {{count}} shipped collection",
       includeShipped_other: "Include the {{count}} shipped collections",
@@ -2316,7 +2374,7 @@ const en = {
       failed: "The export could not be saved. Nothing was downloaded.",
       unreadable: "The games of “{{name}}” could not be read. Nothing was downloaded.",
       panel:
-        "Games and Analyses are one PGN file each; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
+        "Games are one PGN file; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Engine presets are one JSON file, with the preset each engine runs, and Analysis projects one too — their folders, cases and links. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
     },
     /** The Import tab (CTA-89): an Export's zip read back into the app. */
     import: {
@@ -2338,6 +2396,9 @@ const en = {
         cancel: "Cancel",
         shipped_one: "The file holds {{count}} built-in collection. It is not imported: it ships with the app.",
         shipped_other: "The file holds {{count}} built-in collections. They are not imported: they ship with the app.",
+        /** An export from before CTA-192 — the legacy saved analyses, no longer kept. */
+        skippedAnalyses_one: "The file holds {{count}} saved analysis from an older version. Saved analyses are no longer supported, so it is skipped; everything else can be imported.",
+        skippedAnalyses_other: "The file holds {{count}} saved analyses from an older version. Saved analyses are no longer supported, so they are skipped; everything else can be imported.",
         conflicts_one: "{{count}} folder is already here:",
         conflicts_other: "{{count}} folders are already here:",
         counts: "{{incoming}} in the file · {{existing}} here",
@@ -2363,8 +2424,9 @@ const en = {
       top: {
         collections: "Top level",
         games: "Your played games",
-        analyses: "Unfiled",
         repertoires: "Unfiled",
+        enginePresets: "Your engine presets",
+        analysisProjects: "Top level",
       },
       /** The report, one line per category. */
       result: {
@@ -2374,6 +2436,8 @@ const en = {
         storage: "{{category}}: the browser refused to store it. Part of it may have been written.",
         tooMany: "{{category}}: not imported — the limit was reached while importing.",
         indexing: "{{category}}: a collection's games could not be indexed. The collections before it were imported.",
+        skippedAnalyses_one: "{{count}} saved analysis from an older version was skipped: saved analyses are no longer supported.",
+        skippedAnalyses_other: "{{count}} saved analyses from an older version were skipped: saved analyses are no longer supported.",
       },
       /** The dialog for a file that cannot be imported. */
       incompatible: {
@@ -2389,7 +2453,7 @@ const en = {
         },
         advice: "You can still bring its PGN files in by hand:",
         collections: "a collection — the Library's upload",
-        analyses: "analyses and played games — the Analysis Board's Load tab",
+        analyses: "analyses and played games — a new project in Analysis, from the PGN file",
         repertoires: "repertoires — Add repertoire",
         files: "The PGN files in it:",
         noFiles: "It holds no PGN files.",
@@ -2419,9 +2483,10 @@ const en = {
         payload: "Estimated payload",
         categories: {
           playedGames: "Engine games",
-          analyses: "Analyses",
           repertoires: "Repertoires",
           collectionGames: "Library games",
+          analysisCases: "Analysis cases",
+          jobs: "Background jobs",
         },
       },
       note:
@@ -2442,6 +2507,68 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+      /** The eval sources (CTA-196, `lib/evalSources/`): what every analysis search asks before its engine. */
+      evalSources: {
+        intro:
+          "Evaluation sources: positions already searched, asked before the engine. Every analysis search — on the boards and in Jobs — asks the ones turned on first, whichever engine runs, and the engine searches only what they do not hold deep enough. An engine playing its move in a game always searches itself.",
+        /** A source's connection, said after its tab's name — its dot's words (CTA-199). */
+        connection: {
+          disabled: "turned off",
+          "not-connected": "not connected",
+          connected: "connected",
+        },
+      },
+      /** The tab's inner tabs: the Stockfish connectors (CTA-198), then one per eval source. */
+      tabs: { label: "Where the engine runs", connectors: "Stockfish connectors" },
+      /** The Stockfish connectors tab's two headings — where the engine runs, one choice across both. */
+      connectors: { browser: "Browser", api: "API" },
+      /** The right-hand panel: the chosen engine-server engine's limits, under its options form. */
+      uci: {
+        note: "The options above are what the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
+      },
+      /** The engine's options, kept in presets (CTA-179) — the right-hand panel. */
+      presets: {
+        title: "Engine options — {{engine}}",
+        description:
+          "Every option the engine declares, kept in named presets. Each engine runs its own preset — from every board's next search and in background jobs — beside the board's own Threads, Hash and Lines, which always win.",
+        defaultName: "Default",
+        failed: "The change could not be saved.",
+        full: "There are {{max}} presets already — delete one first.",
+      },
+      /** The panel on the Stockfish connectors tab while no server engine is chosen: a pointer to the Blog's guide. */
+      setup: {
+        title: "Add an engine on this computer",
+        intro: "Any UCI engine — Stockfish 18 or 19, native — can run on your own machine and serve every board here.",
+        guide: "Read the guide.",
+      },
+      /** The engine server on the reader's own computer (`lib/engineServer.ts`, `yarn api:start`) — off unless turned on. */
+      server: {
+        title: "Engine server on this computer",
+        description:
+          "Stockfish running natively on your own computer, with all its threads — faster than in the browser. Start it from the app's source with yarn api:start; its engines are then listed here.",
+        enable: "Use an engine server",
+        enableHelp: "While this is off, the app never contacts it.",
+        address: "Server address",
+        addressHelp: "Where the server listens — {{example}} unless you moved it.",
+        addressInvalid: "Enter an address like {{example}}.",
+        connect: "Connect",
+        /** The legend of the server's engines, listed in the panel. */
+        engines: "Engines on this server",
+        /** The chip beside the switch — the connection at a glance. */
+        indicator: {
+          connecting: "Connecting…",
+          online: "Connected · {{ms}} ms",
+          offline: "Not connected",
+        },
+        retry: "Try again",
+        status: {
+          connecting: "Connecting to {{url}}…",
+          unreachable:
+            "Can't reach {{url}}. Is the server running? Your browser may also ask whether this site may reach your computer — allow it.",
+          "not-an-engine-server": "{{url}} answered, but not as an engine server.",
+          checkedAt: "Checked at {{time}}.",
+        },
+      },
     },
     /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
     support: {
@@ -2469,6 +2596,87 @@ const en = {
     unavailable: {
       "cross-origin-isolation": "Needs cross-origin isolation — not available on this host",
     },
+    /** An engine on the engine server, before its address (`EngineDescriptor.server`). */
+    server: "On the engine server",
+  },
+  /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
+  enginePresets: {
+    preset: "Preset for {{engine}}",
+    /** Where the preset's searches stop (CTA-185) — its depth and move time; Threads and Hash under them. */
+    search: {
+      title: "Search limits",
+      help: "Every board searches with {{preset}} to this depth or move time, whichever comes first. The top bar's Engine menu sets them too.",
+      /** Under Threads and Hash (CTA-185): the global request, not the preset's. */
+      resourcesHelp: "Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.",
+    },
+    /** The unsaved changes' strip (CTA-185, `EnginePresetChanges`): nothing is written until Save or Save as new preset. */
+    changes: {
+      title: "Unsaved changes to {{preset}}",
+      help: "Every board uses them now. A reload, or choosing another preset or engine, drops them.",
+      save: "Save",
+      saveHelp: "Keep these changes in {{preset}}",
+      saveAs: "Save as new preset",
+      saveAsHelp: "Keep {{preset}} as it was, and save these changes as a new preset",
+      saveAsTitle: "Save as new preset",
+    },
+    actions: "Preset actions",
+    new: "New preset",
+    rename: "Rename {{name}}",
+    duplicate: "Duplicate {{name}}",
+    delete: "Delete {{name}}",
+    deleteDefault: "Default cannot be deleted",
+    copyName: "{{name}} (copy)",
+    newTitle: "New preset",
+    renameTitle: "Rename the preset",
+    duplicateTitle: "Duplicate the preset",
+    name: "Name",
+    create: "Create",
+    save: "Save",
+    cancel: "Cancel",
+    deleteTitle: "Delete {{name}}?",
+    deleteMessage: "Engines that run it go back to Default. This cannot be undone.",
+    deleteConfirm: "Delete",
+    intro:
+      "Options the preset sets are sent to {{engine}}; the rest stay at the engine's defaults. A change applies from the next search.",
+    reading: "Reading what {{engine}} declares…",
+    empty: "{{engine}} declares no options.",
+    list: "Options of {{engine}} — {{preset}}, {{tab}}",
+    /** The options' three tabs (`OPTION_TABS`). */
+    tabs: { label: "Kinds of option", basic: "Basic", advanced: "Advanced", system: "System" },
+    default: "default {{value}}",
+    range: "{{min}}–{{max}}",
+    absentSummary: "set to {{value}}",
+    spinInvalid: "A whole number from {{min}} to {{max}}.",
+    reset: "Put {{name}} back to the engine's default",
+    remove: "Remove {{name}} from the preset",
+    /** A group of options behind one switch (`OPTION_GROUPS`) — off by default. */
+    groups: {
+      syzygy: {
+        label: "Syzygy tablebases",
+        help: "Endgame tablebases from files on this computer. Off, none of the Syzygy options is sent.",
+      },
+    },
+    /** Why an option is read-only or held, beside it (`PresetRowNote`). */
+    notes: {
+      "board-owned": "Set for every board in the top bar's Engine menu — Threads, Hash and Lines.",
+      "play-owned": "Play with Engine and Masked Pieces set this from their own strength; every other board takes it from here.",
+      "play-strength": "Also turns Play with Engine's and Masked Pieces' Elo on: off, they play at this preset's strength.",
+      absent: "{{engine}} does not declare it, so it is not sent.",
+      pinned: "Fixed by this build — it has one value.",
+      button: "An action, not a setting — a preset cannot keep it.",
+      "browser-file": "Not available in the browser: its builds have no file system, so a file path is never sent.",
+      "browser-hash": "At most 1024 MB in the browser — more crashes the tab.",
+      clamped: "Held to {{min}}–{{max}} on this engine.",
+      invalid: "Not a value this option takes, so it is not sent.",
+      "needs-limit-strength": "Used only while UCI_LimitStrength is on — off, the engine plays at full strength.",
+      "needs-syzygy-path": "Used only with endgame tablebases — set SyzygyPath first.",
+    },
+  },
+  /** The `EngineOptionsTable` block: an engine's `uci` options. */
+  engineOptionsTable: {
+    columns: { name: "Option", type: "Type", default: "Default", range: "Range" },
+    none: "—",
+    empty: "The engine declared no options.",
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
   appearance: {
@@ -2480,9 +2688,1012 @@ const en = {
       console: "Console",
     },
   },
+  /**
+   * **A game's computer analysis** (CTA-171): the words of its report and eval
+   * graph (`blocks/panels/ComputerAnalysisReport`, `EvalGraph` — CTA-173),
+   * shared by the Jobs screen and the Analysis Board.
+   */
+  computerAnalysis: {
+    variants: {
+      light: "Light",
+      medium: "Medium",
+      full: "Full",
+    },
+    verdicts: {
+      inaccuracy: "Inaccuracy",
+      mistake: "Mistake",
+      blunder: "Blunder",
+      missedMate: "Missed mate",
+    },
+    report: {
+      title: "Computer analysis report",
+      measure: "Per player",
+      white: "White",
+      black: "Black",
+      notAnalysed: "Not analysed",
+      step: "{{measure}} by {{player}}: {{count}}. Go to the next one",
+      measures: {
+        inaccuracies: "Inaccuracies",
+        mistakes: "Mistakes",
+        blunders: "Blunders",
+        missedMates: "Missed mates",
+        acpl: "Average centipawn loss",
+        accuracy: "Accuracy",
+      },
+    },
+    graph: {
+      title: "Evaluation graph",
+      start: "Start position",
+      empty: "No move has an evaluation to draw.",
+      hint: "Left and right arrows to move through the moves, Home and End to either end, Enter to go to the move.",
+      hintRead: "Left and right arrows to move through the moves, Home and End to either end.",
+    },
+    /** The Analysis Board's Computer analysis tab's form (CTA-174, `ComputerAnalysisForm`). */
+    form: {
+      engine: "Engine",
+      engineName: "The job runs {{name}} — the engine chosen in Settings.",
+      threads: "Threads",
+      hash: "Hash (MB)",
+      depth: "Depth",
+      moveTime: "Time per move",
+      noTimeLimit: "No time limit",
+      noTimeLimitHelp: "Each position is searched to the full depth, however long that takes — a deep search can take minutes a move.",
+      moveTimeNone: "No limit",
+      seconds: "{{seconds}} s",
+      lines: "Lines",
+      minDepth: "Early stop from depth",
+      minDepthHelp: "From this depth a search stops as soon as another line falls more than the variation range below the best. At the full depth it never stops early.",
+      moves: "Moves",
+      side: "Analyse the moves of",
+      sides: {
+        both: "Both sides",
+        w: "White",
+        b: "Black",
+      },
+      fromMove: "From move",
+      fromMoveHelp: "The first move analysed.",
+      toMove: "To move",
+      toMoveHelp: "Empty: to the end of the game.",
+      moveRange: "A move number from 1 to {{max}}.",
+      fromColour: "The first move analysed is",
+      fromWhite: "White's",
+      fromBlack: "Black's",
+      advanced: "Advanced",
+      advancedToggle: "Advanced options",
+      thresholdsHelp: "A move is marked when it loses more than these, in centipawns.",
+      inaccuracy: "Inaccuracy above",
+      mistake: "Mistake above",
+      blunder: "Blunder above",
+      cp: "{{cp}} cp",
+      range: "Variation range",
+      rangeHelp: "How far below the best line another line may score and still be kept.",
+      variants: "Variants to save",
+      variantsHelp: "Each one ticked is saved as a new case, all from one run of the engine.",
+      /** Jobs V2 (CTA-188): the engine and its preset, each a select, and one variant for a merge into the Case. */
+      engineSelect: "Engine",
+      preset: "Preset",
+      presetHelp: "The preset sets the depth and the time per move, your search settings Threads, Hash and lines — each can be changed for this job.",
+      variant: "Variant",
+      variantHelpSingle: "Merged into this Case — one variant.",
+      variantHelp: {
+        light: "The best alternative on each inaccuracy, mistake and blunder.",
+        medium: "Every alternative within the variation range, on each inaccuracy, mistake and blunder.",
+        full: "Every alternative within the variation range, on every analysed move.",
+      },
+      start: "Start computer analysis",
+      noVariant: "Tick at least one variant to start.",
+      noMoves: "The board has no moves to analyse.",
+      noRange: "No move of the game is in the chosen range.",
+      problem: {
+        invalid: "There is nothing to analyse in the chosen moves.",
+        storage: "The job could not be kept — the browser refused the write.",
+        "too-many": "Too many jobs are kept, none of them finished. Let some finish, or delete some in Jobs.",
+      },
+    },
+    /** A job's report and its results so far (`jobV2LiveAnalysis`, CTA-174, CTA-178). */
+    board: {
+      liveGraph: "Evaluation graph so far",
+      latest: "Latest: after",
+      latestStart: "Latest: the start position",
+      depth: "depth {{depth}}",
+      reportTitle: "Report",
+      reportToggle: "Show or hide the report",
+    },
+  },
+  /**
+   * **The Jobs module's words** (CTA-221; CTA-173's background jobs before) —
+   * the screens, the generic blocks, each kind's (`kinds.<key>`), the engine
+   * live and the Jobs settings.
+   */
+  jobs: {
+    /**
+     * **The Jobs module's kinds** (CTA-215): each kind's own words — its name,
+     * its errors, its New-job form and its report.
+     */
+    /**
+     * **A retired kind's name** (CTA-232) — a reader's stored jobs of a kind the app
+     * runs no more (`RETIRED_JOB_KIND_LOCALE_KEYS`): kept, never run, deleted only.
+     */
+    retiredKinds: {
+      collectionMerge: "Merge collections (retired)",
+    },
+    kinds: {
+      /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
+      unknown: "Unknown kind ({{id}})",
+      /** The computer analysis (CTA-188 — Jobs V2's, the Jobs module's kind since CTA-221): New job's form, its parameters, its results. */
+      computerAnalysis: {
+        name: "Computer analysis",
+        description: "Stockfish goes over the Case's main line in the background — every finished position kept — and its results become new Cases or are merged into this one.",
+        newJobIntro: "The Case's mainline is analysed in the background; its results go where you choose below.",
+        existing: "This Case has a computer analysis already — {{status}}.",
+        openExisting: "Open it",
+        caseGone: "The Case is not there any more.",
+        defaultProjectName: "{{name}} — analysis",
+        target: {
+          title: "Where to save the results",
+          kind: "Results go to",
+          kinds: {
+            project: "New Cases in this project ({{name}})",
+            other: "Another project",
+            case: "Into this Case",
+          },
+          help: {
+            project: "Each variant ticked becomes a new Game Case beside this one, linked from it.",
+            other: "Each variant ticked becomes a new Game Case in another project, linked from this one.",
+            case: "One variant: its evaluations, mistakes and comments are merged into this Case. Your own moves, lines and comments stay.",
+          },
+          other: "Which project",
+          otherNew: "A new project",
+          otherExisting: "An existing project",
+          name: "The new project's name",
+          nameRequired: "A new project needs a name.",
+          nameHelp: "Filed beside {{name}}.",
+          project: "Project",
+          projectHelp: "The new Cases are filed there.",
+        },
+        targetProblem: {
+          name: "Name the new project to start.",
+          project: "Pick a project to start.",
+        },
+        projectGone: "a project deleted since",
+        reportMissing: "The Case holding this job's results is gone, so its report cannot be shown.",
+        facts: {
+          preset: "Preset",
+          target: "Results go to",
+        },
+        targetFacts: {
+          project: "New Cases in {{name}}",
+          other: "New Cases in {{name}} (another project)",
+          case: "Merged into the Case",
+        },
+        errors: {
+          source: "The Case sent for analysis could not be read again.",
+          engine: "The engine stopped answering. Resume to try again from the last finished position.",
+          storage: "The results could not be saved — the browser refused the write. Free some space, then resume.",
+          target: "Where the results were to go is gone — the project or the Case was deleted.",
+        },
+      },
+      /** The repertoire evaluation (CTA-219): `RepertoireEvaluationForm`, `RepertoireEvaluationReport`. */
+      repertoireEvaluation: {
+        name: "Repertoire evaluation",
+        title: "Evaluate {{name}}",
+        description: "The engine goes over every position of the repertoire up to a ply limit — each once, however many lines reach it — and judges every move your side plays.",
+        errors: {
+          source: "The repertoire's PGN could not be read.",
+          engine: "The engine gave no evaluation. Resume to go on from the last position evaluated.",
+          storage: "The evaluated repertoire could not be saved — the browser refused the write. Free some space, then resume.",
+          "too-many": "The repertoires are at their limit, so the evaluated one could not be saved. Delete some, then resume.",
+        },
+        repertoireGone: "The repertoire is not there any more.",
+        facts: {
+          side: "The repertoire's side",
+          plies: "Ply limit",
+          report: "The report",
+          repertoire: "A new repertoire",
+          pgnFile: "The annotated PGN",
+        },
+        form: {
+          side: "The repertoire's side",
+          sideHelp: "Its moves are judged; the other side's moves only lead to the next position.",
+          white: "White",
+          black: "Black",
+          moves: "Moves",
+          maxPlies: "Ply limit",
+          maxPliesValue: "{{plies}} plies, to move {{move}}",
+          maxPliesHelp: "Moves further than this many half-moves from the start are not evaluated.",
+          thresholds: "Verdicts",
+          outputs: "Outputs",
+          outputsHelp: "Each one ticked is made from the same run of the engine.",
+          report: "A report",
+          reportHelp: "Always made: every move with its evaluation before and after and a verdict, the flagged ones first.",
+          repertoire: "A new repertoire",
+          repertoireHelp: "“{{name}}”: the repertoire with every evaluation and verdict written into its moves.",
+          pgnFile: "The annotated PGN, as a file",
+          pgnFileHelp: "The same annotated repertoire, to download.",
+        },
+        report: {
+          title: "Repertoire evaluation report",
+          rowsPerPage: "Moves per page",
+          summary: "Verdicts",
+          progress: "{{done}} of {{total}} positions evaluated.",
+          verdicts: {
+            blunder: "Blunder",
+            missedMate: "Missed mate",
+            mistake: "Mistake",
+            inaccuracy: "Inaccuracy",
+            good: "Good",
+            pending: "Not evaluated yet",
+          },
+          missedMateIn: "Missed mate in {{count}}",
+          flaggedOnly: "Flagged moves only",
+          flaggedOnlyHelp: "Inaccuracies, mistakes, blunders and missed mates.",
+          moves: "The repertoire's moves",
+          evalsFrom: "Evaluations from {{side}}'s side.",
+          white: "White",
+          black: "Black",
+          line: "Line",
+          move: "Move",
+          before: "Before",
+          after: "After",
+          verdict: "Verdict",
+          best: "Best move",
+          start: "Start position",
+          otherPaths_one: "and {{count}} more line",
+          otherPaths_other: "and {{count}} more lines",
+          openMove: "{{move}}, after {{line}} — open it in the repertoire",
+          openFirstMove: "{{move}} — open it in the repertoire",
+          empty: "The repertoire plays no move of its side within the ply limit.",
+          noMatch: "No move is flagged.",
+        },
+      },
+    },
+    count: "Jobs: {{count}}",
+    loading: "Reading your jobs…",
+    untitled: "Untitled game",
+    missing: "There is no such job — it may have been deleted.",
+    resume: "Resume",
+    pause: "Pause",
+    cancel: "Cancel",
+    delete: "Delete",
+    resumeNamed: "Resume {{name}}",
+    pauseNamed: "Pause {{name}}",
+    cancelNamed: "Cancel {{name}}",
+    deleteNamed: "Delete {{name}}",
+    confirmDelete: {
+      title: "Delete this job?",
+      body: "The job “{{name}}” and its progress go. The analyses it saved stay in Saved analyses.",
+      confirm: "Delete",
+      cancel: "Keep it",
+    },
+    reportTitle: "Report",
+    reportReading: "Reading the report…",
+    /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
+    liveTitle: "Results so far",
+    liveEmpty: "No results yet — no position has been analysed.",
+    status: {
+      queued: "Queued",
+      running: "Running",
+      paused: "Paused",
+      interrupted: "Interrupted",
+      done: "Done",
+      failed: "Failed",
+      cancelled: "Cancelled",
+    },
+    /** The runtime's own errors (CTA-221) — a kind's are `kinds.<key>.errors`. */
+    errors: {
+      timeout: "A step took too long without a word — tried again where the kind allows it.",
+    },
+    sides: {
+      both: "Both sides",
+      w: "White only",
+      b: "Black only",
+    },
+    facts: {
+      title: "The job's options",
+      kind: "Kind",
+      engine: "Engine",
+      depth: "Depth",
+      time: "Time per move",
+      seconds: "{{count}} s",
+      noTimeLimit: "No limit",
+      lines: "Lines",
+      threads: "Threads",
+      hash: "Hash",
+      side: "Analysed",
+      moves: "Moves",
+      fromMove: "From move {{move}} to the end",
+      moveRange: "Moves {{from}} to {{to}}",
+      variants: "Outputs",
+      created: "Asked for",
+      started: "Started",
+      finished: "Finished",
+    },
+    /**
+     * **The Jobs module's generic blocks** (CTA-217): the queue, its filters,
+     * a job's details, outputs and history, the New job frame and the header
+     * indicator — every kind of job, over the jobs runtime.
+     */
+    /** What a job can be applied to (CTA-221, `lib/jobs/entities.ts`) — a subject's word where it has no name. */
+    entities: {
+      "analysis-case": "Case",
+      "analysis-project": "Project",
+      repertoire: "Repertoire",
+      "library-collection": "Collection",
+    },
+    /** The Jobs screens (CTA-221): `/jobs`, `/jobs/<id>`, `/jobs/settings`. */
+    screen: {
+      title: "Jobs",
+      intro: "Every background job — a Case's computer analysis, a repertoire's evaluation. Each step is kept, so a job paused, or cut short by a closed tab, goes on from where it stopped.",
+      settings: "Jobs settings",
+      confirmDelete: "The job “{{name}}” and its progress go. What it made — Cases, repertoires, collections — stays; its files go with it.",
+      confirmDeletePicked_one: "Delete {{count}} job?",
+      confirmDeletePicked_other: "Delete {{count}} jobs?",
+      confirmDeletePickedBody: "The picked jobs and their progress go — a running one is stopped. What they made stays; their files go with them.",
+    },
+    queued: "Queued: {{name}}.",
+    openJob: "Open job",
+    backToJobs: "Back to Jobs",
+    missingTitle: "No such job",
+    /** The Jobs settings (CTA-193; `/jobs/settings` since CTA-221): the default engine and preset; the eval sources' pointer (CTA-196). */
+    settings: {
+      title: "Jobs settings",
+      intro: "How new jobs start. Kept in this browser.",
+      default: {
+        title: "New jobs",
+        description: "The engine and preset a new engine job starts with — a computer analysis, a repertoire evaluation. You can still change them in the New job form.",
+        enable: "Use a default engine and preset",
+        enableHelp: "Off: a new job starts with the board's engine and its selected preset.",
+        engine: "Engine for new jobs",
+        preset: "Preset for new jobs",
+      },
+      /** The eval sources a job asks first (CTA-196) — set for the whole app in Settings → Engine. */
+      evalSources: {
+        title: "Evaluation sources",
+        description:
+          "An engine job asks the evaluation sources you turned on about each position before its engine searches it, as every board does. They are set for the whole app in",
+        link: "Settings → Engine",
+      },
+    },
+    /** An engine job's engine, live (CTA-190, CTA-194 — `JobEngineProgress`). */
+    live: {
+      title: "Engine",
+      facts: "The engine's search so far",
+      searching: "Searching",
+      finalPosition: "the final position",
+      depth: "Depth",
+      nodes: "Nodes",
+      nps: "Speed",
+      npsValue: "{{value}} nodes/s",
+      time: "Time on this position",
+      hash: "Hash",
+      hashValue: "{{value}}% full",
+      line: "Best line",
+      announce: "Engine searching {{move}}.",
+      announceDepth: "Engine searching {{move}}, depth {{depth}}.",
+      alive: "Engine alive",
+      heardNow: "heard just now",
+      heardSeconds: "heard {{seconds}} s ago",
+      heardMinutes: "heard {{minutes}} min ago",
+    },
+    queue: {
+      label: "Jobs",
+      title: "Title",
+      kind: "Kind",
+      status: "Status",
+      progressColumn: "Progress",
+      created: "Created",
+      actions: "Actions",
+      open: "Open the job {{name}}",
+      progressOf: "Progress of {{name}}",
+      progress: "{{done}} of {{total}}",
+      notPlanned: "Not started",
+      selectAll: "Select every job",
+      pick: "Pick {{name}}",
+      sortHint: "Sort by a column from its header; filter the status and the kind from the fields under theirs.",
+      hint: "Tick a job to pick it; the bar above the table deletes the picked jobs.",
+      picked_one: "{{count}} picked",
+      picked_other: "{{count}} picked",
+      clearPicks: "Clear the picks",
+      deletePicked_one: "Delete {{count}} picked job",
+      deletePicked_other: "Delete {{count}} picked jobs",
+      rowsPerPage: "Jobs per page",
+      noMatch: "No job matches the filters.",
+      loading: "Reading your jobs…",
+      empty: "No jobs yet. Start one from a Case, a repertoire or a collection.",
+    },
+    subjects: {
+      deleted: "(deleted)",
+    },
+    filters: {
+      clear: "Clear filters",
+      status: "Status",
+      anyStatus: "Any status",
+      kind: "Kind",
+      anyKind: "Any kind",
+    },
+    details: {
+      kind: "Kind",
+      actions: "Job actions",
+      progress: "Progress",
+      subjects: "Applied to",
+      details: "Details",
+      parameters: "Parameters",
+      times: "Times",
+      created: "Created",
+      started: "Started",
+      finished: "Finished",
+      statusChanged: "{{name}}: {{status}}.",
+      retrying: "Retrying in {{seconds}} s — attempt {{attempt}} of {{max}}.",
+      retryingNow: "Retrying now — attempt {{attempt}} of {{max}}.",
+      waiting: "Waiting for its turn.",
+      paused: "Paused — Resume continues from the last checkpoint.",
+      interrupted: "Stopped when the tab running it closed — Resume continues from the last checkpoint.",
+      failed: "Why it failed",
+      failedUnknown: "The job failed.",
+      code: "Code: {{code}}",
+    },
+    outputs: {
+      downloadFailed: "{{name}} could not be downloaded — its file is not there, or the browser refused it.",
+      /** A data output's name, by its key — absent, "Report". */
+      data: {
+        report: "Report",
+        summary: "Summary",
+      },
+      title: "Outputs",
+      empty: "No outputs yet — they come when the job is done.",
+      pending: "Pending",
+      download: "Download",
+      downloadNamed: "Download {{name}}",
+      deleted: "(deleted)",
+      kinds: {
+        entity: "Made",
+        artifact: "File",
+        data: "Report",
+      },
+    },
+    history: {
+      /** The runtime's events, in words (`JobHistory`'s `describe`) — an unknown one shows its type. */
+      eventTypes: {
+        enqueued: "Queued",
+        claimed: "Started",
+        planned: "Planned",
+        checkpointed: "Checkpoint",
+        finalized: "Outputs decided",
+        "output-applied": "Output made",
+        "retry-scheduled": "Retry scheduled",
+        "pause-requested": "Pause asked for",
+        paused: "Paused",
+        resumed: "Resumed",
+        cancelled: "Cancelled",
+        requeued: "Queued again after a closed tab",
+        interrupted: "Stopped by a closed tab",
+        "lease-released": "Handed back",
+        failed: "Failed",
+        done: "Done",
+      },
+      title: "History",
+      show: "Show the history",
+      hide: "Hide the history",
+      attempts: "Attempts",
+      events: "Events",
+      attempt: "Attempt {{n}}",
+      underWay: "Under way",
+      noAttempts: "Not run yet.",
+      noEvents: "Nothing recorded yet.",
+      outcome: {
+        done: "Done",
+        failed: "Failed",
+        "retry-scheduled": "Retry scheduled",
+        paused: "Paused",
+        cancelled: "Cancelled",
+        interrupted: "Interrupted",
+      },
+    },
+    newJob: {
+      noForm: "This kind cannot be started here.",
+      /** Queueing refused — the runtime's answer. */
+      problem: {
+        "unknown-kind": "This kind of job is not known here.",
+        invalid: "There is nothing to do with these settings.",
+        storage: "The job could not be kept — the browser refused the write.",
+        "too-many": "Too many jobs are kept, none of them finished. Let some finish, or delete some in Jobs.",
+      },
+      title: "New job",
+      for: "For",
+      kinds: "Kind of job",
+      noKinds: "No kind of job applies here.",
+      chooseKind: "Choose a kind of job.",
+      kindOff: "Not available: {{reason}}",
+      start: "Start",
+      cancel: "Cancel",
+    },
+    indicator: {
+      liveDepth: "depth {{depth}}",
+      liveNodes: "{{nodes}} nodes",
+      running: "Jobs {{done}}/{{total}}",
+      queued: "Jobs: {{count}} queued",
+      label: "Jobs: {{name}}, {{done}} of {{total}}",
+      labelQueued: "Jobs: {{count}} queued",
+      started: "Job started: {{name}}.",
+      paused: "Job paused: {{name}}.",
+      done: "Job finished: {{name}}.",
+      failed: "Job failed: {{name}}.",
+      cancelled: "Job cancelled: {{name}}.",
+    },
+  },
+  /**
+   * **Analysis V2** (CTA-186): Projects in nested folders, each holding its
+   * Cases — a Game or a Position — and the Case's board (shipped in CTA-192).
+   */
+  analysisV2: {
+    cancel: "Cancel",
+    /**
+     * **A Project's soft limit of Cases** (CTA-225): an interactive add that
+     * would take a Project past it asks first, suggesting a Library collection.
+     */
+    caseLimit: {
+      title: "A large project",
+      messageNew: "These games make {{number}} cases — and a project of more than {{max}} cases is slow to open and to work in.",
+      messageExisting_one:
+        "This game makes a case. With the {{existing}} the project holds already, it would hold {{total}} — and a project of more than {{max}} cases is slow to open and to work in.",
+      messageExisting_other:
+        "These games make {{number}} cases. With the {{existing}} the project holds already, it would hold {{total}} — and a project of more than {{max}} cases is slow to open and to work in.",
+      suggestion:
+        "For a large set of games a Library collection suits better: its table is built for thousands of games, filtered and sorted, and any of them opens on a board or goes to Analysis from there.",
+      inLibrary:
+        "These games are in the Library already. Saved as a collection of their own, they stay together there — and a few at a time go to Analysis.",
+      collection: "Create a Library collection instead",
+      collectionFromLibrary: "Save them as a Library collection instead",
+      anyway: "Create anyway",
+      progress: {
+        title: "Creating the collection",
+        index: "Reading the games: {{done}} of {{total}}",
+        save: "Saving the collection…",
+      },
+      problem: {
+        index: "The games could not be read for the collection. Nothing was created.",
+        storage: "The collection could not be created — the browser refused to save it. Nothing was created.",
+      },
+    },
+    sendTo: {
+      title: "Open in Analysis",
+      addTitle_one: "Add {{count}} game to Analysis",
+      addTitle_other: "Add {{count}} games to Analysis",
+      open: "Open",
+      add_one: "Add {{count}} case",
+      add_other: "Add {{count}} cases",
+      storage: "That could not be saved — the browser refused it.",
+      tooManyProjects: "No project could be made — the browser refused it, or there are {{max}} already.",
+    },
+    save: "Save",
+    loading: "Reading your projects…",
+    browser: {
+      title: "Projects",
+      root: "All projects",
+      trail: "Folders",
+      listLabel: "Folders, projects and cases",
+      empty: "No folders or projects here yet.",
+      newFolder: "New folder",
+      newProject: "New project",
+      projectCount_one: "{{count}} project",
+      projectCount_other: "{{count}} projects",
+      caseCount_one: "{{count}} case",
+      caseCount_other: "{{count}} cases",
+      updated: "Updated {{date}}",
+      columns: {
+        name: "Name",
+        cases: "Cases",
+        updated: "Updated",
+      },
+      rowsPerPage: "Rows per page",
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      openFolder: "Go into {{name}}",
+      showCases: "Show the cases of {{name}}",
+      hideCases: "Hide the cases of {{name}}",
+      filter: "Filter folders, projects and cases",
+      filterClear: "Clear the words",
+      noMatch: "No folder, project or case matches the filter.",
+      tableHint: "Up and down arrows move between the rows. A folder's or a project's chevron opens it in place; tick a row's box to pick it with all under it; sort by a column from its header button.",
+      selectAll: "Select all folders, projects and cases",
+      pick: "Pick {{name}}",
+      selected: "{{count}} selected",
+      clearSelected: "Clear the picks",
+      deleteSelected: "Delete the picked items",
+      deleteManyTitle_one: "Delete {{count}} item?",
+      deleteManyTitle_other: "Delete {{count}} items?",
+      deleteManyMessage: "This deletes {{what}} — with all their analysis, jobs and links.",
+      deleteFolders_one: "{{count}} folder",
+      deleteFolders_other: "{{count}} folders",
+      deleteProjects_one: "{{count}} project",
+      deleteProjects_other: "{{count}} projects",
+      deleteCases_one: "{{count}} case",
+      deleteCases_other: "{{count}} cases",
+      deleteConfirm: "Delete",
+      deleteProblem: "That could not be deleted — the browser refused it. Nothing was unticked.",
+      missingFolder: "This folder is not there any more.",
+    },
+    folder: {
+      untitled: "Untitled folder",
+      name: "Name",
+      newTitle: "New folder",
+      renameTitle: "Rename folder",
+      moveTitle: "Move folder",
+      top: "Top level",
+      picker: "Folder",
+      renameNamed: "Rename {{name}}",
+      moveNamed: "Move {{name}}",
+      problem: "That could not be saved — the browser refused it, or the folders are full.",
+    },
+    project: {
+      untitled: "Untitled project",
+      open: "Open",
+      openNamed: "Open {{name}}",
+      name: "Name",
+      renameTitle: "Rename project",
+      moveTitle: "Move project",
+      duplicateTitle: "Duplicate project",
+      copyName: "{{name}} (copy)",
+      renameNamed: "Rename {{name}}",
+      moveNamed: "Move {{name}}",
+      duplicateNamed: "Duplicate {{name}}",
+      missing: "There is no such project.",
+      back: "Back to the projects",
+      problem: "That could not be saved — the browser refused it, or there are too many projects.",
+    },
+    projectPicker: {
+      label: "Projects",
+      hint: "Sort by a column from its header button. Choose a project with its radio button, a click on its row, or Enter on it.",
+      filter: "Find a project",
+      filterClear: "Clear the words",
+      rowsPerPage: "Projects per page",
+      noMatch: "No project matches the words.",
+      empty: "No project to choose.",
+      columns: {
+        choose: "Chosen",
+        name: "Name",
+        folder: "Folder",
+        cases: "Cases",
+        updated: "Updated",
+      },
+      choose: "Choose {{name}}",
+      chooseIn: "Choose {{name}}, in {{folder}}",
+      into: "Into: {{target}}",
+      intoNew: "Into: a new project, {{name}}",
+      intoNone: "No project chosen yet.",
+    },
+    case: {
+      rowsPerPage: "Cases per page",
+      actions: "Actions",
+      tableHint: "Sort by a column from its header button. Sorted by #, a row's arrows move it in the project's order. Tick a row's box to pick it.",
+      filter: "Filter cases",
+      filterClear: "Clear the words",
+      noMatch: "No case matches the filter.",
+      clearFilter: "Clear the filter",
+      selectAll: "Select all cases",
+      pick: "Pick {{name}}",
+      selected: "{{count}} selected",
+      clearSelected: "Clear the picks",
+      deleteSelected: "Delete the picked cases",
+      deleteManyTitle_one: "Delete {{count}} case?",
+      deleteManyTitle_other: "Delete {{count}} cases?",
+      deleteManyMessage: "They are deleted with all their analysis.",
+      moveSelected: "Move the picked cases to another project",
+      movedPicked_one: "{{count}} case moved to {{project}}.",
+      movedPicked_other: "{{count}} cases moved to {{project}}.",
+      openProject: "Open the project",
+      columns: {
+        order: "Order",
+        name: "Name",
+        type: "Type",
+        white: "White",
+        whiteElo: "Elo",
+        black: "Black",
+        blackElo: "Elo",
+        result: "Result",
+        date: "Date",
+        event: "Event",
+        round: "Round",
+        eco: "ECO",
+        opening: "Opening",
+        moves: "Moves",
+        updated: "Updated",
+      },
+      listLabel: "Cases",
+      empty: "No cases in this project yet.",
+      new: "New case",
+      open: "Open",
+      openNamed: "Open {{name}}",
+      typeGame: "Game",
+      typePosition: "Position",
+      untitledGame: "Game",
+      positionName: "{{side}} to move, move {{number}}",
+      white: "White",
+      black: "Black",
+      name: "Name",
+      nameHelp: "Leave it empty to name it from its game or position.",
+      project: "Project",
+      renameTitle: "Rename case",
+      movePickedTitle_one: "Move {{count}} case to another project",
+      movePickedTitle_other: "Move {{count}} cases to another project",
+      move: "Move",
+      duplicateTitle: "Duplicate case",
+      duplicate: "Duplicate",
+      copyName: "{{name}} (copy)",
+      renameNamed: "Rename {{name}}",
+      duplicateNamed: "Duplicate {{name}}",
+      upNamed: "Move {{name}} up",
+      downNamed: "Move {{name}} down",
+      topNamed: "Move {{name}} to the top",
+      bottomNamed: "Move {{name}} to the bottom",
+      reorderOffSort: "{{action}} — sort by # ascending to reorder",
+      reorderOffFilter: "{{action}} — clear the filter to reorder",
+      reorderOffBoth: "{{action}} — sort by # ascending and clear the filter to reorder",
+      moved: "{{name}} is now number {{place}} of {{count}}.",
+      deleteConfirm: "Delete",
+      missing: "There is no such case in this project.",
+      back: "Back to {{name}}",
+      problem: "That could not be saved — the browser refused it, or there are too many cases.",
+      newProject: "New project",
+      newProjectName: "The new project's name",
+      newProjectNameHelp: "A project needs a name.",
+    },
+    newProject: {
+      title: "New project",
+      create: "Create",
+      games: "Games (optional)",
+      pick: "Choose a .pgn or .zip file",
+      removeFile: "Remove {{name}}",
+      gamesHelp: "One game becomes the project's case. Several — or a zip of .pgn files: you choose which, each becoming a case.",
+      chooseTitle: "Choose the games for the project",
+      chooseConfirm: "Create project",
+      /** The games picked by hand among those the filters keep (CTA-208). */
+      selected_one: "{{number}} game picked.",
+      selected_other: "{{number}} games picked.",
+      selectAll: "Use every game the filters keep",
+      /** Making the Cases of many games (CTA-208). */
+      progress: {
+        title: "Creating the project",
+        parse: "Reading the games: {{done}} of {{total}}",
+        build: "Making the cases: {{done}} of {{total}}",
+        save: "Saving the cases…",
+      },
+      problem: {
+        file: "The file could not be read.",
+        empty: "There is no game in that file.",
+        unreadable: "No game could be read in that file.",
+        tooLarge: "That file is too large.",
+        zip: "That zip could not be read.",
+        zipEmpty: "There is no .pgn file in that zip.",
+        storage: "Not created — the browser refused to save the cases: {{detail}}",
+        noReason: "it gave no reason",
+      },
+    },
+    newCase: {
+      title: "New case",
+      type: "Type",
+      from: "From",
+      fromFen: "FEN",
+      fromPgn: "PGN",
+      fromFenHelp: "The position, as a FEN.",
+      fromPgnHelp: "A game — the case starts at the move you pick, the moves before it kept.",
+      pgnFile: "Choose a .pgn or .zip file",
+      pgnPaste: "Paste a PGN",
+      pgnRead: "Read",
+      removeFile: "Remove {{name}}",
+      read_one: "{{count}} game read",
+      read_other: "{{count}} games read",
+      gameNumber: "Game {{number}}",
+      chosenNone: "No game selected yet.",
+      chosenGame: "Game: {{game}}",
+      chosenCount_one: "{{number}} game selected — a case each.",
+      chosenCount_other: "{{number}} games selected — a case each.",
+      choose: "Select games…",
+      chooseAgain: "Change the selection…",
+      chooseOther: "Choose another game…",
+      /** A PGN of several games (CTA-208): what the one Case is to be. */
+      many: {
+        single: "A case is represented by a single PGN file.",
+        label: "What to make of these {{number}} games",
+        select: "Select games",
+        perGame: "One case per game ({{number}})",
+        perGameHelp: "Every game becomes a case of its own, named from its tags.",
+        perGameLimit: "max ({{max}}) entries limit exceeded",
+      },
+      fen: "FEN",
+      fenHelp: "Pieces, side to move, castling, en passant, the move counters — the pieces alone are enough (White to move).",
+      fenProblem: "Not a position to play from: {{detail}}",
+      ply: "Start at",
+      plyHelp: "The position after this move; the moves before it stay.",
+      start: "The start position",
+      name: "Name (optional)",
+      create: "Create",
+      cancel: "Cancel",
+      problem: {
+        empty: "There is no game in it.",
+        unreadable: "This PGN cannot be read.",
+        file: "The file could not be read.",
+        tooLarge: "That file is too large.",
+        zip: "That zip could not be read.",
+        zipEmpty: "There is no .pgn file in that zip.",
+        gameUnreadable: "That game cannot be read — pick another.",
+      },
+      /** The games picker — a file's games in a table, to pick from (CTA-208). */
+      picker: {
+        titleMany: "Select games",
+        titleOne: "Choose a game",
+        filter: "Find games",
+        filterClear: "Clear",
+        count: "{{picked}} of {{total}} games selected",
+        oneHint: "Click a game to choose it.",
+        submit: "Select",
+        tooMany: "That is too many — at most {{max}} games make cases here. For more, make a collection of them in the Library instead.",
+      },
+      /** Reading a large file, and every game for a case each (CTA-208). */
+      progress: {
+        label: "Reading the games",
+        file: "Reading the file…",
+        parse: "{{done}} of {{total}} games read",
+      },
+    },
+    display: {
+      arrows: "Show next move arrows",
+      arrowsHelp: "Every continuation from the position on the board, drawn as an arrow. Off, only the move you point at.",
+      moveMarks: "Show move marks on the board",
+      moveMarksHelp: "The mark of the move on the board (!!, !, !?, ?!, ?, ??) as a badge on its square.",
+      variations: "Show variations",
+      variationsHelp: "The engine's best lines above the panel's tabs while the engine is on.",
+      tabs: {
+        label: "Display settings",
+        arrows: "Arrows",
+        engine: "Engine",
+        accessibility: "Accessibility",
+      },
+      accessibilitySoon: "The board's accessibility options will be here.",
+    },
+    settings: {
+      orientation: "Board faces",
+      white: "White",
+      black: "Black",
+      evalBar: "Show evaluation bar",
+      evalBarHelp: "The engine's score beside the board while the engine is on.",
+    },
+    caseDetails: {
+      label: "Details of {{name}}",
+      back: "Back to the cases",
+      tabs: {
+        label: "Case details",
+        /** First, where a Case view opens (CTA-211). */
+        info: "Info",
+        settings: "Settings",
+        display: "Display",
+        graph: "Graph",
+        jobs: "Jobs",
+      },
+      /** The Info tab's button and the dialog it opens (CTA-211). */
+      links: "Linked cases ({{count}})",
+      linksTitle: "Linked cases",
+      linksClose: "Close",
+    },
+    /** The Project view's left panel (CTA-213) — a frame: placeholder tabs and an example switch, its content a later issue. */
+    projectDetails: {
+      label: "Details of {{name}}",
+      /** The panel's Close, at its head (CTA-224): back to the Projects list, at the folder holding the Project. */
+      close: "Close {{name}}",
+      /** The Project view's header button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The project's details",
+      tabs: {
+        label: "Project details",
+        general: "General",
+        options: "Options",
+      },
+      placeholder: "The project's details will be shown here.",
+      exampleOption: "Example option",
+      exampleOptionHelp: "An example switch — it changes nothing yet.",
+    },
+    siblings: {
+      title: "Cases of {{name}}",
+      close: "Back to {{name}}",
+      previous: "Previous case",
+      next: "Next case",
+      toggle: "The project's cases",
+      hint: "Up and down arrows to move, Enter to open a case.",
+      /** The list's pager, 100 Cases a page (CTA-211): "101–200 of 1,234". */
+      pageRows: "{{from}}–{{to}} of {{total}}",
+      rowsPerPage: "Cases per page",
+    },
+    workspace: {
+      tabs: {
+        moves: "Moves",
+        map: "Map",
+        export: "Export",
+      },
+      engine: "Engine",
+      problem: "Not saved — the browser refused it.",
+    },
+    /** A Case's Jobs tab (CTA-188; the Jobs module's `EntityJobs` since CTA-221). */
+    caseJobs: {
+      list: "This Case's jobs",
+      none: "No jobs for this Case yet.",
+    },
+    /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */
+    links: {
+      title: "Linked cases",
+      to: "Links to",
+      from: "Linked from",
+      none: "None",
+      empty: "No linked cases yet.",
+      unlink: "Unlink {{name}}",
+      link: "Link a case",
+      problem: "The link could not be changed — the browser refused the write.",
+      picker: {
+        title: "Link a case",
+        submit: "Link",
+        project: "Project",
+        /** The Project field cleared — Cases from every Project (CTA-199). */
+        anyProject: "Any project",
+        cases: "Case",
+        casesPlaceholder: "Type its name, or paste its id or address",
+        none: "There is no other case to link to.",
+      },
+    },
+  },
+  /**
+   * **The eval sources** (CTA-196, `lib/evalSources/`): the layer's own words —
+   * a job's warning, naming the source — and each source's, under its id.
+   */
+  evalSources: {
+    /** The shell's warning when a source did not answer during a job — once per run. */
+    unreachable: "{{source}} did not answer, so {{name}} goes on with the engine. If it is not running, turn it off in Settings → Engine.",
+    /** The shell's warning when a source did not take the engine's evaluations — once per run. */
+    writeRefused:
+      "{{source}} did not take the engine's evaluations, so {{name}} goes on without sending them. Check that it takes writes, or turn writing off in Settings → Engine.",
+    open: "Engine settings",
+    /** The lichess evaluation API (CTA-193) — its plugin's words: `EngineServerForm`'s keys (its `localeKey`), and `write.*`. */
+    lichess: {
+      name: "The lichess evaluation API",
+      title: "Lichess evaluation API",
+      description:
+        "A server over the lichess evaluation database — millions of positions already searched by Stockfish. With it on, every analysis search asks it about the position first, and the engine searches only what it does not hold deep enough.",
+      enable: "Use the lichess evaluation API",
+      enableHelp: "While this is off, the app never contacts it.",
+      address: "API address",
+      addressHelp: "Where the API listens — {{example}} unless you moved it.",
+      addressInvalid: "Enter an address like {{example}}.",
+      connect: "Connect",
+      indicator: {
+        connecting: "Connecting…",
+        online: "Connected · {{ms}} ms",
+        offline: "Not connected",
+      },
+      retry: "Try again",
+      status: {
+        connecting: "Connecting to {{url}}…",
+        unreachable: "{{url}} did not answer. Is the API running, and does it allow this site to ask it (CORS)?",
+        "not-an-eval-api": "{{url}} answered, but not as the lichess evaluation API.",
+        checkedAt: "Checked at {{time}}.",
+      },
+      /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
+      write: {
+        label: "Enable evaluations Write API",
+        /** Checks `GET /health`'s `write_enabled`. */
+        test: "Test connection",
+        writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
+        help: "Every engine search that reaches its target depth — on a board or in a job — is stored in the API, beside lichess's, where it is deeper than what the API holds, and only from the minimum depth to write up. What the API answered is never sent back. The API must be started in write mode (--write).",
+        /** The shallowest search sent (CTA-202) — the lichess database holds depth 35 and deeper. */
+        minDepth: {
+          label: "Minimum depth to write",
+          help: "A search shallower than this is not sent, so it never dilutes the lichess evaluations (depth 35 and deeper). Where the Engine menu's depth is lower, nothing is sent.",
+          invalid: "A whole number from {{min}} to {{max}}.",
+        },
+        notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
+      },
+    },
+  },
   footer: {
-    /** Label on the link out to the project's source repository. */
-    source: "Source",
+    /** The legal pages' links (CTA-159). */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
 };
 

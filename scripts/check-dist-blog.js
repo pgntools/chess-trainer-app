@@ -13,19 +13,29 @@
  * 3. **One chunk per article** — every published article's phrase is in
  *    the chunk named after its file (`assets/<name>-<hash>.js`).
  *
+ * The in-app pages (`app-pages/` — the Privacy Policy, the Cookies Notice)
+ * are published only in a build that has them (CTA-182 — `legalPagesShown`,
+ * read from the build's own server entry): then each is in its chunk with
+ * its placeholders filled — in that chunk and its pre-rendered pages; an
+ * article quoting a placeholder is no failure —; without them none of their
+ * text ships, as a draft's does not.
+ *
  * A phrase is the first line of a body's prose, cut where the compiled
  * output would split or escape it. Node runs the shared frontmatter reader
  * as it is (type stripping), so this reads the files exactly as the build does.
  */
-import { globSync, readFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { readArticlesDir } from "../plugins/blogArticles.ts";
-import { readArticleFiles, splitFrontmatter } from "../src/lib/articleFrontmatter.ts";
+import { isAppPagePath, readArticleFiles, splitFrontmatter } from "../src/lib/articleFrontmatter.ts";
+import { supportedLanguages } from "../src/languages.ts";
+import { OPERATOR_PLACEHOLDERS } from "../src/lib/siteOperator.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
+const SERVER_ENTRY = join(ROOT, "dist-ssr/entry-server.js");
 
 const files = readArticlesDir(join(ROOT, "src/views/blog/articles"));
 const textOf = new Map(files.map((file) => [file.name.replace(/\.mdx$/, ""), file.text]));
@@ -36,11 +46,19 @@ const { entries } = readArticleFiles(files);
  * a heading, an import or export, a component, a fence or a list), cut
  * before its first inline markup, quote or non-ASCII letter — compiled MDX
  * splits a line at its markup, and a minifier escapes the rest.
+ *
+ * A fenced block's lines are quoted, not the article's own words — a guide
+ * quoting another page (the legal pages' "Last updated" line) would find
+ * that page — so they count only with `quoted`: fine for finding the body's
+ * own chunk (a Hebrew body's only ASCII may be a command), wrong for asking
+ * that nothing of a draft ships anywhere.
  */
-const phraseOf = (file) => {
+const phraseOf = (file, { quoted = false } = {}) => {
   const { body } = splitFrontmatter(textOf.get(file) ?? "");
+  let fenced = false;
   for (const line of body.split("\n").map((text) => text.trim())) {
-    if (line === "" || /^(#|import |export |<|\{|```|~~~|[-*>|]|\d+\.)/.test(line)) continue;
+    if (/^(```|~~~)/.test(line)) fenced = !fenced;
+    if ((fenced && !quoted) || line === "" || /^(#|import |export |<|\{|```|~~~|[-*>|]|\d+\.)/.test(line)) continue;
     const phrase = line.split(/[`*_[\]<>{}"\\]|[^\x20-\x7e]/)[0].trim();
     if (phrase.length >= 16) return phrase.slice(0, 48);
   }
@@ -58,7 +76,8 @@ const built = globSync("**/*", { cwd: DIST, withFileTypes: true })
     const path = join(entry.parentPath, entry.name);
     return { name: path.slice(DIST.length + 1), text: readFileSync(path, "utf8") };
   });
-if (built.length === 0) fail("dist/ is empty — run yarn build first");
+if (built.length === 0 || !existsSync(SERVER_ENTRY)) fail("dist/ or dist-ssr/ is empty — run yarn build first");
+const { legalPagesShown: LEGAL_PAGES_SHOWN } = await import(pathToFileURL(SERVER_ENTRY).href);
 const entryName = /<script type="module"[^>]*src="[^"]*?\/(assets\/[^"]+\.js)"/.exec(built.find((file) => file.name === "index.html")?.text ?? "")?.[1];
 if (entryName === undefined) fail("dist/index.html names no entry script");
 const where = (needle) => built.filter((file) => file.text.includes(needle)).map((file) => file.name);
@@ -74,11 +93,39 @@ for (const draft of drafts) {
   }
 }
 
+// The in-app pages, in a build without them: nothing of theirs ships either.
+const unshipped = LEGAL_PAGES_SHOWN ? [] : entries.filter((entry) => isAppPagePath(entry.path) && entry.hasBody && entry.kind === "article");
+for (const page of unshipped) {
+  const phrase = phraseOf(page.file);
+  if (phrase === undefined) continue;
+  for (const name of where(phrase)) problems.push(`an in-app page is in a build without its site operator — ${name}: "${phrase}" (articles/${page.file}.mdx)`);
+}
+// …and in a build with them, none of their placeholders is left: in each
+// page's chunk, nor in its pre-rendered page in any language. Theirs only — an
+// article may quote a placeholder, as the guide to the legal pages does.
+if (LEGAL_PAGES_SHOWN) {
+  const appPages = entries.filter((entry) => isAppPagePath(entry.path) && entry.hasBody && entry.kind === "article");
+  const languagePrefix = `(?:(?:${supportedLanguages.join("|")})/)?`;
+  const isAppPageFile = (name) =>
+    appPages.some(
+      (page) =>
+        (name.startsWith(`assets/${page.file.split("/").at(-1)}-`) && name.endsWith(".js")) ||
+        new RegExp(`^${languagePrefix}${page.path.split("/").at(-1)}/index\\.html$`).test(name),
+    );
+  const appPageFiles = built.filter((file) => isAppPageFile(file.name));
+  if (appPageFiles.length === 0) problems.push("a build with the legal pages has no file of theirs — no chunk, no pre-rendered page");
+  for (const file of appPageFiles) {
+    for (const placeholder of Object.keys(OPERATOR_PLACEHOLDERS)) {
+      if (file.text.includes(`%${placeholder}%`)) problems.push(`${file.name}: %${placeholder}% is left unfilled`);
+    }
+  }
+}
+
 // 2 and 3. Each published body in a chunk of its own — the one named after its file — and none in the entry.
-const published = entries.filter((entry) => !entry.draft && entry.hasBody && entry.kind === "article");
+const published = entries.filter((entry) => !entry.draft && entry.hasBody && entry.kind === "article" && !unshipped.includes(entry));
 let measured = 0;
 for (const article of published) {
-  const phrase = phraseOf(article.file);
+  const phrase = phraseOf(article.file, { quoted: true });
   if (phrase === undefined) continue;
   measured += 1;
   const found = where(phrase);

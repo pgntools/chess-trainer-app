@@ -31,7 +31,7 @@ its core in [`chessboard.md`](./chessboard.md), the variations explorer in
 [`tree-views.md`](./tree-views.md).
 
 > **A mask is a costume, never a rule.** Nothing in `chess.js`,
-> `lib/engine.ts`, `lib/gameTree.ts`, the PGN path, the engine module or the
+> `lib/uciEngine.ts`, `lib/gameTree.ts`, the PGN path, the engine module or the
 > core knows the mask exists. It lives between the state and the pixels, on
 > the surfaces listed in §4, and **nowhere else**. A change that needs the
 > mask below that line is the wrong change.
@@ -74,7 +74,8 @@ is Play with Engine's `playEngine.*` / `playedGames.*`. `he` is typed
 - **Play with Engine, every feature of it** (`/engine/play`): a new
   board with **Play on**, the engine playing the side not at the bottom;
   the header's back button to the Lobby (CTA-91), side toggle, Play,
-  Replay, Resign and the engine switch; the tabs **Moves · Engine** (no
+  Replay, Resign and the engine's play / pause with its menu (CTA-181); the
+  tabs **Moves · Engine** (the Engine tab the opponent's strength alone; no
   Map, CTA-91); side lines from an
   earlier position; the variations explorer (move menu, comments, next-moves
   bar, arrows); the autosave to the played-games store; `?fen=` and
@@ -218,9 +219,8 @@ whatever the switch says — the switch is about the notation.
 - **The reader's own comments** — prose the reader wrote; a `[%cal]`
   arrow or an eval chip in them is theirs.
 - **Leaving the costume on purpose**: *Copy variation PGN* in the move menu,
-  and the Lobby's **Analysis** (`?game=play/games/<id>`), give the **true
-  PGN** — the record *is* the true game — and the Analysis Board opens it
-  unmasked. That is the reveal, not a leak.
+  and the Lobby's **Analysis** (a new Case in Analysis), give the **true
+  PGN** — the record *is* the true game — and its Case opens it unmasked. That is the reveal, not a leak.
 - **The DOM.** `data-san` attributes carry true SAN for tests; they are not
   rendered. Masking is a training aid, not a security boundary.
 
@@ -244,7 +244,7 @@ whatever the switch says — the switch is about the notation.
   reads as unmasked); a missing `notation` reads as on (the screen's
   default). **A record with no `mask`** reads as an unmasked game.
 - **The PGN is the true game.** Nothing about the mask is in it (no tag):
-  an export, the Analysis Board and any other PGN reader get ordinary chess.
+  an export, Analysis and any other PGN reader get ordinary chess.
 - **Resuming** — `/engine/masked?saved=<id>` seeds the mask and the switch
   from the record (`useState` initialisers, read once) and the game from the
   session as on Play with Engine (the node, the side, the evals, a
@@ -257,7 +257,7 @@ whatever the switch says — the switch is about the notation.
   would silently acquire one.
 - **The Lobby** (`/engine/games`): a masked row carries the *Masked* chip
   (`played-games-masked-<id>`, `masking.marker`), its **Continue** goes to
-  `/engine/masked?saved=`, its **Analysis** to the Analysis Board unmasked.
+  `/engine/masked?saved=`, its **Analysis** to Analysis as a new Case, unmasked.
   `playedGameSummary(…).masked` is the flag.
 
 ---

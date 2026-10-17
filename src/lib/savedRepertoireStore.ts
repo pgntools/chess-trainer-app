@@ -1,4 +1,6 @@
 import { idbRecordStore, mergedNewestFirst } from "./idbRecordStore";
+import { REPERTOIRE_ENTITY } from "./jobs/entityTypes";
+import { removeUnfinishedJobsOf } from "./jobs/subjectDeletion";
 import {
   sameRepertoireSettings,
   type RepertoireSettings,
@@ -104,6 +106,10 @@ export const saveRepertoire = (
  * chose (`isMultiGameRepertoire`). All or nothing: a set that would pass
  * {@link MAX_SAVED_REPERTOIRES} is refused as `"too-many"` and nothing is
  * written, rather than the oldest being dropped to make room.
+ *
+ * **A record whose id is already kept is already added** (CTA-221): it is
+ * skipped, the stored one left as it is, and the write succeeds — so a job's
+ * output, its id derived from the job's, applied twice makes one repertoire.
  */
 export const addRepertoires = async (
   records: readonly SavedRepertoire[],
@@ -111,14 +117,17 @@ export const addRepertoires = async (
 ): Promise<SavedRepertoireProblem | undefined> => {
   let tooMany = false;
   const problem = await write((current) => {
+    const known = new Set(current.filter((row) => row.id !== replacing).map((row) => row.id));
+    const fresh = records.filter((record) => !known.has(record.id));
+    if (fresh.length === 0 && replacing === undefined) return current;
     const at = replacing === undefined ? -1 : current.findIndex((row) => row.id === replacing);
     const kept = current.filter((row) => row.id !== replacing);
-    if (kept.length + records.length > MAX_SAVED_REPERTOIRES) {
+    if (kept.length + fresh.length > MAX_SAVED_REPERTOIRES) {
       tooMany = true;
       return current;
     }
     const insertAt = at === -1 ? 0 : at;
-    return [...kept.slice(0, insertAt), ...records, ...kept.slice(insertAt)];
+    return [...kept.slice(0, insertAt), ...fresh, ...kept.slice(insertAt)];
   });
   return tooMany ? "too-many" : problem;
 };
@@ -222,15 +231,20 @@ export const removeSavedRepertoire = (
 /**
  * Forget several at once — the list's bulk delete — in **one** write, so a
  * failed write leaves every one of them rather than some. Unknown ids are
- * skipped; a set naming none of the stored records writes nothing.
+ * skipped; a set naming none of the stored records writes nothing. Their
+ * unfinished jobs go with them (the Jobs module's deletion rule, CTA-221 — a
+ * running one aborted; finished ones kept).
  */
-export const removeSavedRepertoires = (
+export const removeSavedRepertoires = async (
   ids: Iterable<string>,
 ): Promise<SavedRepertoireProblem | undefined> => {
   const gone = new Set(ids);
-  return write((current) =>
+  const problem = await write((current) =>
     current.some((row) => gone.has(row.id)) ? current.filter((row) => !gone.has(row.id)) : current,
   );
+  if (problem !== undefined) return problem;
+  await removeUnfinishedJobsOf([...gone].map((id) => ({ type: REPERTOIRE_ENTITY, id })));
+  return undefined;
 };
 
 /** Forget all of them. */

@@ -19,12 +19,14 @@ Not all of this is equal, so it isn't all treated equally:
 
 | Tier | What | Where |
 | --- | --- | --- |
-| **Always loaded** | the options API and the types/helpers reference | generated into `.claude/rules/react-chessboard-*.md`, which Claude Code loads every session |
+| **Path-scoped** | the options API and the types/helpers reference | generated into `.claude/rules/react-chessboard-*.md`, which Claude Code loads whenever the work touches a file that imports `react-chessboard` (their `paths:` frontmatter, `PATHS` in `mdx2rules.py`); elsewhere, Read them by hand |
 | **On demand** | everything else — 53 story files, the narrative docs, the v5 upgrade guide | stays here; routed by [`INDEX.md`](./INDEX.md) |
 
 The split is by *granularity*: the options API is one indivisible unit that
-gets consulted constantly, so paying ~8.7k tokens per session beats a lookup
-detour. The 53 stories are 53 units of which you need one — loading all ~32k
+gets consulted constantly while a board is being built, so paying ~8.7k tokens
+in those sessions beats a lookup detour — and nothing outside them (CTA-162).
+`PATHS` is the files that import `react-chessboard`; when one is added or moved,
+add it there (`grep -rl react-chessboard src`) and regenerate. The 53 stories are 53 units of which you need one — loading all ~32k
 to reach ~600 tokens would be a ~50× overpay.
 
 ## When this goes stale
@@ -33,8 +35,9 @@ Re-sync after any `react-chessboard` major/minor bump. Steps:
 
 1. `cp <upstream>/docs/*.mdx docs/vendor/react-chessboard/`
 2. `cp -r <upstream>/docs/stories docs/vendor/react-chessboard/`
-3. Regenerate the two always-loaded rules files (strips the Storybook
-   scaffolding and rewrites `<Canvas>` tags into links at the story sources):
+3. Regenerate the two path-scoped rules files (strips the Storybook
+   scaffolding, rewrites `<Canvas>` tags into links at the story sources, and
+   writes the `paths:` frontmatter from `PATHS` ahead of the header):
 
    ```bash
    python3 docs/vendor/react-chessboard/mdx2rules.py \

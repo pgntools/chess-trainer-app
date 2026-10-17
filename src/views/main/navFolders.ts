@@ -1,6 +1,7 @@
 import type { SvgIconComponent } from "@mui/icons-material";
-import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import BiotechRoundedIcon from "@mui/icons-material/BiotechRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
@@ -62,6 +63,13 @@ export type NavFolder = {
    * and closes like any folder, and is still a card on the landing page.
    */
   pinToBottom?: boolean;
+  /**
+   * The folder stays a folder whatever it holds: a sub-folder with a single
+   * screen is otherwise drawn as that screen (`navTree.ts`,
+   * `collapseLeafCategory`). The Blog's folders are the reader's structure — a
+   * Guides folder with its first guide is still the Guides folder.
+   */
+  keepFolder?: boolean;
 };
 
 /**
@@ -80,6 +88,8 @@ const blogNavFolders = (parent: string): NavFolder[] =>
     id: blogNavFolderId(folder.path),
     label: folder.title,
     icon: FolderRoundedIcon,
+    // A Blog folder with one article is still that folder, collapsible like the others.
+    keepFolder: true,
     children: blogNavFolders(folder.path),
   }));
 
@@ -98,13 +108,31 @@ export const navFolders = (): readonly NavFolder[] => [
     labelKey: "nav.folders.library",
     icon: SnippetFolderRoundedIcon,
   },
+  /*
+    Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser — Projects
+    in folders, their Cases each a board.
+  */
   {
-    id: "analysis",
-    labelKey: "nav.folders.analysisBoard",
-    icon: AccountTreeRoundedIcon,
-    // One destination: the saved list is the screen worth reaching for, so
-    // the folder renders as one clickable row to it; the board is the saved
-    // list's New button.
+    id: "analysis-v2",
+    labelKey: "nav.folders.analysisV2",
+    icon: BiotechRoundedIcon,
+    // One destination (CTA-227): the folder renders as one clickable row,
+    // "Analysis", to the Projects lobby — a Project and its Cases are
+    // reached from its rows, not from here.
+    singleEntry: true,
+  },
+  /*
+    The Jobs module (CTA-221): the background jobs of every kind — a Case's
+    computer analysis, a repertoire's evaluation, collections merged — and
+    their settings. Its own folder since Jobs left Analysis.
+  */
+  {
+    id: "jobs",
+    labelKey: "nav.folders.jobs",
+    icon: WorkHistoryRoundedIcon,
+    // One destination (CTA-228): the folder renders as one clickable row,
+    // "Jobs", to every job — a job's page and the Jobs settings are reached
+    // from the Jobs screen, not from here.
     singleEntry: true,
   },
   {

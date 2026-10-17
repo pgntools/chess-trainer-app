@@ -10,7 +10,7 @@ A chess trainer that runs entirely in the browser — no account, no server of i
 own. Live at **[chessapp.dev](https://chessapp.dev)**.
 
 - **Play with Engine** — a game against Stockfish, with a strength setting, and **Masked Pieces**, the same game with the pieces disguised.
-- **Analysis Board** — a game tree with side lines, comments and engine lines; saved analyses.
+- **Analysis** — projects of games and positions, each a board with side lines, comments and engine lines, autosaved; computer analysis of a game in the background.
 - **Openings explorer** — the opening book, move by move.
 - **Repertoires** — build your lines, then drill them against a trainer.
 - **Library** — collections of master games and tournaments, from your own PGN files.
@@ -54,3 +54,10 @@ The dev server serves the app under `/chess-trainer-app/` (the GitHub Pages sub-
 - [CONTRIBUTING.md](CONTRIBUTING.md) — running it, how the code is organised, what a change has to pass, adding a theme.
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) — the accessibility target (WCAG 2.2 AA), how it is checked and the known gaps.
 - [GitHub issues](https://github.com/pgntools/chess-trainer-app/issues) — bugs, ideas and questions.
+
+## License
+
+[MIT](LICENSE) — the app's own code. Third-party parts keep their own licences:
+the Stockfish engine builds under `public/stockfish/` are **GNU GPL v3** (each
+build's `LICENSE` beside it, [`public/stockfish/README.md`](public/stockfish/README.md)),
+and the vendored `react-chessboard` docs under `docs/vendor/` are their project's.

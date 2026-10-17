@@ -9,13 +9,14 @@ import { ExportCategoriesForm } from "../../blocks/forms";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { hasExportSelection, type ExportCategory, type ExportSelection } from "../../lib/dataExport";
 import { exportZip, ExportReadError } from "../../lib/dataExportSource";
+import { enginePresetsSnapshot, subscribeEnginePresets } from "../../lib/enginePresetStore";
 import {
   subscribeUploadedCollections,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
 import { downloadBinaryFile } from "../../lib/pgnExport";
+import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
 import { playedGamesSnapshot, subscribePlayedGames } from "../../lib/playedGameStore";
-import { savedAnalysesSnapshot, subscribeSavedAnalyses } from "../../lib/savedAnalysisStore";
 import {
   savedRepertoiresSnapshot,
   subscribeSavedRepertoires,
@@ -27,7 +28,7 @@ import { RightPanel } from "../main/rightPanel";
  * **Export** (`/settings/export`, CTA-86) — the reader's data out, as one zip
  * of PGN files and a `manifest.json` (`lib/dataExport.ts` says what is where).
  *
- * Four categories, each all or nothing, with how many items each holds;
+ * Five categories — the engine presets since CTA-179 — each all or nothing, with how many items each holds;
  * Collections has one more box, for the shipped collections — the reader's
  * uploads always go with it, the shipped ones only when that is ticked too.
  * The counts are the stores' snapshots (a subscription starts each read);
@@ -44,8 +45,9 @@ import { RightPanel } from "../main/rightPanel";
 const INITIAL: ExportSelection = {
   collections: false,
   games: false,
-  analyses: false,
   repertoires: false,
+  enginePresets: false,
+  analysisProjects: false,
   shippedCollections: false,
 };
 
@@ -75,8 +77,10 @@ function ExportTab() {
         ? undefined
         : uploaded + (selection.shippedCollections ? shippedCollections.length : 0),
     games: useCount(subscribePlayedGames, playedGamesSnapshot),
-    analyses: useCount(subscribeSavedAnalyses, savedAnalysesSnapshot),
     repertoires: useCount(subscribeSavedRepertoires, savedRepertoiresSnapshot),
+    enginePresets: useCount(subscribeEnginePresets, enginePresetsSnapshot),
+    // Analysis V2's Projects (CTA-186).
+    analysisProjects: useCount(subscribeAnalysisProjects, analysisProjectsSnapshot),
   };
 
   const tick = (patch: Partial<ExportSelection>) => {

@@ -20,8 +20,12 @@ import { hasUnsavedWork } from "../views/main/unsavedWork";
  * changes the language, which makes the router anew there (`App.tsx`) — so
  * the screen remounts. Where a screen holds unsaved work
  * (`views/main/unsavedWork.ts`) it asks first.
+ *
+ * `compact` (the shell under its breakpoint, CTA-181) shows the language's
+ * code rather than its name, so the header — the Engine menu beside it —
+ * fits a 320 px window; the list still names each language in full.
  */
-export default function LanguageSwitch() {
+export default function LanguageSwitch({ compact = false }: { compact?: boolean }) {
   const { i18n, t } = useTranslation();
   const currentLang = asAppLanguage(i18n.language);
   const [pending, setPending] = useState<AppLanguage | null>(null);
@@ -46,7 +50,7 @@ export default function LanguageSwitch() {
 
   return (
     <>
-      <FormControl size="small" sx={{ minWidth: 130 }}>
+      <FormControl size="small" sx={{ minWidth: compact ? 0 : 130 }}>
         <Select
           value={currentLang}
           onChange={handleLanguageChange}
@@ -57,9 +61,10 @@ export default function LanguageSwitch() {
             <>
               <TranslateIcon
                 fontSize="small"
-                sx={{ mr: 1, ml: -0.5, opacity: 0.56, verticalAlign: "middle" }}
+                sx={{ mr: compact ? 0.5 : 1, ml: -0.5, opacity: 0.56, verticalAlign: "middle" }}
               />
-              {t(`language.${value}`)}
+              {/* Under the shell's breakpoint the code alone ("EN"), the name in the list and the select's name (CTA-181). */}
+              {compact ? value.toUpperCase() : t(`language.${value}`)}
             </>
           )}
           sx={{

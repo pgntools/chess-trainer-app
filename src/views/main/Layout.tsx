@@ -13,12 +13,14 @@ import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { DevelopmentNotice } from './DevelopmentNotice';
+import { JobRuntimeStarter, JobsIndicator } from '../jobs/JobsShell';
+import { EngineMenu } from './EngineMenu';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
-import { useRightPanelHidden } from './rightPanelSlot';
+import { RIGHT_PANEL_COLLAPSED_PX, useRightPanelCollapsed, useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
-import { useBoardLeftPanelWidth } from './boardLeftPanelSlot';
+import { useBoardLeftPanelKeepsShell, useBoardLeftPanelWidth } from './boardLeftPanelSlot';
 import { useShellCompact } from './shellCompact';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
@@ -113,7 +115,7 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 borderColor: 'divider',
             }}
         >
-            <Toolbar variant="dense" sx={{ gap: 2, minHeight: 56 }}>
+            <Toolbar variant="dense" sx={{ gap: compact ? 1 : 2, minHeight: 56 }}>
                 {/*
                     Under the breakpoint the sidebar is a drawer, and this is
                     what opens it (CTA-118) — a real button with a required
@@ -177,8 +179,13 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                     </Typography>
                 </Box>
 
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <LanguageSwitch />
+                <Stack direction="row" spacing={compact ? 0.5 : 1} sx={{ alignItems: 'center' }}>
+                    {/* The job running, if any, or the count queued (CTA-221) — a link to the Jobs screen. */}
+                    <JobsIndicator compact={compact} />
+                    {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181); under the breakpoint its robot alone (CTA-185). */}
+                    <EngineMenu compact={compact} />
+                    {/* Under the breakpoint, the language's short code: the bar has 288px at 320 (CTA-181). */}
+                    <LanguageSwitch compact={compact} />
                     <ColorModeIconDropdown />
                 </Stack>
             </Toolbar>
@@ -279,10 +286,15 @@ const DefaultLayoutViewport = () => {
       footer (`focused`): the room for a column, a square and the panel beside
       it is not there with the menu's 280 px taken. Closing the panel brings the
       shell back. Stacked there is no column (the screen draws a drawer, and the
-      header and its menu button stay).
+      header and its menu button stay). A full-width route may register one
+      too (CTA-213, the Analysis Project view, `keepShell`): the column goes
+      before the whole body, which takes what it leaves.
     */
     const leftPanelWidth = useBoardLeftPanelWidth()
     const leftPanelOpen = leftPanelWidth > 0 && !compact
+    // A panel that keeps the shell (CTA-186) takes the main menu's place alone: the header and footer stay.
+    const keepsShell = useBoardLeftPanelKeepsShell()
+    const focused = leftPanelOpen && !keepsShell
     const leftPanelPx = leftPanelOpen ? leftPanelWidth + BOARD_PANEL_GAP_PX : 0
     const [bodyDimentions, setBodyDimentions] = useState<Rect>({ width: 0, height: 0 })
 
@@ -364,15 +376,26 @@ const DefaultLayoutViewport = () => {
       only no panel under it.
     */
     const asideHidden = useRightPanelHidden();
+    /*
+      A panel folded to a rail (`RightPanel`'s `collapsed`, CTA-230 — the
+      Library collection's filters): the aside is a thin rail at the inline
+      end, and the screen's area takes the rest of the aside's room — what
+      spanning it gives, less the rail and the gap before it — so the row is
+      as wide as with the panel open and nothing else moves. Wide only:
+      stacked, the panel stays under the square.
+    */
+    const asideCollapsed = useRightPanelCollapsed() && !asideHidden && !compact;
     const areaDimentions = useMemo<Rect>(() => {
-        if (!asideHidden || compact || boardDimentions.width === 0) return boardDimentions;
+        if (!(asideHidden || asideCollapsed) || compact || boardDimentions.width === 0) return boardDimentions;
         const inner = bodyDimentions.width - BOARD_INSET_PX * 2 - leftPanelPx;
         const aside = Math.min(
             PANEL_MAX_WIDTH_PX,
             Math.max(PANEL_MIN_WIDTH_PX, inner - boardDimentions.width - BOARD_PANEL_GAP_PX),
         );
-        return { width: boardDimentions.width + BOARD_PANEL_GAP_PX + aside, height: boardDimentions.height };
-    }, [asideHidden, compact, boardDimentions, bodyDimentions, leftPanelPx])
+        const spanned = boardDimentions.width + BOARD_PANEL_GAP_PX + aside;
+        const width = asideCollapsed ? spanned - BOARD_PANEL_GAP_PX - RIGHT_PANEL_COLLAPSED_PX : spanned;
+        return { width, height: boardDimentions.height };
+    }, [asideHidden, asideCollapsed, compact, boardDimentions, bodyDimentions, leftPanelPx])
 
 
 
@@ -544,7 +567,7 @@ const DefaultLayoutViewport = () => {
             }}
         >
             <SkipLink onSkip={focusMain} />
-            {!leftPanelOpen && <Header compact={compact} onOpenNav={openNav} />}
+            {!focused && <Header compact={compact} onOpenNav={openNav} />}
 
             <Box
                  data-testid="layout-wrapper"
@@ -637,7 +660,14 @@ const DefaultLayoutViewport = () => {
                             overflowY: compact ? "auto" : "hidden",
                         }}
                    >
-                        {!fullWidth && <BoardLeftPanelOutlet compact={compact} />}
+                        {/*
+                            A screen's own left panel — a board's, and since
+                            CTA-213 a full-width route's too (the Analysis
+                            Project view): a column before the body, the
+                            drawer under the breakpoint; nothing while none
+                            is registered.
+                        */}
+                        <BoardLeftPanelOutlet compact={compact} />
                         {fullWidth ? (
                             <Box
                                 {...mainProps}
@@ -741,7 +771,7 @@ const DefaultLayoutViewport = () => {
                                   on a wide window, where the square is bound by
                                   height long before it is bound by width.
                                 */
-                                flexGrow: compact ? 0 : 1,
+                                flexGrow: compact || asideCollapsed ? 0 : 1,
                                 flexShrink: 0,
                                 /*
                                   From nothing, not from its content (CTA-142):
@@ -753,7 +783,7 @@ const DefaultLayoutViewport = () => {
                                   grows into exactly what the square leaves,
                                   held between its min and max.
                                 */
-                                ...(compact ? {} : { flexBasis: 0 }),
+                                ...(compact || asideCollapsed ? {} : { flexBasis: 0 }),
                                 /*
                                   A column, and it does not scroll itself: a
                                   panel that wants a section pinned to the foot
@@ -768,7 +798,8 @@ const DefaultLayoutViewport = () => {
                                 flexDirection: "column",
                                 minHeight: 0,
                                 overflow: "hidden",
-                                p: 2,
+                                // A rail holds its buttons; an open panel, its content.
+                                p: asideCollapsed ? 0.5 : 2,
                                 bgcolor: "background.paper",
                                 borderColor: "divider",
                                 /*
@@ -787,6 +818,12 @@ const DefaultLayoutViewport = () => {
                                         minWidth: 0,
                                         minHeight: `${STACKED_PANEL_MIN_HEIGHT_PX}px`,
                                         borderBlockStart: "1px solid",
+                                    }
+                                    : asideCollapsed
+                                    ? {
+                                        // The rail (CTA-230): its own width, the rest the area's.
+                                        width: `${RIGHT_PANEL_COLLAPSED_PX}px`,
+                                        borderInlineStart: "1px solid",
                                     }
                                     : {
                                         minWidth: `${PANEL_MIN_WIDTH_PX}px`,
@@ -820,7 +857,7 @@ const DefaultLayoutViewport = () => {
 
             </Box>
 
-            {!leftPanelOpen && <Footer />}
+            {!focused && <Footer />}
 
         </Box>
         </PageTitleContext.Provider>
@@ -843,6 +880,8 @@ const DefaultLayout = ()=>
                             <DefaultLayoutViewport />
                             {/* Once per session, on whichever route the reader arrives at (CTA-155). */}
                             <DevelopmentNotice />
+                            {/* The page's job runtime (CTA-221): started once, outliving every route. */}
+                            <JobRuntimeStarter />
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

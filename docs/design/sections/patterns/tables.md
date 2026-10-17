@@ -30,8 +30,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   only when the sorted column's `sortValue` changes):
   `DataTableColumn<R, C> = { id, header, sortable?, align?: "start" | "end",
   firstDirection?, width?, render(row), sortValue?(row), dir?: "ltr" | "auto",
-  wrap?, cellTestId?(row) }` (`cellTestId`, CTA-109: a test id on the cell
-  itself, for a screen whose tests name its cells). `render` returns the cell's **content**; the cell (alignment,
+  wrap?, cellTestId?(row), rowHeader? }` (`cellTestId`, CTA-109: a test id on the cell
+  itself, for a screen whose tests name its cells; `rowHeader`, CTA-204: its
+  cells the rows' headers, `th scope="row"` — a standings table's player). `render` returns the cell's **content**; the cell (alignment,
   tabular figures for `end`, direction, one line unless `wrap`) is the
   table's.
 - **Props** — `columns`, `rows` (every row the filters leave, all pages),
@@ -104,9 +105,29 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - `picks.canPick(row)` (CTA-144) — a row it turns down (a folder among a
   tree's items) has an empty pick cell and is left out of select-all and its
   count; absent, every row can be picked.
+- `picks.pickOverride(row)` (CTA-147) — a row whose pick is not just its own
+  id's membership: the caller hands back the row's checked state
+  (`indeterminate` while some of what it stands for is picked) and its
+  toggle, and the table draws it instead of the set's — a folder row, whose
+  pick covers its whole subtree. `undefined` for a row that keeps the
+  ordinary pick.
+- `picks.selectAll` (CTA-147) — the caller's own select-all, its tri-state
+  and its toggle, for a table where a pick covers more than the pickable rows
+  (a closed folder's whole subtree is picked with it, unshown rows and all);
+  absent, the header works from the pickable rows' ids alone.
 - `rowLink` may answer `undefined` for a row with no destination (a folder).
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.
+
+## CTA-221 addition to `DataTable`
+
+- **`column.filter?: ReactNode`** — **a column's filter, above its cells**:
+  drawn in the column's header under its label (and its sort button, through
+  `SortHeaderCell`'s `children`), so a filter stands over what it filters,
+  scrolls sideways with its column and sticks with the header. Header cells
+  then align their labels to the top. The filtering stays the caller's (the
+  rows arrive filtered, `filtered` for the no-match row). The Jobs queue's
+  status and kind (`JobQueueTable`) are the first.
 
 ## StandingsTable
 
