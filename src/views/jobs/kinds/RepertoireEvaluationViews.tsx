@@ -21,7 +21,7 @@ import { jobRuntime } from "../../../lib/jobs/runtime";
 import { REPERTOIRE_AT_PARAM } from "../../../lib/repertoireLink";
 import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
 import { useSavedRepertoires } from "../../repertoires/useSavedRepertoires";
-import { linkTo } from "../jobViews";
+import { continuesRowsOf, linkTo } from "../jobViews";
 import type { JobDataViewProps, JobViewProps, NewJobKindProps } from "../kindViewTypes";
 import { useEngineJobChoice } from "./useEngineJobChoice";
 
@@ -191,9 +191,9 @@ export function RepertoireEvaluationData({ job, output, testId }: JobDataViewPro
   );
 }
 
-/** **What a repertoire evaluation was asked to do.** */
+/** **What a repertoire evaluation was asked to do** — and the job it continues (CTA-236). */
 export function RepertoireEvaluationParameters({ job, testId }: JobViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const input = parseRepertoireEvaluationInput(job.input);
   if (input === undefined) return null;
   const seconds = (ms: number) => (ms === 0 ? t("jobs.facts.noTimeLimit") : t("jobs.facts.seconds", { count: Math.round(ms / 100) / 10 }));
@@ -213,6 +213,7 @@ export function RepertoireEvaluationParameters({ job, testId }: JobViewProps) {
     { id: "threads", label: t("jobs.facts.threads"), value: <bdi dir="ltr">{input.search.threads}</bdi> },
     { id: "hash", label: t("jobs.facts.hash"), value: <bdi dir="ltr">{`${input.search.hashMb} MB`}</bdi> },
     { id: "outputs", label: t("jobs.facts.variants"), value: outputs.join(", ") },
+    ...continuesRowsOf(t, i18n.language, input.continues, Object.keys(input.seed ?? {}).length),
   ];
   return <KeyValueList rows={rows} ariaLabel={t("jobs.facts.title")} testId={testId} />;
 }

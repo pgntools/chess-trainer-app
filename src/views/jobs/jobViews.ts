@@ -6,6 +6,7 @@ import type { JobAttemptView, JobEventView, JobOutputView } from "../../blocks/l
 import type { JobDetailsView } from "../../blocks/panels";
 import type { JobRowView, JobSubjectView } from "../../blocks/tables";
 import type { LinkTarget } from "../../design-system/components/link";
+import type { JobContinuation } from "../../lib/jobs/engineJobSettings";
 import { jobEntityOf } from "../../lib/jobs/entities";
 import { isRegisteredJobKind, jobKindLocaleKey, RETIRED_JOB_KIND_LOCALE_KEYS } from "../../lib/jobs/kinds";
 
@@ -31,6 +32,30 @@ export const kindLabelOf = (t: TFunction, kindId: string): string => {
   if (key !== undefined) return t(`jobs.kinds.${key}.name`);
   const retired = Object.hasOwn(RETIRED_JOB_KIND_LOCALE_KEYS, kindId) ? RETIRED_JOB_KIND_LOCALE_KEYS[kindId] : undefined;
   return retired === undefined ? t("jobs.kinds.unknown", { id: kindId }) : t(`jobs.retiredKinds.${retired}`);
+};
+
+/**
+ * **The "Continues" row** of a job queued by *Continue with current
+ * settings* (CTA-236): the job it continues — removed since, so named, not
+ * linked — when it was asked for, and how many positions it carried over.
+ * None for a job started from its form.
+ */
+export const continuesRowsOf = (
+  t: TFunction,
+  language: string,
+  continues: JobContinuation | undefined,
+  carried: number,
+): { id: string; label: string; value: string }[] => {
+  if (continues === undefined) return [];
+  const at = Date.parse(continues.createdAt);
+  const date = Number.isNaN(at) ? "–" : new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(at);
+  return [
+    {
+      id: "continues",
+      label: t("jobs.facts.continues"),
+      value: t("jobs.facts.continuesValue", { title: continues.title.trim() || t("jobs.untitled"), date, count: carried }),
+    },
+  ];
 };
 
 /** A job's title — "Untitled" for none. */

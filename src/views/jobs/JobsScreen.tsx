@@ -23,6 +23,7 @@ import { useOwnPageHeading } from "../main/pageTitle";
 import { jobRowOf, kindLabelOf, newestFirst } from "./jobViews";
 import { JOBS_SETTINGS_PATH, jobPath } from "./paths";
 import { useJobEntitiesVersion, useJobRecords } from "./useJobs";
+import { useResumeJob } from "./useResumeJob";
 
 /**
  * **The Jobs screen** (`/jobs`, CTA-221) — every background job of every
@@ -32,7 +33,8 @@ import { useJobEntitiesVersion, useJobRecords } from "./useJobs";
  * columns, each row's Pause / Resume / Cancel / Delete, and picks to delete
  * several at once. What a job is applied to is its page's. Every delete asks first. Pause, Resume, Cancel and
  * Delete are the runtime's commands — store writes any tab can make, which
- * the tab running the job acts on.
+ * the tab running the job acts on. Resume on an engine job whose settings
+ * differ from the current ones asks first (`useResumeJob`, CTA-236).
  */
 function JobsScreen() {
   useOwnPageHeading();
@@ -47,6 +49,7 @@ function JobsScreen() {
   const [sort, setSort] = useState<DataTableSort<JobQueueColumn>>(JOB_QUEUE_DEFAULT_SORT);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
+  const resumer = useResumeJob("jobs-settings-changed");
 
   const rows = useMemo(() => {
     void entities;
@@ -101,7 +104,10 @@ function JobsScreen() {
         loading={jobs === undefined}
         rowLink={(job) => ({ component: RouterLink, to: jobPath(job.id) })}
         onPause={(job) => void runtime.pause(job.id)}
-        onResume={(job) => void runtime.resume(job.id)}
+        onResume={(row) => {
+          const job = jobs?.find((each) => each.id === row.id);
+          if (job !== undefined) resumer.resume(job);
+        }}
         onCancel={(job) => void runtime.cancel(job.id)}
         onDelete={setDeleting}
         picks={{ picked, onChange: setPicked, onDeletePicked: () => setDeletingPicked(true) }}
@@ -127,6 +133,7 @@ function JobsScreen() {
         testId="jobs-table"
       />
 
+      {resumer.dialog}
       <ConfirmDialog
         open={deleting !== undefined}
         onClose={() => setDeleting(undefined)}

@@ -15,6 +15,13 @@ import { annotatorOf } from "../../../engineEvals";
 import type { UciOptionValue } from "../../../engineTypes";
 import { treeToPgn, type GameTree } from "../../../gameTree";
 import { parsePgnTree } from "../../../pgn";
+import {
+  jobContinuationFrom,
+  recordedJobEngineSettingsFrom,
+  type JobContinuation,
+  type JobEngineSettings,
+  type RecordedJobEngineSettings,
+} from "../../engineJobSettings";
 
 /**
  * **The computer-analysis kind's core** (CTA-218, the Jobs module of CTA-215)
@@ -90,6 +97,14 @@ export type ComputerAnalysisInput = {
   options: ComputerAnalysisOptions;
   preset: ComputerAnalysisPreset;
   target: ComputerAnalysisTarget;
+  /** The job this one continues with the settings in effect then (CTA-236) — absent for a job started from its form. */
+  continues?: JobContinuation;
+  /**
+   * The results that job had (CTA-236): the plan gives each position the
+   * seed's result for its FEN, so it is not searched again; a result for no
+   * planned position is ignored.
+   */
+  seed?: PositionResult[];
 };
 
 /* ─── The state ───────────────────────────────────────────────────────── */
@@ -199,12 +214,27 @@ export const readInput = (value: unknown): ComputerAnalysisInput | undefined => 
   if (!isRow(value)) return undefined;
   const source = sourceFrom(value.source);
   if (source === undefined) return undefined;
+  const continues = jobContinuationFrom(value.continues);
+  const seed = Array.isArray(value.seed) ? value.seed.flatMap((result) => positionResultFrom(result) ?? []) : [];
   return {
     source,
     options: computerAnalysisOptionsFrom(value.options),
     preset: presetFrom(value.preset),
     target: targetFrom(value.target, source),
+    ...(continues === undefined ? {} : { continues }),
+    ...(seed.length === 0 ? {} : { seed }),
   };
+};
+
+/**
+ * **The engine settings a stored input carries** (CTA-236) — its options'
+ * engine and search, its preset; a field it does not carry left out, so
+ * Resume never calls it different.
+ */
+export const recordedEngineSettingsOf = (value: unknown): RecordedJobEngineSettings => {
+  const row = isRow(value) ? value : {};
+  const options = isRow(row.options) ? row.options : {};
+  return recordedJobEngineSettingsFrom(options.engine, row.preset, options);
 };
 
 /* ─── The plan ────────────────────────────────────────────────────────── */
@@ -276,7 +306,9 @@ export const progressOf = (state: ComputerAnalysisState): ComputerAnalysisProgre
 
 /**
  * **The plan**: every position the options name, as the state keeps them,
- * and an empty checkpoint — `undefined` for an input with nothing to run.
+ * and an empty checkpoint — or, for a job that continues another (CTA-236),
+ * each position the seed has a result for (by FEN) given it, so only the
+ * rest is searched. `undefined` for an input with nothing to run.
  */
 export const planOf = (input: ComputerAnalysisInput): { state: ComputerAnalysisState; progress: ComputerAnalysisProgress } | undefined => {
   const search = inputSearchOf(input);
@@ -290,6 +322,8 @@ export const planOf = (input: ComputerAnalysisInput): { state: ComputerAnalysisS
     })),
     checkpoint: search.positions.map(() => null),
   };
+  const seeded = new Map((input.seed ?? []).map((result) => [result.fen, result] as const));
+  if (seeded.size > 0) state.checkpoint = search.positions.map((position) => seeded.get(position.fen) ?? null);
   return { state, progress: progressOf(state) };
 };
 
@@ -309,6 +343,39 @@ export const parseState = (value: unknown, fromVersion: number): ComputerAnalysi
       const result = positionResultFrom(stored[index]);
       return result !== undefined && result.fen === position?.fen ? result : null;
     }),
+  };
+};
+
+/**
+ * **A job continued with other engine settings** (CTA-236) — the input of the
+ * new job *Continue with current settings* queues: the same source, target
+ * and form, the engine, preset and search `current` names (held to that
+ * engine's bounds, the early stop's depth no deeper than the new depth, as
+ * the form's preset change does), the old job named, and its results so far
+ * as the seed.
+ */
+export const continuedInputOf = (
+  input: ComputerAnalysisInput,
+  state: Pick<ComputerAnalysisState, "checkpoint"> | null,
+  current: JobEngineSettings,
+  continues: JobContinuation,
+): ComputerAnalysisInput => {
+  const seed = (state?.checkpoint ?? []).filter((result): result is PositionResult => result !== null);
+  return {
+    source: input.source,
+    options: computerAnalysisOptionsFrom({
+      ...input.options,
+      engine: current.engine,
+      depth: current.depth,
+      minDepth: Math.min(input.options.minDepth, current.depth),
+      moveTimeMs: current.moveTimeMs,
+      threads: current.threads,
+      hashMb: current.hashMb,
+    }),
+    preset: { id: current.preset.id, name: current.preset.name, values: current.preset.values },
+    target: input.target,
+    continues,
+    ...(seed.length === 0 ? {} : { seed }),
   };
 };
 

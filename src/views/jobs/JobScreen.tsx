@@ -14,8 +14,9 @@ import { downloadBlob } from "../../lib/pgnExport";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { attemptViewsOf, describeEvent, jobDetailsOf, jobTitleOf, outputViewsOf } from "./jobViews";
 import { kindViewsOf } from "./kindViews";
-import { JOBS_PATH } from "./paths";
+import { JOBS_PATH, jobPath } from "./paths";
 import { useJobEntitiesVersion, useJobLiveOf, useJobRecord, useJobRecords } from "./useJobs";
+import { useResumeJob } from "./useResumeJob";
 
 /**
  * **One job** (`/jobs/<id>`, CTA-221) — the `JobDetailsPanel` block, its
@@ -27,7 +28,9 @@ import { useJobEntitiesVersion, useJobLiveOf, useJobRecord, useJobRecords } from
  * (`JobOutputsList` — an entity opens, a file downloads, through
  * `runtime.readArtifact` and an object URL, a data output is drawn by its
  * kind's view) and **its attempts and history** (`JobHistory`). Delete asks
- * first, then returns to `/jobs`; the outputs stay.
+ * first, then returns to `/jobs`; the outputs stay. Resume on an engine job
+ * whose settings differ from the current ones asks first (`useResumeJob`,
+ * CTA-236); continued with the current ones, the page moves to the new job.
  */
 function JobScreen() {
   useOwnPageHeading();
@@ -42,6 +45,8 @@ function JobScreen() {
   usePageTitle(job === undefined ? undefined : jobTitleOf(t, job));
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState<string | undefined>();
+  // Continued as a new job, this one is gone: its page follows to the new one.
+  const resumer = useResumeJob("job-settings-changed", (id) => navigate(jobPath(id)));
 
   // A scheduled retry counts down: the clock ticks each second while one waits.
   const [now, setNow] = useState(() => Date.now());
@@ -96,7 +101,7 @@ function JobScreen() {
         job={details}
         headingLevel={1}
         onPause={() => void runtime.pause(job.id)}
-        onResume={() => void runtime.resume(job.id)}
+        onResume={() => resumer.resume(job)}
         onCancel={() => void runtime.cancel(job.id)}
         onDelete={() => setDeleting(true)}
         live={Live === undefined ? undefined : <Live job={job} live={live} testId="job-engine" />}
@@ -114,6 +119,7 @@ function JobScreen() {
       />
       <JobHistory attempts={attempts} events={job.history} describe={(event) => describeEvent(t, event)} headingLevel={2} testId="job-history" />
 
+      {resumer.dialog}
       <ConfirmDialog
         open={deleting}
         onClose={() => setDeleting(false)}
