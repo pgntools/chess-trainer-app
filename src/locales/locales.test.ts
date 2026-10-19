@@ -78,6 +78,9 @@ describe("translation catalogs", () => {
       "tournament.arena.withNotes",
       // Resume's settings dialog's Hash value (CTA-236): a number and its unit, as the job's page writes it.
       "jobs.settingsChanged.megabytes",
+      // The Accuracy Trainer's lines (CTA-238): a number sign for the rank, and a loss's bound, "≥ N".
+      "accuracyTrainer.lines.rank",
+      "accuracyTrainer.lines.lossAtLeast",
     ]);
 
     const untranslated = leafKeys(en).filter(

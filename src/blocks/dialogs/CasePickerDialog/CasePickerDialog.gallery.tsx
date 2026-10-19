@@ -31,6 +31,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "The Case's own Project first", render: () => framed() },
     { name: "Nothing to link to", render: () => framed({ cases: [] }) },
     { name: "Refused — the browser would not write it", render: () => framed({ problem: "The link could not be made — the browser refused the write." }) },
+    { name: "Another screen's words — a case to load (CTA-238)", render: () => framed({ title: "Pick a case", submitLabel: "Load" }) },
   ],
 };
 

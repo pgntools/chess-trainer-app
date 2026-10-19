@@ -43,6 +43,10 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
+    /** The Accuracy Trainer (`/engine/accuracy`, CTA-238) — experimental and dev-only, after Masked Pieces in the Engine folder. */
+    accuracyTrainer: "Accuracy Trainer",
+    /** The chip on an experimental screen's row (CTA-238). */
+    experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -206,6 +210,8 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
+    /** CTA-238, dev-only. */
+    accuracyTrainer: "Accuracy Trainer",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -246,6 +252,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
+    accuracyTrainer: "Suggest the best moves at every position of a fully analysed game, and see how they measure against the engine's lines.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
@@ -516,6 +523,95 @@ const en = {
       "Off by default: an engine line is a list of the pieces the mask is hiding. The evaluation bar and the score are unaffected.",
     /** The Saved games list's marker on a game played on Masked Pieces. */
     marker: "Masked",
+  },
+  /**
+   * **The Accuracy Trainer** (CTA-238, experimental, dev-only): a fully
+   * analysed game's positions, each answered with the moves the reader
+   * thinks best, graded against the engine's lines in the tree
+   * (`lib/accuracyTrainer.ts`, `.claude/rules/accuracy-trainer.md`).
+   */
+  accuracyTrainer: {
+    experimental: "Experimental",
+    experimentalHint: "An experiment: what it asks and how it grades may change.",
+    setup: {
+      title: "A fully analysed game",
+      help: "A computer analysis's output — the Full variant leaves the engine's lines at every move. Upload or paste its PGN, or pick a case that holds one.",
+      chooseFile: "Choose a .pgn file",
+      paste: "Or paste its PGN",
+      load: "Load",
+      pickCase: "Pick a case…",
+      noLines: "This game carries no engine lines, so there is nothing to ask. Run a computer analysis on it (Full) and load its output.",
+      loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
+      untitled: "Untitled game",
+      side: "Train",
+      sides: { white: "White", black: "Black", both: "Both" },
+      noneForSide: "No position of that side has the engine's lines.",
+      start: "Start",
+      games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
+      caseProblem: "That case could not be read.",
+    },
+    casePicker: { title: "Pick a case", submit: "Load", none: "There is no case yet — make one in Analysis." },
+    position: {
+      progress: "Position {{at}} of {{count}}",
+      train: "Train",
+      white: "White",
+      black: "Black",
+      instructions: "Play each move you think is best on the board — it goes on the list, and the board comes back. Then Submit, or Pass.",
+      submit: "Submit",
+      pass: "Pass",
+      next: "Next",
+      summary: "Summary",
+      newSession: "New session",
+    },
+    suggestions: {
+      label: "Your moves",
+      empty: "No move yet — play one on the board.",
+      remove: "Remove {{san}}",
+    },
+    lines: {
+      title: "The engine's lines",
+      rank: "#",
+      move: "Move",
+      eval: "Eval",
+      loss: "Loss",
+      yours: "Your move",
+      gameMove: "Game",
+      gameMoveName: "The move played in the game",
+      best: "Best",
+      good: "Good",
+      outside: "Outside the top {{count}}",
+      lossAtLeast: "≥ {{loss}}",
+      headline: {
+        best: "You found the best move.",
+        top: "You found {{found}} of the top {{count}}.",
+        none: "None of your moves is among the top {{count}}.",
+        passed: "You passed.",
+      },
+    },
+    report: {
+      title: "Session summary",
+      measures: "Measures",
+      positions: "Positions",
+      answered: "Answered",
+      passed: "Passed",
+      bestRate: "Best move found",
+      topRate: "A top move found",
+      averageLoss: "Average loss of your best move",
+      inaccuracies: "Inaccuracies",
+      mistakes: "Mistakes",
+      blunders: "Blunders",
+      outside: "Outside the top N",
+      rate: "{{percent}}% ({{count}} of {{total}})",
+      table: "Every position",
+      move: "Move",
+      game: "Game",
+      best: "Best",
+      yours: "Your moves",
+      result: "Result",
+      notYet: "Not answered yet",
+      passedMark: "Passed",
+      open: "Open {{move}}",
+    },
   },
   /**
    * The variations explorer's right-click menu on a move (CTA-64) — shared by

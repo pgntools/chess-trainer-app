@@ -24,6 +24,12 @@ export type CasePickerDialogProps = {
   busy?: boolean;
   /** Why the last Link was refused — said in the dialog. */
   problem?: string;
+  /** The dialog's title — absent, "Link a case" (CTA-238: the Accuracy Trainer's "Pick a case"). */
+  title?: string;
+  /** The submit's words — absent, "Link" (the Accuracy Trainer's "Load"). */
+  submitLabel?: string;
+  /** Said when no Case may be picked — absent, "There is no other case to link to." */
+  emptyText?: string;
   /**
    * The prefix of its ids: the dialog `<testId>` (FormDialog's `-submit`,
    * `-cancel`), the Project `-project`, the Case `-cases` (their inputs
@@ -70,6 +76,9 @@ function CasePickerDialog({
   onClose,
   busy = false,
   problem,
+  title,
+  submitLabel,
+  emptyText,
   testId,
   dialogProps,
 }: CasePickerDialogProps) {
@@ -122,8 +131,8 @@ function CasePickerDialog({
       onSubmit={() => {
         if (chosen !== null) onSubmit(chosen);
       }}
-      title={t("analysisV2.links.picker.title")}
-      submitLabel={t("analysisV2.links.picker.submit")}
+      title={title ?? t("analysisV2.links.picker.title")}
+      submitLabel={submitLabel ?? t("analysisV2.links.picker.submit")}
       cancelLabel={t("analysisV2.cancel")}
       submitDisabled={chosen === null}
       busy={busy}
@@ -132,7 +141,7 @@ function CasePickerDialog({
     >
       {offered.length === 0 ? (
         <Typography variant="body2" data-testid={`${testId}-empty`} sx={{ color: "text.secondary" }}>
-          {t("analysisV2.links.picker.none")}
+          {emptyText ?? t("analysisV2.links.picker.none")}
         </Typography>
       ) : (
         <Box sx={{ display: "grid", gap: 2, pt: 1 }}>

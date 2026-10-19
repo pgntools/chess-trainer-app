@@ -16,6 +16,9 @@ export * from "./CurrentOpening";
 export * from "./EngineThinking";
 export * from "./EvalGraph";
 export * from "./GameInfo";
+// CTA-238: the Accuracy Trainer — a graded position, and the session's summary.
+export * from "./GradedLines";
+export * from "./AccuracySessionReport";
 export * from "./ImportReport";
 // CTA-190: a running engine job's live engine progress, under its progress bar.
 export * from "./JobEngineProgress";
