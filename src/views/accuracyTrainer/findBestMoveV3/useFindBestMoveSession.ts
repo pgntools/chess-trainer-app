@@ -15,7 +15,7 @@ import {
   type TrainingPosition,
 } from "../../../lib/accuracyTrainer";
 import { saveCaseState } from "../../../lib/analysisCaseStore";
-import { caseStateOf, DEFAULT_CASE_DISPLAY, type CaseState } from "../../../lib/analysisProjects";
+import { caseStateOf, DEFAULT_CASE_DISPLAY, type AnalysisCase, type CaseState } from "../../../lib/analysisProjects";
 import {
   answerPosition,
   candidatesOf,
@@ -27,7 +27,10 @@ import {
   positionAtPath,
   reopenPassed,
   reorderedCandidates,
+  resumeSession,
+  sessionBaseTree,
   startSession,
+  workOf,
   withPositionJob,
   withoutCandidate,
   withoutPositionComment,
@@ -35,10 +38,12 @@ import {
   type FindBestMoveSession,
   type PositionAnnotation,
 } from "../../../lib/findBestMoveSession";
+import { isSessionTree, sessionRecordOf, withSessionRecord } from "../../../lib/findBestMoveSessionPgn";
 import { nodeAtSanPath, sanPathTo } from "../../../lib/gameTree";
+import { parsePgnTree } from "../../../lib/pgn";
 import { useAutosave } from "../../board/core/useAutosave";
 import { useBoardCore } from "../../board/core/useBoardCore";
-import { createSessionCase } from "./sessionCase";
+import { createSessionCase, type SessionCase } from "./sessionCase";
 import type { SessionSource } from "./SessionSetup";
 import { useEvaluatePositionJobs, type PositionEngineState } from "./useEvaluatePositionJobs";
 
@@ -59,6 +64,27 @@ const facing = (position: TrainingPosition): "white" | "black" => (position.turn
  */
 export type SessionSettings = { moves: number; showArrows: boolean; engine: boolean };
 
+const DEFAULT_SETTINGS: SessionSettings = { moves: DEFAULT_MOVES, showArrows: true, engine: false };
+
+/**
+ * **A session Case read back** (CTA-239): its PGN parsed, the session it
+ * holds resumed on it — or `undefined`, a Case that is not a session (one from
+ * before CTA-239, one put in the project by hand) or whose PGN will not read.
+ */
+const resumedOf = (record: AnalysisCase): { session: FindBestMoveSession; settings: SessionSettings } | undefined => {
+  let tree;
+  try {
+    tree = parsePgnTree(record.pgn);
+  } catch {
+    return undefined;
+  }
+  const stored = sessionRecordOf(tree);
+  const session = stored === undefined ? undefined : resumeSession({ projectId: record.projectId, caseId: record.id }, stored, tree);
+  return stored === undefined || session === undefined
+    ? undefined
+    : { session, settings: { moves: stored.wanted, showArrows: stored.showArrows, engine: stored.engine } };
+};
+
 /**
  * **A Find Best Move session, run** (CTA-238, v3) — the screen's one hook:
  * the board core, the session (`lib/findBestMoveSession.ts`), its Case and
@@ -66,14 +92,18 @@ export type SessionSettings = { moves: number; showArrows: boolean; engine: bool
  * composes what it returns and decides nothing itself. The reference is
  * `.claude/rules/accuracy-trainer.md`.
  *
- * - **Start** makes the session's Case (`createSessionCase`), then opens its
- *   first position. **Opening** a position loads its view of the Case's tree
+ * - **Start** makes the session's Case (`createSessionCase`) — its PGN the
+ *   whole session from the first (CTA-239) — and answers where it is: the
+ *   screen opens it at its address, where the hook **resumes** it from that
+ *   PGN (`resume`, read once as the screen mounts). **Opening** a position loads its view of the Case's tree
  *   — every move before it, its continuation set aside — facing the side to
  *   move, on the position.
  * - **The Case's tree now** is the board's with the continuation put back
- *   (`caseTreeOf`) and the session's annotations written — the engine's lines
- *   and the graded answers (`withSessionAnnotations`); autosaved, with the
- *   done jobs' ids as its merges.
+ *   (`caseTreeOf`) and the session's annotations written — the engine's lines,
+ *   the graded answers and their lines (`withSessionAnnotations`) — and **the
+ *   session itself** (`withSessionRecord`: its tags, each position's command —
+ *   nothing of it lives only here); autosaved, with the done jobs' ids (and
+ *   the record's own, read) as its merges.
  * - **The answer**: the reader's lines from the position, their first moves
  *   **in their order** (`candidatesOf`) — Check grades them against the top N
  *   the session asks for (`gradePosition`'s `wanted`): found, in place.
@@ -86,23 +116,42 @@ export type SessionSettings = { moves: number; showArrows: boolean; engine: bool
  *   still running for **waits** for it, then is graded against the tree's
  *   lines and the engine's.
  */
-export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDelayMs?: number } = {}) => {
+export const useFindBestMoveSession = ({
+  stepDelayMs = STEP_DELAY_MS,
+  resume,
+}: {
+  stepDelayMs?: number;
+  /** A session's Case to go on with (CTA-239) — read once, as the screen mounts; absent, the setup. */
+  resume?: AnalysisCase;
+} = {}) => {
   const { t } = useTranslation();
-  const core = useBoardCore();
+  // The Case read back once: the session it holds, or none (`notResumable`).
+  const [resumed] = useState(() => (resume === undefined ? undefined : resumedOf(resume)));
+  const opening = resumed?.session;
+  const openingPosition = opening?.positions[opening.index];
+  const core = useBoardCore(
+    opening === undefined
+      ? {}
+      : { tree: opening.view.board, nodeId: opening.view.nodeId, ...(openingPosition === undefined ? {} : { orientation: facing(openingPosition) }) },
+  );
 
-  const [settings, setSettings] = useState<SessionSettings>({ moves: DEFAULT_MOVES, showArrows: true, engine: false });
-  const [session, setSession] = useState<FindBestMoveSession | null>(null);
+  const [settings, setSettings] = useState<SessionSettings>(() => resumed?.settings ?? DEFAULT_SETTINGS);
+  const [session, setSession] = useState<FindBestMoveSession | null>(() => resumed?.session ?? null);
   const [starting, setStarting] = useState(false);
   const [startProblem, setStartProblem] = useState<string | undefined>(undefined);
   // The positions a job is being queued for — a second move before the enqueue answers queues none.
   const queuing = useRef(new Set<string>());
-  // The game's name, for the jobs' titles — the source's when the session started.
-  const sourceName = useRef("");
+  // The merges the Case held when it was read — its tree holds them, so its autosave must carry them, whatever became of their jobs.
+  const [readMerges] = useState<readonly string[]>(() => resume?.merges ?? []);
 
   // The session's moves to find, once it runs; the setting's before.
   const wanted = session?.wanted ?? settings.moves;
   const engineJobs = useEvaluatePositionJobs({ caseId: session?.caseRef.caseId, lines: wanted, jobIds: session?.jobs ?? NO_JOBS });
-  const engineAt = useCallback((index: number): PositionEngineState => engineJobs.states[index] ?? { kind: "none" }, [engineJobs.states]);
+  // A position whose lines already hold its search (a session read back) waits for no job.
+  const engineAt = useCallback(
+    (index: number): PositionEngineState => (session?.searched[index] === true ? { kind: "none" } : (engineJobs.states[index] ?? { kind: "none" })),
+    [session, engineJobs.states],
+  );
 
   /** Each position with its engine search, once it has one. */
   const positions = useMemo(
@@ -165,21 +214,50 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     [session, grades, t],
   );
 
-  /** The Case's tree now: the board's, its continuation back, the session's annotations written. */
+  /**
+   * The Case's tree now: the board's, its continuation back, the session's
+   * annotations written — and the session itself (CTA-239): its tags and each
+   * position's command, the one on screen's lines of the reader's own the
+   * board's.
+   */
   const caseTree = useMemo(() => {
     if (session === null) return undefined;
     const annotations = session.positions.map((each, index): PositionAnnotation => {
       const state = engineJobs.states[index];
       const answer = answerTextOf(index);
-      return { path: each.path, ...(state?.kind === "done" ? { engine: state.result } : {}), ...(answer === undefined ? {} : { answer }) };
+      const given = session.answers[index];
+      // Graded with moves: its lines hung in the tree, as any PGN reader shows them.
+      const graded = answer !== undefined && given !== null && given !== undefined && given.length > 0 ? positions[index] : undefined;
+      return {
+        path: each.path,
+        ...(state?.kind === "done" ? { engine: state.result } : {}),
+        ...(answer === undefined ? {} : { answer }),
+        ...(graded === undefined ? {} : { lines: graded.lines, fen: graded.fen }),
+      };
     });
-    return withSessionAnnotations(caseTreeOf(session, core.tree), annotations);
-  }, [session, core.tree, engineJobs.states, answerTextOf]);
+    const annotated = withSessionAnnotations(caseTreeOf(session, core.tree), annotations);
+    return withSessionRecord(annotated, {
+      side: session.side,
+      game: session.game,
+      positions,
+      wanted: session.wanted,
+      index: session.index,
+      answers: session.answers,
+      jobs: session.jobs,
+      // A job done: its lines are in the position's, so it is waited for no more. (One that failed stays named a job — read back, as it reads now.)
+      searched: session.jobs.map((_, index) => session.searched[index] === true || engineJobs.states[index]?.kind === "done"),
+      work: session.work.map((each, index) => (index === session.index ? workOf(session, core.tree) : each)),
+      reopened: session.reopened,
+      engine: settings.engine,
+      showArrows: settings.showArrows,
+    });
+  }, [session, core.tree, positions, engineJobs.states, answerTextOf, settings.engine, settings.showArrows]);
 
   const caseId = session?.caseRef.caseId;
+  const merges = useMemo(() => [...new Set([...readMerges, ...engineJobs.merges])], [readMerges, engineJobs.merges]);
   const caseState = useMemo<CaseState | undefined>(
-    () => (caseTree === undefined ? undefined : caseStateOf(caseTree, null, "white", DEFAULT_CASE_DISPLAY, engineJobs.merges)),
-    [caseTree, engineJobs.merges],
+    () => (caseTree === undefined ? undefined : caseStateOf(caseTree, null, "white", DEFAULT_CASE_DISPLAY, merges)),
+    [caseTree, merges],
   );
   const saveCase = useCallback(
     (state: CaseState) => {
@@ -244,7 +322,7 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     queuing.current.add(key);
     const forCase = session.caseRef.caseId;
     void engineJobs
-      .evaluate({ fen: target.fen, path: target.path, label: labelOf(target) }, t("accuracyTrainer.session.jobTitle", { name: sourceName.current, move: labelOf(target) }))
+      .evaluate({ fen: target.fen, path: target.path, label: labelOf(target) }, t("accuracyTrainer.session.jobTitle", { name: session.game, move: labelOf(target) }))
       .then((jobId) => {
         queuing.current.delete(key);
         if (jobId === undefined) return;
@@ -252,35 +330,48 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
       });
   };
 
-  /** **Start** a session on a game and a side: its Case made, then its first position. */
-  const start = async (source: SessionSource, side: SideValue) => {
-    if (starting) return;
-    const trained = sessionPositionsOf(
-      trainingPositionsOf(source.tree, { unevaluated: settings.engine }),
-      side === "all" ? "both" : side === "white" ? "w" : "b",
-    );
-    if (trained.length === 0) return;
+  /**
+   * **Start** a session on a game and a side: its Case made — the game's
+   * mainline with the session written in — and where it is answered, for the
+   * screen to open. A session's own PGN (CTA-239, its tags) is not started
+   * again but kept as it is, a new Case resumed where it was left.
+   */
+  const start = async (source: SessionSource, side: SideValue): Promise<SessionCase | undefined> => {
+    if (starting) return undefined;
+    const tree = isSessionTree(source.tree) ? sessionTreeOf(source.tree) : newSessionTreeOf(source, side);
+    if (tree === undefined) return undefined;
     setStarting(true);
     setStartProblem(undefined);
     const made = await createSessionCase({
-      tree: source.tree,
+      tree,
       projectName: t("accuracyTrainer.session.projectName"),
       caseName: t("accuracyTrainer.session.caseName", { name: source.name }),
     });
     setStarting(false);
-    const started = made === undefined ? undefined : startSession({ caseRef: made, positions: trained, wanted: settings.moves, tree: made.base });
-    if (started === undefined) {
-      setStartProblem(t("accuracyTrainer.session.caseProblem"));
-      return;
-    }
-    sourceName.current = source.name;
-    show(started);
+    if (made === undefined) setStartProblem(t("accuracyTrainer.session.caseProblem"));
+    return made;
   };
 
-  /** Back to the setup — the Case and the jobs stay. */
-  const reset = () => {
-    setSession(null);
-    core.reset();
+  /** A session PGN to resume, as it is — `undefined` when it holds no session this build reads. */
+  const sessionTreeOf = (tree: SessionSource["tree"]) => (sessionRecordOf(tree) === undefined ? undefined : tree);
+
+  /** A new session's tree: the game's mainline, its positions for the side and the settings written in — `undefined` with none to ask. */
+  const newSessionTreeOf = (source: SessionSource, side: SideValue) => {
+    const trained = sessionPositionsOf(
+      trainingPositionsOf(source.tree, { unevaluated: settings.engine }),
+      side === "all" ? "both" : side === "white" ? "w" : "b",
+    );
+    const base = sessionBaseTree(source.tree);
+    const started = startSession({
+      caseRef: { projectId: "", caseId: "" },
+      side: side === "all" ? "both" : side === "white" ? "w" : "b",
+      game: source.name,
+      positions: trained,
+      wanted: settings.moves,
+      tree: base,
+    });
+    if (started === undefined) return undefined;
+    return withSessionRecord(base, { ...started, engine: settings.engine, showArrows: settings.showArrows });
   };
 
   /** Open a position of the session, on the Case's tree as it stands — the one on screen left first, its lines kept. */
@@ -460,7 +551,10 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     starting,
     startProblem,
     start,
-    reset,
+    /** A Case was given to resume that holds no session this build reads (CTA-239). */
+    notResumable: resume !== undefined && resumed === undefined,
+    /** The session's PGN as its Case keeps it — what Download saves. */
+    pgn: caseState?.pgn,
     open,
     /** A passed position opened to be answered now. */
     answerAgain,

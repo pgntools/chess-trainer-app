@@ -11,6 +11,7 @@ import { caseDisplayName } from "../../../blocks/tables";
 import { StatusText } from "../../../design-system/components/feedback";
 import { FieldLabel, SideToggle, type SideValue } from "../../../design-system/components/forms";
 import { trainingPositionsOf } from "../../../lib/accuracyTrainer";
+import { isSessionTree, sessionRecordOf } from "../../../lib/findBestMoveSessionPgn";
 import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../../lib/analysisCaseStore";
 import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../../lib/analysisProjectStore";
 import type { GameTree } from "../../../lib/gameTree";
@@ -58,6 +59,10 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
  *   way out, the engine — and turning the engine on takes it.
  * - **The side** — White, Black or both (`SideToggle`, its *all* button
  *   "Both"); **Start** is off while that side has no position.
+ * - **A session's own PGN** (CTA-239 — a downloaded session, or a session
+ *   Case picked), known by its tags: said as one, how far it got, the side
+ *   its own (the toggle off) — and **Resume** in Start's place, which keeps
+ *   it as a new session Case and goes on where it was left.
  */
 function SessionSetup({ source, onSource, engine, side, onSide, onStart, starting = false, problem: startProblem }: SessionSetupProps) {
   const { t } = useTranslation();
@@ -98,13 +103,18 @@ function SessionSetup({ source, onSource, engine, side, onSide, onStart, startin
     take(trees[0], gameNameOf(trees[0], untitled));
   };
 
-  const positions = useMemo(() => (source === null ? [] : trainingPositionsOf(source.tree, { unevaluated: engine })), [source, engine]);
+  // A session's own PGN resumes: its record, where its tags say it is one (`null` one this build cannot read).
+  const session = useMemo(() => (source === null || !isSessionTree(source.tree) ? undefined : (sessionRecordOf(source.tree) ?? null)), [source]);
+  const positions = useMemo(
+    () => (source === null || session !== undefined ? [] : trainingPositionsOf(source.tree, { unevaluated: engine })),
+    [source, session, engine],
+  );
   const white = positions.filter((position) => position.turn === "w").length;
   const black = positions.length - white;
   const forSide = side === "white" ? white : side === "black" ? black : white + black;
   // A game loaded with nothing to train: refused in words, until the engine is turned on.
-  const refused = source !== null && positions.length === 0;
-  const shownProblem = problem ?? (refused ? t("accuracyTrainer.setup.noLines") : null);
+  const refused = source !== null && session === undefined && positions.length === 0;
+  const shownProblem = problem ?? (session === null ? t("accuracyTrainer.setup.sessionProblem") : refused ? t("accuracyTrainer.setup.noLines") : null);
 
   return (
     <Box data-testid="accuracy-setup" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}>
@@ -156,7 +166,16 @@ function SessionSetup({ source, onSource, engine, side, onSide, onStart, startin
           {t("accuracyTrainer.setup.pickCase")}
         </Button>
       </Box>
-      {source !== null && !refused && (
+      {source !== null && session !== undefined && session !== null && (
+        <StatusText tone="success" testId="accuracy-setup-loaded">
+          {t("accuracyTrainer.setup.loadedSession", {
+            name: source.name,
+            count: session.positions.length,
+            done: session.answers.filter((given) => given !== null).length,
+          })}
+        </StatusText>
+      )}
+      {source !== null && session === undefined && !refused && (
         <StatusText tone="success" testId="accuracy-setup-loaded">
           {t(engine ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count: positions.length, white, black })}
         </StatusText>
@@ -173,17 +192,28 @@ function SessionSetup({ source, onSource, engine, side, onSide, onStart, startin
             all: t("accuracyTrainer.setup.sides.both"),
           }}
           ariaLabel={t("accuracyTrainer.setup.side")}
+          disabled={session !== undefined}
           testId="accuracy-setup-side"
         />
-        {source !== null && !refused && forSide === 0 && (
+        {session !== undefined && session !== null && (
+          <StatusText tone="neutral" testId="accuracy-setup-session-side">
+            {t("accuracyTrainer.setup.sessionSide")}
+          </StatusText>
+        )}
+        {source !== null && session === undefined && !refused && forSide === 0 && (
           <StatusText tone="warning" testId="accuracy-setup-none">
             {t("accuracyTrainer.setup.noneForSide")}
           </StatusText>
         )}
       </Box>
       <Box>
-        <Button variant="contained" onClick={onStart} disabled={source === null || forSide === 0 || starting} data-testid="accuracy-setup-start">
-          {t("accuracyTrainer.setup.start")}
+        <Button
+          variant="contained"
+          onClick={onStart}
+          disabled={source === null || (session === undefined ? forSide === 0 : session === null) || starting}
+          data-testid="accuracy-setup-start"
+        >
+          {t(session === undefined ? "accuracyTrainer.setup.start" : "accuracyTrainer.setup.resume")}
         </Button>
         {startProblem !== undefined && (
           <StatusText tone="error" testId="accuracy-setup-start-problem">

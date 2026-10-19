@@ -2,18 +2,22 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import type { ChessboardOptions } from "react-chessboard";
 import { useTranslation } from "react-i18next";
-import { Link as RouterLink } from "react-router";
+import { Link as RouterLink, useNavigate } from "react-router";
 
 import { AccuracySessionReport, AccuracyTrainerDetails, GradedLines, type AccuracyTrainerDetailsTab } from "../../../blocks/panels";
-import { StatusText } from "../../../design-system/components/feedback";
+import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import type { SideValue } from "../../../design-system/components/forms";
+import { BackButton } from "../../../design-system/components/navigation";
 import { LabelChip } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { useChessTokens } from "../../../design-system/theme";
 import { bareSan, moveSquaresOf } from "../../../lib/accuracyTrainer";
+import type { AnalysisCase } from "../../../lib/analysisProjects";
+import { downloadPgn } from "../../../lib/pgnExport";
 import { casePath } from "../../analysisV2/paths";
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
@@ -21,6 +25,7 @@ import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
 import { BoardLeftPanel } from "../../main/boardLeftPanel";
 import { usePageTitle } from "../../main/pageTitle";
 import { useShellCompact } from "../../main/shellCompact";
+import { FIND_BEST_MOVE_V3_PATH, NEW_SESSION_PATH, sessionPath } from "./paths";
 import SessionSetup, { type SessionSource } from "./SessionSetup";
 import { useFindBestMoveSession } from "./useFindBestMoveSession";
 
@@ -45,26 +50,39 @@ const ID = "find-best-move-v3";
  * off for later and goes on at once: its lines stay hidden, and *Answer it
  * now* — on Your moves when the board is back at it — opens it again. On to
  * the next position, the game's moves between them play out on the board.
+ *
+ * **A session is its Case** (CTA-239): this screen is either the setup of a
+ * new one (`…/new` — Start makes its Case and opens it at its address) or a
+ * session at its address, resumed from its Case's PGN (`resume`, read once).
+ * Its header leads back to the sessions lobby and downloads the session's
+ * PGN; a Case that holds no session says so.
  */
 type FindBestMoveV3Props = {
   /** How long each of the game's moves between two positions stays on the board — a test's own (`STEP_DELAY_MS` to start with). */
   stepDelayMs?: number;
+  /** The session's Case, to go on with — absent, the setup of a new session. */
+  resume?: AnalysisCase;
 };
 
-function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
+function FindBestMoveV3({ stepDelayMs, resume }: FindBestMoveV3Props = {}) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { drawing } = useChessTokens();
-  const run = useFindBestMoveSession(stepDelayMs === undefined ? {} : { stepDelayMs });
+  const run = useFindBestMoveSession({ ...(stepDelayMs === undefined ? {} : { stepDelayMs }), ...(resume === undefined ? {} : { resume }) });
   const { core, session, position, grade, settings } = run;
 
   const [source, setSource] = useState<SessionSource | null>(null);
   const [side, setSide] = useState<SideValue>("all");
-  const [tab, setTab] = useState<Tab>("moves");
-  const [detailsTab, setDetailsTab] = useState<AccuracyTrainerDetailsTab>("settings");
+  // A session resumed on a position already answered opens on its result.
+  const [tab, setTab] = useState<Tab>(() => (run.answered !== null && run.answered.length > 0 ? "result" : "moves"));
+  // A session resumed opens on the reader's moves; the setup on its settings.
+  const [detailsTab, setDetailsTab] = useState<AccuracyTrainerDetailsTab>(() => (session === null ? "settings" : "moves"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [downloadFailed, setDownloadFailed] = useState(false);
   const compact = useShellCompact();
 
-  usePageTitle(source?.name);
+  const gameName = session?.game || source?.name;
+  usePageTitle(gameName);
 
   const explorer = useVariationsExplorer({
     testId: ID,
@@ -101,15 +119,35 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
   // A pass goes on at once — to the next position, or the summary after the last.
   const pass = () => setTab(run.pass() ? "moves" : "summary");
   const next = () => setTab(run.next() ? "moves" : "summary");
-  const reset = () => {
-    run.reset();
-    setTab("moves");
+  const reset = () => navigate(NEW_SESSION_PATH);
+  const download = () => {
+    if (run.pgn !== undefined) setDownloadFailed(!downloadPgn("find-best-move", [run.pgn]));
   };
 
   const sideLabel = (turn: "w" | "b") => t(turn === "w" ? "accuracyTrainer.position.white" : "accuracyTrainer.position.black");
 
-  const tabs: BoardPanelTab[] =
-    session === null || position === undefined
+  const tabs: BoardPanelTab[] = run.notResumable
+    ? [
+        {
+          id: "moves",
+          label: t("accuracyTrainer.position.train"),
+          content: (
+            <Box sx={{ p: 1, display: "grid", gap: 1 }}>
+              <InlineAlert severity="warning" testId={`${ID}-not-resumable`}>
+                {t("accuracyTrainer.sessions.notResumable")}
+              </InlineAlert>
+              {resume !== undefined && (
+                <Box>
+                  <Button component={RouterLink} to={casePath(resume.projectId, resume.id)} variant="outlined" size="small" data-testid={`${ID}-open-case`}>
+                    {t("accuracyTrainer.sessions.openCase")}
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          ),
+        },
+      ]
+    : session === null || position === undefined
       ? [
           {
             id: "moves",
@@ -123,9 +161,10 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
                 onSide={setSide}
                 onStart={() => {
                   if (source === null) return;
-                  // The session's moves are where the reader will look first.
-                  setDetailsTab("moves");
-                  void run.start(source, side);
+                  // The session's Case made, it opens at its address — resumed from its PGN, as a reload would.
+                  void run.start(source, side).then((made) => {
+                    if (made !== undefined) navigate(sessionPath(made.caseId), { replace: true });
+                  });
                 }}
                 starting={run.starting}
                 {...(run.startProblem === undefined ? {} : { problem: run.startProblem })}
@@ -199,6 +238,13 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
 
   const header = (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flexWrap: "wrap" }}>
+      {/* The way back to the sessions, first of all — where it is on every board screen. */}
+      <BackButton
+        label={t("accuracyTrainer.sessions.back")}
+        link={{ component: RouterLink, to: FIND_BEST_MOVE_V3_PATH }}
+        edge={false}
+        testId={`${ID}-back`}
+      />
       {compact && (
         // Under the breakpoint the exercise's own panel is a drawer; wide, the board's own column.
         <IconAction
@@ -221,11 +267,26 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
           <Box component="span" dir="ltr">{`${position.moveNumber}${position.turn === "w" ? "." : "…"}`}</Box> {sideLabel(position.turn)}
         </Typography>
       )}
+      {session !== null && (
+        <>
+          <Box sx={{ flexGrow: 1 }} />
+          <IconAction label={t("accuracyTrainer.sessions.download")} onClick={download} testId={`${ID}-download`}>
+            <DownloadRoundedIcon fontSize="small" />
+          </IconAction>
+        </>
+      )}
     </Box>
   );
 
   const footer = session !== null && (
     <>
+      {downloadFailed && (
+        <Box sx={{ px: 1 }}>
+          <InlineAlert severity="error" testId={`${ID}-download-problem`}>
+            {t("accuracyTrainer.sessions.downloadProblem")}
+          </InlineAlert>
+        </Box>
+      )}
       {explorer.annotations}
       {activeTab === "moves" && explorer.nextMoves}
       {run.answering && (
@@ -279,7 +340,7 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
     </>
   );
 
-  const title = source?.name ?? t("pages.findBestMoveV3");
+  const title = gameName ?? t("pages.findBestMoveV3");
 
   return (
     <>

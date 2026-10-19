@@ -214,6 +214,8 @@ const en = {
     maskedPieces: "Masked Pieces",
     /** The Accuracy Trainer's exercise (CTA-238), dev-only. */
     findBestMoveV3: "Find Best Move v3",
+    /** A Find Best Move session, or the setup of a new one (CTA-239). */
+    findBestMoveV3Session: "Find Best Move session",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -255,6 +257,7 @@ const en = {
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
     findBestMoveV3: "Analyse each position of a game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
+    findBestMoveV3Session: "A Find Best Move session: each position of a game answered on a board of your own, its whole progress kept in its PGN — resume it, or download it.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
@@ -549,6 +552,51 @@ const en = {
   accuracyTrainer: {
     experimental: "Experimental",
     experimentalHint: "An experiment: what it asks and how it grades may change.",
+    /** Find Best Move's sessions (CTA-239): each a Case whose PGN holds it whole — the lobby, and a session's way back to it. */
+    sessions: {
+      title: "Find Best Move sessions",
+      count_one: "{{count}} session",
+      count_other: "{{count}} sessions",
+      newSession: "New session",
+      deletePicked: "Delete picked ({{count}})",
+      confirmDelete: {
+        title_one: "Delete the picked session?",
+        title_other: "Delete {{count}} picked sessions?",
+        body_one: "Its case goes from the Find Best Move project, its whole progress with it.",
+        body_other: "Their cases go from the Find Best Move project, their whole progress with them.",
+        cancel: "Cancel",
+        confirm: "Delete",
+      },
+      deleteProblem: "The sessions could not be deleted — the browser refused the write.",
+      loading: "Reading the sessions…",
+      empty: "No session yet — start one with New session.",
+      missing: "There is no such session — it may have been deleted.",
+      table: {
+        label: "Find Best Move sessions",
+        actions: "Actions",
+        rowsPerPage: "Sessions per page",
+        columns: { name: "Name", side: "Side", moves: "Moves to find", progress: "Progress", found: "Found", status: "Status", updated: "Updated" },
+      },
+      sides: { w: "White", b: "Black", both: "Both" },
+      status: { ongoing: "Ongoing", done: "Done", unreadable: "Not resumable" },
+      /** The positions done (answered or passed) of all, then how. */
+      progress: "{{done}}/{{total}}",
+      progressDetail: "{{answered}} answered, {{passed}} passed",
+      found: "{{found}}/{{target}}",
+      foundDetail: "{{inPlace}} in place",
+      pick: "Pick {{name}}",
+      selectAll: "Pick every session",
+      open: "Open the session {{name}}",
+      downloadRow: "Download the PGN of {{name}}",
+      openCaseRow: "Open {{name}} in Analysis",
+      unreadable: "{{name}} holds no session this version can resume — open it in Analysis.",
+      /** The session screen's header. */
+      back: "Back to the sessions",
+      download: "Download the session's PGN",
+      downloadProblem: "The browser refused the download.",
+      notResumable: "This case holds no Find Best Move session this version can resume — made before sessions were kept in their PGN, or by hand. Open it in Analysis to see it.",
+      openCase: "Open the case in Analysis",
+    },
     setup: {
       title: "A fully analysed game",
       help: "A computer analysis's output — the Full variant leaves the engine's lines at every move. Upload or paste its PGN, or pick a case that holds one.",
@@ -568,6 +616,11 @@ const en = {
       start: "Start",
       games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
       caseProblem: "That case could not be read.",
+      /** A Find Best Move session's own PGN loaded (CTA-239): it resumes, as a new session. */
+      loadedSession: "{{name}} — a Find Best Move session: {{done}} of {{count}} positions answered or passed. Resume goes on with it, a new session of its own.",
+      sessionProblem: "This PGN is a Find Best Move session this version cannot read.",
+      sessionSide: "The session's own positions are asked.",
+      resume: "Resume",
     },
     casePicker: { title: "Pick a case", submit: "Load", none: "There is no case yet — make one in Analysis." },
     position: {

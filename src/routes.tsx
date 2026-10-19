@@ -80,14 +80,22 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
       {
-        // The Accuracy Trainer's Find Best Move v3 (CTA-238, experimental): a
-        // game's positions on an analysis board of the reader's own — every
-        // move before each, none after — the move chosen graded against the
-        // engine's lines. A board route, in the Accuracy Trainer folder —
-        // dev-only until it is ready to ship.
+        // The Accuracy Trainer's Find Best Move v3 (CTA-238, experimental):
+        // its sessions lobby (CTA-239) — every session, each a Case whose PGN
+        // holds it whole — in the Accuracy Trainer folder. Dev-only until it
+        // is ready to ship.
         path: "/accuracy-trainer/find-best-move-v3",
+        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV3/LobbyMain")),
+        handle: { ...FULL_WIDTH_ROUTE, title: "pages.findBestMoveV3" },
+      },
+      {
+        // A session (CTA-239), resumed from its Case's PGN — or `new`, the
+        // setup of one: a game's positions on an analysis board of the
+        // reader's own — every move before each, none after — the moves
+        // chosen graded against the engine's lines. A board route.
+        path: "/accuracy-trainer/find-best-move-v3/:caseId",
         element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV3/Main")),
-        handle: { title: "pages.findBestMoveV3" },
+        handle: { title: "pages.findBestMoveV3Session" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the

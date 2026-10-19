@@ -7,9 +7,10 @@ paths:
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
   - "src/blocks/panels/AccuracyTrainerDetails/**"
+  - "src/blocks/tables/FindBestMoveSessionsTable/**"
 ---
 
-# Accuracy Trainer — Find Best Move (CTA-238, experimental, dev-only)
+# Accuracy Trainer — Find Best Move (CTA-238, experimental, dev-only; its sessions kept in their PGN, CTA-239)
 
 A sidebar folder of its own, **Accuracy Trainer**, for exercises that grade
 the reader's moves against an engine's. Today it holds one: **Find Best Move
@@ -21,15 +22,19 @@ shown, none after — each line they play from the position one of their
 moves, the lines' order their ranking; **Check** compares them with the top N
 (the game's computer analysis, or the engine's own search): which were found,
 which in their right place, each one's rank and loss; then Next, and a
-summary at the end. The session is kept as an Analysis Case.
+summary at the end. **A session is an Analysis Case whose PGN holds it
+whole** (CTA-239, §7): reloaded, opened from the **sessions lobby** — the
+route itself, `/accuracy-trainer/find-best-move-v3` (§8) — downloaded as a
+`.pgn` and loaded back, it resumes where it was left; a session's own address
+is `/accuracy-trainer/find-best-move-v3/<caseId>`, a new one's setup `…/new`.
 
 (v1 — several moves suggested on a board that snapped back — and v2 — the
 first analysis board, its own tree per position — were deleted when v3
 replaced them; v3 is v2's behaviour on a cleaner model, plus the moves before
 each position.)
 
-> **Dev-only.** The route is in `routes.tsx`'s `devRoutes` (a `React.lazy`
-> import under `import.meta.env.DEV`), the folder and the nav entry spreads in
+> **Dev-only.** The routes — the lobby and a session's — are in `routes.tsx`'s `devRoutes` (`React.lazy`
+> imports under `import.meta.env.DEV`), the folder and the nav entry spreads in
 > `navFolders.ts` / `navItems.ts` under the same flag, and so is the Evaluate
 > Position job kind (`lib/jobs/kinds/index.ts`, `views/jobs/kindViews.ts`): a
 > production build has no code of any of it, only the catalog strings. For the
@@ -45,26 +50,34 @@ each position.)
 | Path | What lives there |
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `targetOf` (the N a position asks for), `gradeSuggestion` / `gradePosition` (the reader's moves in their order against the top N), `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
-| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`, `leavePosition`, `reopenPassed`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
+| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its side, the game's name, its N fixed — `wanted` — and which positions' lines already hold their search, `searched`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`, `leavePosition`, `reopenPassed`, `resumeSession` — CTA-239); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`, `withPositionLines` — a graded position's lines hung as variations, CTA-239); a position's view (`positionViewOf` — the session's commands taken off the board, `withoutSessionCommands`; `candidatesOf` — the reader's moves in their order, `workOf` — their lines there, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
+| `src/lib/findBestMoveSessionPgn.ts` | **The session in its PGN** (CTA-239, §7), pure: `withSessionRecord` (the session's tags and each position's `[%fbm …]` written into its tree), `sessionRecordOf` (read back — `undefined` for a PGN that is no session), `isSessionTree`, `sessionProgressOf` (the lobby's counts). |
+| `src/lib/findBestMoveSessionRows.ts` | **The lobby's rows** (CTA-239, §8), pure: `findBestMoveSessionRowOf` (a session Case's PGN read), `sortedFindBestMoveSessions`, the columns and their first directions. |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
-| `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header and footer, the left panel. |
-| `…/SessionSetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one) or an Analysis Case (`CasePickerDialog`, the Projects and Cases stores read only while it is open), the side, Start. |
-| `…/sessionCase.ts` | The session's Case made: the *Find Best Move* project found or made, the Case of the game's mainline. |
+| `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header (the way back to the lobby, Download PGN) and footer, the left panel; a Case that holds no session said so. |
+| `…/FindBestMoveV3Route.tsx` | A session's route (CTA-239): `new` the setup, else the Cases read and the screen mounted keyed by the Case (`resume`), a Case not there said. |
+| `…/SessionsLobby.tsx` | **The sessions lobby** (CTA-239, §8): the project's Cases as `FindBestMoveSessionsTable`, New session, Delete picked, Download PGN. |
+| `…/paths.ts` | The addresses: the lobby, `sessionPath(caseId)`, `NEW_SESSION_PATH`. |
+| `…/SessionSetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one) or an Analysis Case (`CasePickerDialog`, the Projects and Cases stores read only while it is open), the side, Start — and a session's own PGN known by its tags, **Resume** in Start's place (CTA-239). |
+| `…/sessionCase.ts` | The session's Case made: the *Find Best Move* project found or made (`sessionProjectOf`, the lobby's too), a Case of the session's PGN. |
 | `…/useEvaluatePositionJobs.ts` | The screen's side of the job kind: queue one (the Engine menu's search), read each job's state and result, the done ones' ids (the Case's merges). |
-| `…/Main.tsx` | Layout-only wrapper (`find-best-move-v3-wrapper`). |
-| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/` | A graded position; the session's summary; the left panel (the game, its Case, Settings). |
-| Tests | `lib/accuracyTrainer.test.ts`, `lib/findBestMoveSession.test.ts`, `lib/jobs/kinds/evaluatePosition/*.test.ts`, `findBestMoveV3/FindBestMoveV3.test.tsx`, the blocks' own, the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
+| `…/Main.tsx`, `…/LobbyMain.tsx` | Layout-only wrappers (`find-best-move-v3-wrapper`, `find-best-move-sessions-wrapper`). |
+| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the session's summary; the left panel (the game, its Case, Settings); the lobby's table (CTA-239). |
+| Tests | `lib/accuracyTrainer.test.ts`, `lib/findBestMoveSession.test.ts`, `lib/findBestMoveSessionPgn.test.ts` (the format: the round trip, a PGN that is no session, the leniency, the board without the commands — CTA-239), `lib/findBestMoveSessionRows.test.ts`, `lib/jobs/kinds/evaluatePosition/*.test.ts`, `findBestMoveV3/FindBestMoveV3.test.tsx` (mounted through its route: a reload resuming, Download, a session PGN resumed from the setup, a Case that is no session, one not there), `findBestMoveV3/SessionsLobby.test.tsx`, the blocks' own, the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
 
-Routes and nav: `/accuracy-trainer/find-best-move-v3`, `pages.findBestMoveV3`
-(and `pageDescriptions.findBestMoveV3`); the dev-only top-level folder
+Routes and nav: `/accuracy-trainer/find-best-move-v3` — the sessions lobby, a
+`FULL_WIDTH_ROUTE`, `pages.findBestMoveV3` (and `pageDescriptions.findBestMoveV3`)
+— and `/accuracy-trainer/find-best-move-v3/:caseId` — a session, or `new` the
+setup, a board route, `pages.findBestMoveV3Session` (CTA-239); the dev-only top-level folder
 `accuracy-trainer` (`nav.folders.accuracyTrainer`, after the Engine — a
 top-level folder with one screen stays a folder), its screen
 `nav.findBestMoveV3`, marked `experimental` (`NavItem.experimental`, carried by
 `navTree.ts`, drawn by `Sidebar.tsx` as a chip, `nav.experimental`; the
 screen's header carries the same chip). `options.id` `find-best-move-v3`.
 Locale keys: `accuracyTrainer.*` (`setup`, `casePicker`, `position`,
-`session`, `details`, `lines`, `report`), in both catalogs.
+`session`, `details`, `lines`, `report`, and the lobby's and a session's own
+`sessions` — CTA-239), in both catalogs.
 
 ---
 
@@ -118,12 +131,16 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
 
 **The Case's tree is the session's one truth** (`lib/findBestMoveSession.ts`).
 
-- **Start** (`createSessionCase`, then `startSession`) makes a Case in **one**
+- **Start** (`startSession`, then `createSessionCase`) makes a Case in **one**
   project, *Find Best Move* (`accuracyTrainer.session.projectName`, at the top
-  level — found by its name, else made), named "<game> — Find Best Move",
+  level — found by its name, else made, `sessionProjectOf`), named "<game> — Find Best Move",
   holding **the game's mainline alone** (`sessionBaseTree`: its moves and
-  tags, none of its comments, NAGs, side lines or analysis tags). A refused
-  write is said under the setup, and nothing starts.
+  tags, none of its comments, NAGs, side lines or analysis tags) **with the
+  new session written in** (CTA-239, §7 — its tags and each position's
+  command, the positions' lines among them: the source's analysis is not in
+  the tree, so it is in the commands) — then opens it at its address, where
+  the screen resumes it from that PGN as a reload would (§8). A refused write
+  is said under the setup, and nothing starts.
 - **A position's view** (`positionViewOf`): the Case's tree **with the
   position's continuation set aside** — its node's children: the game's next
   move and everything after it, the engine's lines there, the answers further
@@ -149,12 +166,20 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   hides everything under the position: the game's continuation and the
   engine's lines stay hidden, the reader's lines come back.
 - **Autosaved** (`useAutosave` → `saveCaseState`) on every change, its merges
-  the done jobs' ids (§4). **Opening** another position (`openPosition`)
-  takes the Case's tree as it stands now.
+  the done jobs' ids (§4) and the ones the Case held when it was read — **and
+  the session itself with it** (`withSessionRecord`, CTA-239): every change of
+  the session's state is a change of the Case's PGN, so nothing of it lives
+  only in memory. **Opening** another position (`openPosition`) takes the
+  Case's tree as it stands now. **The board never holds the session's
+  commands** (`positionViewOf` → `withoutSessionCommands`): they would give
+  the answer away in a comment dialog; the writer puts them back on every save.
 - **The answer** is written once it is graded — never while it waits, so a
   comment is never rewritten: "Find Best Move: 1. e4 (#1, Best), 2. Nf3 (#3,
   Good), 3. h3 (not among the lines) — 2 of the top 3, 1 in place", "Find
-  Best Move: passed" (`accuracyTrainer.session.answer.*`).
+  Best Move: passed" (`accuracyTrainer.session.answer.*`). **With it, the
+  position's lines** (CTA-239, `withPositionLines`): every line graded
+  against, hung as a variation with its `[%eval]` — so the Case shows them to
+  any PGN reader; a pass's stay out of the tree, hidden.
 
 - **On to the next position** — Next after a check, or a Pass, which **goes
   on at once** (the summary after the last): the board starts at the position
@@ -194,8 +219,14 @@ moves to find, N.
   said. A pass never waits.
 - **The job and the autosave never undo each other**: the job writes its lines
   into the stored Case under its id (`merges`); the session's state carries
-  the ids of the jobs it has seen done, so `saveCaseState` writes no tree from
-  before them — and its own tree holds the same lines.
+  the ids of the jobs it has seen done — and, read back, every merge the Case
+  held — so `saveCaseState` writes no tree from before them, and its own tree
+  holds the same lines.
+- **A job over is written as such** (CTA-239): its search's lines go into the
+  position's stored lines and its command names it `searched:` — so a session
+  read back grades the same, never waits for it again, and never asks for
+  another, even once the runtime has forgotten the job. A job still running
+  is `job:`, and a session read back waits for it as before.
 
 ## 5. The screen
 
@@ -213,8 +244,10 @@ moves to find, N.
   them ("Your moves: 1. Nf3 2. d4 3. c4") over **Check (n)** (off with none),
   beside Pass.
 - **The right panel**: the setup before a session; then **Moves · Map ·
-  Result** (off until answered) **· Summary**; the header — the
-  *Experimental* chip, "Position 3 of 12 · 12. White"; the footer — the
+  Result** (off until answered) **· Summary**; the header — the way back to
+  the sessions (CTA-239), the *Experimental* chip, "Position 3 of 12 · 12.
+  White", and **Download the session's PGN** (its Case's PGN as the autosave
+  writes it); the footer — the
   comment block, the next-moves bar (Moves), the instructions, the reader's
   moves and the engine's word while answering, New session, Pass / Check or
   Next / Summary. **Result** (`GradedLines`): the headline (found, in place;
@@ -259,6 +292,75 @@ moves to find, N.
   its test; the blocks read the grade.
 - **Another session step** (a hint, a retry): a transition in
   `lib/findBestMoveSession.ts`, its test, an action of the hook.
-- **Next** (asked): download the session's variations with their
-  evaluations — they are all in its Case. Resuming a session from its Case is
-  a later task.
+- **A new piece of session state** (CTA-239): a field of the session, its
+  tag or command field written and read in `lib/findBestMoveSessionPgn.ts`
+  (absent reads as its default — no version bump while an older PGN still
+  reads), §7's table, and the round-trip test. Bump `SESSION_FORMAT_VERSION`
+  only for a change an older reader would misread; a PGN of another version
+  is no session to this build.
+
+## 7. The session in its PGN (CTA-239)
+
+**The Case is the session**: its PGN holds everything the session is —
+`lib/findBestMoveSessionPgn.ts` writes it on every autosave
+(`withSessionRecord`) and reads it back (`sessionRecordOf`); no store, no
+database, no field of the Case's own. Readable in any PGN viewer: the game,
+the reader's variations, the engine's lines with their `[%eval]`, the answers
+as comments; the trainer's machine data is in tags and one `[%fbm]` command
+per position alone (`readComment` shows it as no chip — [`pgn-annotations.md`](./pgn-annotations.md) §2).
+
+| Tag | Value |
+| --- | --- |
+| `FindBestMove` | The format's version, `1` — **what makes a PGN a session**; another version is none to this build |
+| `FindBestMoveSide` | `white`, `black` or `both` |
+| `FindBestMoveMoves` | N, the moves to find (1–10; unreadable: 3) |
+| `FindBestMoveEngine`, `FindBestMoveArrows` | `on` / `off` — *Use the engine*, *Show next-move arrows* |
+| `FindBestMovePosition` | The position on screen, 1-based |
+| `FindBestMoveStatus` | `ongoing` / `done` — for a reader of the file; the session reads it from its positions |
+| `FindBestMoveGame` | The game's name (its jobs' titles) |
+
+**A position's command** — `[%fbm …]`, the first comment on the move the
+position follows (the game's opening comment for the start); the positions
+are the moves carrying one, in game order. Its fields, `key:value`,
+space-separated, absent when empty:
+
+| Field | Value |
+| --- | --- |
+| `game:` | The game's move there |
+| `state:` | `open` (not answered), `answered`, `passed`, `reopened` (a pass being answered again — only on screen; anywhere else read as a pass) |
+| `answer:` | The reader's moves in their order, `Nf3,d4,c4` |
+| `lines:` | **Every line the position is graded against** — the source's analysis and the engine's search together — each `<moves>/<score>/<flags>`: its moves from the position dot-joined (the game's move by its first alone), its score in White's view (centipawns, `#N` a mate), `l` one of the engine's listed lines, `p` the game's move: `e4/30/lp,d4.d5.c4/25/l`. A position rebuilt from them (`trainingPositionFrom`) is the one the source gave. |
+| `work:` | **The reader's own lines there** — each line to a leaf dot-joined, the leaves `\|`-separated in the tree's order (`Nf3.d5\|Nf3.Nf6\|d4`): their first moves' order is their ranking. Read back, each move takes the comments and glyphs the Case holds for it, but an `[%eval]`. |
+| `job:` / `searched:` | Its Evaluate Position job — `searched:` once it is done, its lines in `lines:`: waited for no more. A job that failed stays `job:`, read back as it reads live (graded with the lines there are, said) |
+
+**Why the lines and the work are written out**: the Case's tree alone cannot
+tell them apart — the source's analysis is not in it, and a reader's line, an
+engine's line and the game's continuation merge where they share a move. So
+grading is reproduced from the command, never re-read from the tree.
+
+## 8. The lobby and resuming (CTA-239)
+
+- **The lobby** (`/accuracy-trainer/find-best-move-v3`, `SessionsLobby`): every
+  Case of the *Find Best Move* project (`sessionProjectOf`, by name in the
+  reader's language, as Start finds it) as `FindBestMoveSessionsTable` — Name
+  (its link resumes it), Side, Moves to find, Progress (answered or passed of
+  all; how many each), Found (the best moves found of those to find, how many
+  in place — over the graded positions, a check still waiting for its search
+  not yet), Status (*Ongoing* / *Done* — nothing left to answer), Updated;
+  every header sorts, newest first, the sort and page the URL's; each row's
+  Open in Analysis and Download PGN; picks deleted together after one
+  confirmation (`removeAnalysisCases` — their unfinished jobs with them);
+  **New session** opens the setup. A Case there that holds no session (one
+  from before CTA-239, one put there by hand) keeps its row, which says so —
+  it opens in Analysis and downloads, but does not resume.
+- **Resuming** (`…/<caseId>`, `FindBestMoveV3Route`): the Cases read, the
+  screen mounts keyed by the Case and reads its PGN once
+  (`sessionRecordOf` → `resumeSession`): the position on screen opened (on
+  its Result tab when it is answered), the reader's lines there back on the board, the settings (*Moves to find*
+  locked, *Use the engine*, the arrows) as they were, every answer graded as
+  before. A Case that holds no session says so with its link into Analysis;
+  one not there says so with the way back.
+- **A session PGN loaded in the setup** (a downloaded one, or a session Case
+  picked): known by its tags — said as a session, how far it got, the side
+  toggle off — and **Resume** keeps it as it is, a **new** Case in the
+  project, opened where it was left. A plain game starts a fresh session.
