@@ -19,6 +19,7 @@ import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import TrackChangesRoundedIcon from "@mui/icons-material/TrackChangesRounded";
+import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
 import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
@@ -77,6 +78,13 @@ export const navItems = (): readonly NavItem[] => [
           to: "/accuracy-trainer/find-best-move-v1",
           labelKey: "nav.findBestMoveV1",
           icon: TrackChangesRoundedIcon,
+          folder: "accuracy-trainer",
+          experimental: true,
+        },
+        {
+          to: "/accuracy-trainer/find-best-move-v2",
+          labelKey: "nav.findBestMoveV2",
+          icon: AccountTreeRoundedIcon,
           folder: "accuracy-trainer",
           experimental: true,
         },

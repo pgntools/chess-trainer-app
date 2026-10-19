@@ -183,6 +183,7 @@ repertoire games pass nothing; a game never writes.
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |
+| **Find Best Move v2** (CTA-238, dev-only) | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `arrows: { show: true }`, `map: { linked: true }` — over the reader's own tree from the position | Moves and Map tabs; footer: `annotations`, `nextMoves` (Moves tab), then its Choose / Pass bar ([`accuracy-trainer.md`](./accuracy-trainer.md) §6) |
 
 The Openings explorer joins the view's `arrows` with the book's into one set
 (`views/openings/openingArrows.ts`). Every screen spreads `boardOptions`

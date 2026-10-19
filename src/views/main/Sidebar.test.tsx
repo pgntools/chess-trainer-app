@@ -700,8 +700,9 @@ describe("an experimental row (CTA-238)", () => {
     expect(screen.getByRole("button", { name: "Accuracy Trainer" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Find Best Move v1 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v1");
     expect(screen.getByTestId("nav-experimental-/accuracy-trainer/find-best-move-v1")).toHaveTextContent("Experimental");
-    // No other row carries one.
-    expect(screen.getAllByTestId(/^nav-experimental-/)).toHaveLength(1);
+    // Its sibling too, and no other row.
+    expect(screen.getByRole("link", { name: "Find Best Move v2 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v2");
+    expect(screen.getAllByTestId(/^nav-experimental-/)).toHaveLength(2);
     await expectNoAxeViolations();
   });
 });

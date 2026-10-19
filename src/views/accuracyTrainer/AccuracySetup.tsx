@@ -5,17 +5,17 @@ import Typography from "@mui/material/Typography";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import { useTranslation } from "react-i18next";
 
-import { CasePickerDialog } from "../../../blocks/dialogs";
-import { PgnInput } from "../../../blocks/forms";
-import { caseDisplayName } from "../../../blocks/tables";
-import { StatusText } from "../../../design-system/components/feedback";
-import { FieldLabel, SideToggle, type SideValue } from "../../../design-system/components/forms";
-import { trainingPositionsOf, type TrainingPosition } from "../../../lib/accuracyTrainer";
-import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../../lib/analysisCaseStore";
-import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../../lib/analysisProjectStore";
-import type { GameTree } from "../../../lib/gameTree";
-import { parsePgnTree } from "../../../lib/pgn";
-import { readRepertoireText } from "../../../lib/savedRepertoires";
+import { CasePickerDialog } from "../../blocks/dialogs";
+import { PgnInput } from "../../blocks/forms";
+import { caseDisplayName } from "../../blocks/tables";
+import { StatusText } from "../../design-system/components/feedback";
+import { FieldLabel, SideToggle, type SideValue } from "../../design-system/components/forms";
+import { trainingPositionsOf, type TrainingPosition } from "../../lib/accuracyTrainer";
+import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
+import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
+import type { GameTree } from "../../lib/gameTree";
+import { parsePgnTree } from "../../lib/pgn";
+import { readRepertoireText } from "../../lib/savedRepertoires";
 
 /** A fully analysed game, read: its name and every position it can train. */
 export type AccuracySource = { name: string; positions: readonly TrainingPosition[] };

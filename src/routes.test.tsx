@@ -48,6 +48,7 @@ describe("every route's page title (CTA-112)", () => {
     ["/engine/masked", "Masked Pieces — chessapp.dev"],
     // Dev-only (CTA-238): the tests run as dev.
     ["/accuracy-trainer/find-best-move-v1", "Find Best Move v1 — chessapp.dev"],
+    ["/accuracy-trainer/find-best-move-v2", "Find Best Move v2 — chessapp.dev"],
     ["/analysis", "Projects — chessapp.dev"],
     ["/analysis/projects/p1", "Project — chessapp.dev"],
     ["/analysis/projects/p1/cases/c1", "Case — chessapp.dev"],

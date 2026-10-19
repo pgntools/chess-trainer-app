@@ -88,6 +88,14 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV1/Main")),
         handle: { title: "pages.findBestMoveV1" },
       },
+      {
+        // Find Best Move v2 (CTA-238): v1's setup, then a regular analysis
+        // board at each position — side lines, comments, glyphs — and the
+        // line on screen's first move chosen as the answer.
+        path: "/accuracy-trainer/find-best-move-v2",
+        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV2/Main")),
+        handle: { title: "pages.findBestMoveV2" },
+      },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the
       // browser, so the MDX compiler is in this dev chunk alone — and only

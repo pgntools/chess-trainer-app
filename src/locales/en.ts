@@ -45,6 +45,8 @@ const en = {
     maskedPlay: "Masked Pieces",
     /** The Accuracy Trainer's Find Best Move v1 (`/accuracy-trainer/find-best-move-v1`, CTA-238) — experimental and dev-only. */
     findBestMoveV1: "Find Best Move v1",
+    /** Its second exercise (`/accuracy-trainer/find-best-move-v2`, CTA-238) — dev-only. */
+    findBestMoveV2: "Find Best Move v2",
     /** The chip on an experimental screen's row (CTA-238). */
     experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
@@ -214,6 +216,7 @@ const en = {
     maskedPieces: "Masked Pieces",
     /** The Accuracy Trainer's first exercise (CTA-238), dev-only. */
     findBestMoveV1: "Find Best Move v1",
+    findBestMoveV2: "Find Best Move v2",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -254,6 +257,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
+    findBestMoveV2: "Analyse each position of a fully analysed game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
     findBestMoveV1: "Suggest the best moves at every position of a fully analysed game, and see how they measure against the engine's lines.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
@@ -564,6 +568,13 @@ const en = {
       next: "Next",
       summary: "Summary",
       newSession: "New session",
+    },
+    /** Find Best Move v2: an analysis board at each position, then one move chosen. */
+    v2: {
+      tabs: { moves: "Moves", map: "Map", result: "Result" },
+      instructions: "Analyse the position as you like — side lines, comments, glyphs. Then stand in the line you would play and choose its first move.",
+      choose: "Choose",
+      chooseNone: "Play a move to choose it",
     },
     suggestions: {
       label: "Your moves",

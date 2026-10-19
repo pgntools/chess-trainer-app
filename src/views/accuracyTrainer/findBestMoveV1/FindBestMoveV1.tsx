@@ -25,7 +25,7 @@ import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { usePageTitle } from "../../main/pageTitle";
-import AccuracySetup, { type AccuracySource } from "./AccuracySetup";
+import AccuracySetup, { type AccuracySource } from "../AccuracySetup";
 
 /** A session: the positions it asks, where the reader is, and what they answered (`null` not yet). */
 type Session = {

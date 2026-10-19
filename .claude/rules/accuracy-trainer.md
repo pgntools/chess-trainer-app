@@ -10,10 +10,17 @@ paths:
 # Accuracy Trainer (CTA-238, experimental, dev-only)
 
 A sidebar folder of its own, **Accuracy Trainer**, for exercises that grade
-the reader's moves against a computer analysis. Today it holds one:
-**Find Best Move v1** — `/accuracy-trainer/find-best-move-v1`. A later
-exercise (or a v2) is a screen of its own beside it, under
-`src/views/accuracyTrainer/<exercise>/`, reusing `lib/accuracyTrainer.ts`.
+the reader's moves against a computer analysis. It holds two, sharing a
+setup (`views/accuracyTrainer/AccuracySetup.tsx`), the grading
+(`lib/accuracyTrainer.ts`) and the result and summary blocks:
+
+- **Find Best Move v1** — `/accuracy-trainer/find-best-move-v1`: several
+  moves suggested by playing them on a board that snaps back (§4).
+- **Find Best Move v2** — `/accuracy-trainer/find-best-move-v2`: a regular
+  analysis board at each position, and one move chosen (§6).
+
+A later exercise is a screen of its own beside them, under
+`src/views/accuracyTrainer/<exercise>/`, a nav entry in the folder.
 
 ## Find Best Move v1
 
@@ -42,12 +49,13 @@ extended later; this file is its whole reference.
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The pure layer**: `trainingPositionsOf` (the positions a tree can train, each with its evaluated lines), `sessionPositionsOf` (one side's, or both), `gradeSuggestion` / `gradePosition` (a suggestion, a position), `sessionSummaryOf` (the report's measures), `sanOfMove` (a drop read as SAN — `chess.js` reads, never plays), `moveSquaresOf` (a SAN's arrow), `bareSan`, `ACCURACY_THRESHOLDS`. Unit-tested in `accuracyTrainer.test.ts`. |
 | `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.tsx` | **The screen**: the session state, the board composed from the core, the panel's tabs (Train · Summary), header and footer. |
-| `src/views/accuracyTrainer/findBestMoveV1/AccuracySetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one), or an Analysis Case (`CasePickerDialog` — the Projects and Cases stores subscribed to only while it is open), the side (`SideToggle`, *Both* its `all`), Start. |
+| `src/views/accuracyTrainer/AccuracySetup.tsx` | The setup, both versions': a PGN uploaded or pasted (`PgnInput`, a file of several games picking one), or an Analysis Case (`CasePickerDialog` — the Projects and Cases stores subscribed to only while it is open), the side (`SideToggle`, *Both* its `all`), Start. |
 | `src/views/accuracyTrainer/findBestMoveV1/Main.tsx` | Layout-only wrapper (`find-best-move-v1-wrapper`). |
+| `src/views/accuracyTrainer/findBestMoveV2/FindBestMoveV2.tsx`, `Main.tsx` | **v2** (§6) and its wrapper (`find-best-move-v2-wrapper`). |
 | `src/blocks/lists/SuggestionList/` | The reader's moves at one position, each removable (read only once graded). |
 | `src/blocks/panels/GradedLines/` | A graded position: the headline and the engine's lines with the suggestions' verdicts. |
 | `src/blocks/panels/AccuracySessionReport/` | The summary: the measures and every position, each a button back to it. |
-| Tests | `src/lib/accuracyTrainer.test.ts`, `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.test.tsx`, the three blocks' own, Find Best Move v1's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
+| Tests | `src/lib/accuracyTrainer.test.ts`, `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.test.tsx`, `findBestMoveV2/FindBestMoveV2.test.tsx`, the three blocks' own, both versions' rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
 
 Routes and nav: `/accuracy-trainer/find-best-move-v1`, `pages.findBestMoveV1`
 (and `pageDescriptions.findBestMoveV1`); the dev-only top-level folder
@@ -56,6 +64,9 @@ Routes and nav: `/accuracy-trainer/find-best-move-v1`, `pages.findBestMoveV1`
 stays a folder), its screen `nav.findBestMoveV1`, marked `experimental` — `NavItem.experimental`
 carried by `navTree.ts` and drawn by `Sidebar.tsx` as a chip (`nav.experimental`),
 the screen's header carrying the same chip. `options.id` `find-best-move-v1`.
+v2: `/accuracy-trainer/find-best-move-v2`, `pages.findBestMoveV2`,
+`nav.findBestMoveV2`, `options.id` `find-best-move-v2`, its own words
+`accuracyTrainer.v2.*`.
 Locale keys: `accuracyTrainer.*`, in both catalogs.
 
 ---
@@ -145,6 +156,36 @@ which mainline moves were analysed.
   answered.
 - **Nothing is kept**: a session lives in the screen's state; leaving ends
   it. No store, so no Export / Import, Storage or legal-page lines.
+
+## 6. Find Best Move v2
+
+The same setup, positions, grading, Result and Summary as v1; what differs is
+the board.
+
+- **A regular analysis board at each position** — the core and the explorer
+  as the Case board composes them (`useVariationsExplorer` with
+  `onEditTree: core.replaceTree`, `annotations`, `playChances: false`,
+  `arrows: { show: true }`, `map: { linked: true }`; [`tree-views.md`](./tree-views.md)):
+  moves for both sides, side lines, the move menu (promote, delete, comment,
+  *Add annotation…* glyphs, arrows and circles), the comment block, the map,
+  the next-move arrows and bar. Its tree is **the reader's own, starting at
+  the position** (`emptyTree(fen)`): nothing of the game — its moves, lines,
+  comments or evals — is in it, so nothing gives the answer away.
+- **Choose** (the footer, beside Pass): **the first move of the line on
+  screen** (`pathTo(tree, nodeId)[0]`) — wherever the reader stands in it,
+  however deep; off at the position itself ("Play a move to choose it"). The
+  answer is `[san]` (a pass `[]`), graded by `gradePosition` as one
+  suggestion; the **Result** tab opens on `GradedLines`. At the position
+  itself, once graded, line 1 is drawn in green and a different choice in red
+  over the reader's own arrows.
+- **Tabs**: Moves · Map · Result (off until graded) · Summary — the setup a
+  single tab before a session. The footer: the comment block, the next-moves
+  bar (Moves), the instructions while answering, then New session and Pass /
+  Choose, or Next / Summary.
+- **The reader's analysis is kept per position for the session** (`trees`):
+  leaving a position (Choose, Pass, Next, a summary row) keeps the board's
+  tree; coming back loads it (`loadTree`, the board facing the side to move).
+  Nothing outlives the session; no engine runs.
 
 ## 5. Extending it
 
