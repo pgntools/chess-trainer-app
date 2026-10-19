@@ -55,14 +55,15 @@ const ANALYSED = `[White "Alice"]
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
 
-const mount = () =>
+/** The screen, the game's moves between positions played out at once — `stepDelayMs` for the test that watches them. */
+const mount = (stepDelayMs = 0) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/accuracy-trainer/find-best-move-v3"]}>
         <BoardLeftPanelProvider>
           <RightPanelProvider>
             <BoardLeftPanelOutlet compact={false} />
-            <FindBestMoveV3 />
+            <FindBestMoveV3 stepDelayMs={stepDelayMs} />
             <RightPanelOutlet />
           </RightPanelProvider>
         </BoardLeftPanelProvider>
@@ -240,16 +241,56 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(boardOptions().boardOrientation).toBe("white");
   });
 
-  it("asks Black's positions facing Black, and takes a pass", async () => {
+  it("asks Black's positions facing Black; a pass on the last goes on to the summary at once", async () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "Black");
     expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 1 · 1… Black");
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(screen.getByRole("button", { name: "Pass" }));
-    // A pass is put off for later: no line shown.
-    expect(screen.getByTestId("find-best-move-v3-passed")).toHaveTextContent("put off for later");
-    expect(screen.queryByTestId("find-best-move-v3-graded")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("find-best-move-v3-report-measures-passed")).toHaveTextContent("1");
+    // A pass is put off for later: its best moves hidden there too.
+    expect(screen.getByTestId("find-best-move-v3-report-table-row-0")).not.toHaveTextContent("e5, c5");
+  });
+
+  it("goes on from a pass at once, and plays the game's moves to the next position out one by one", async () => {
+    const user = userEvent.setup();
+    mount(1000);
+    await startWith(user, "White");
+    expect(boardOptions().position).toBe(START);
+    // The clock faked once the session runs: Testing Library's own waits are timers too.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      // A pass: on to 2. Qh5's position — the board starts where it was, then 1. e4, then 1... e5, a second apart.
+      fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+      expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+      expect(boardOptions().position).toBe(START);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(boardOptions().position).toBe("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
+      act(() => vi.advanceTimersByTime(1000));
+      expect(boardOptions().position).toBe(AFTER_E5);
+      expect(boardOptions().allowDragging).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops playing the game's moves out once the reader moves the board", async () => {
+    const user = userEvent.setup();
+    mount(1000);
+    await startWith(user, "White");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+      act(() => vi.advanceTimersByTime(1000));
+      // The reader steps back to the start: the rest is theirs.
+      fireEvent.click(screen.getByTestId("board-control-first"));
+      act(() => vi.advanceTimersByTime(3000));
+      expect(boardOptions().position).toBe(START);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("switches the next-move arrows from its panel's Settings", async () => {
@@ -383,9 +424,8 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
-    // Put off for later.
+    // Put off for later — and on to the next at once.
     await user.click(screen.getByRole("button", { name: "Pass" }));
-    await user.click(screen.getByRole("button", { name: "Next" }));
 
     // On 2. Qh5's position, a move of the reader's; then back to the start — the passed one.
     expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");

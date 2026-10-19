@@ -156,10 +156,17 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   Good), 3. h3 (not among the lines) — 2 of the top 3, 1 in place", "Find
   Best Move: passed" (`accuracyTrainer.session.answer.*`).
 
-- **A pass is "later"** — put off, not given up: its lines stay hidden (the
-  Result says so, with no line; Your moves shows it passed; the summary's
-  best moves for it "–"; no answer arrow), and **Answer it now** — on Result,
-  or on Your moves when the board is back at it — opens it again as the
+- **On to the next position** — Next after a check, or a Pass, which **goes
+  on at once** (the summary after the last): the board starts at the position
+  just answered and **plays the game's moves to the next one out, one every
+  second** (`STEP_DELAY_MS`, the hook's `stepDelayMs` — the screen's prop, a
+  test's own): the reader's side's game move, then the reply. A step that
+  finds the board moved by the reader stops the rest. Opening a position
+  from the summary or *Answer it now* jumps straight there.
+- **A pass is "later"** — put off, not given up: its lines stay hidden (Your
+  moves shows it passed; the summary's best moves for it "–"; no answer
+  arrow), and **Answer it now** — on Your moves when the board is back at it
+  (or on Result, opened from the summary) — opens it again as the
   position on screen (`reopenPassed` over the Case's tree as it stands, the
   one on screen left first), the pass and its comment taken back
   (`withoutPositionComment`). After Check, Next goes on to the next position

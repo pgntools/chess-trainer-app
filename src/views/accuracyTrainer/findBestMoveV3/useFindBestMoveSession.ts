@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AccuracyReportRow, AccuracyTrainerMoves } from "../../../blocks/panels";
@@ -35,7 +35,7 @@ import {
   type FindBestMoveSession,
   type PositionAnnotation,
 } from "../../../lib/findBestMoveSession";
-import { sanPathTo } from "../../../lib/gameTree";
+import { nodeAtSanPath, sanPathTo } from "../../../lib/gameTree";
 import { useAutosave } from "../../board/core/useAutosave";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { createSessionCase } from "./sessionCase";
@@ -44,6 +44,9 @@ import { useEvaluatePositionJobs, type PositionEngineState } from "./useEvaluate
 
 /** How many best moves to find at each position, to start with. */
 const DEFAULT_MOVES = 3;
+
+/** How long each of the game's moves between two positions stays on the board as they are played out. */
+export const STEP_DELAY_MS = 1000;
 
 const NO_JOBS: readonly (string | null)[] = [];
 
@@ -74,12 +77,16 @@ export type SessionSettings = { moves: number; showArrows: boolean; engine: bool
  * - **The answer**: the reader's lines from the position, their first moves
  *   **in their order** (`candidatesOf`) — Check grades them against the top N
  *   the session asks for (`gradePosition`'s `wanted`): found, in place.
+ * - **On to the next position** (Next, or a Pass — which goes on at once): the
+ *   board starts at the position just answered and plays the game's moves to
+ *   the next one, one every `stepDelayMs` (the reader's side's game move, then
+ *   the reply); the reader navigating stops it.
  * - **The engine**: on, a position with fewer top lines than N is searched
  *   once the reader moves a piece there (or checks); a check its search is
  *   still running for **waits** for it, then is graded against the tree's
  *   lines and the engine's.
  */
-export const useFindBestMoveSession = () => {
+export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDelayMs?: number } = {}) => {
   const { t } = useTranslation();
   const core = useBoardCore();
 
@@ -182,13 +189,50 @@ export const useFindBestMoveSession = () => {
   );
   useAutosave({ enabled: session !== null, record: caseState, save: saveCase });
 
-  /** Load a session's position on the board — its view, facing the side to move, on the position. */
-  const show = (next: FindBestMoveSession) => {
+  // The game's moves being played out between two positions — each step's timer, and the node it expects to start from.
+  const steps = useRef<number[]>([]);
+  const nodeOnScreen = useRef(core.nodeId);
+  useEffect(() => {
+    nodeOnScreen.current = core.nodeId;
+  });
+  const stopSteps = useCallback(() => {
+    for (const timer of steps.current) window.clearTimeout(timer);
+    steps.current = [];
+  }, []);
+  useEffect(() => stopSteps, [stopSteps]);
+
+  /**
+   * Load a session's position on the board — its view, facing the side to
+   * move, on the position. Arriving `from` an earlier position on its way
+   * (Next, Pass), the board starts there and plays the game's moves between
+   * them out, one every `stepDelayMs`; a step finding the board moved on by
+   * the reader stops them.
+   */
+  const show = (next: FindBestMoveSession, from?: readonly string[]) => {
+    stopSteps();
     setSession(next);
     core.loadTree(next.view.board);
-    core.goToNode(next.view.nodeId);
     const position = next.positions[next.index];
     if (position !== undefined) core.setOrientation(facing(position));
+    const to = position?.path ?? [];
+    const onTheWay = from !== undefined && from.length < to.length && from.every((san, at) => to[at] === san);
+    if (!onTheWay || stepDelayMs <= 0) {
+      core.goToNode(next.view.nodeId);
+      return;
+    }
+    const board = next.view.board;
+    let expected = nodeAtSanPath(board, from);
+    core.goToNode(expected);
+    for (let ply = from.length + 1; ply <= to.length; ply += 1) {
+      const target = nodeAtSanPath(board, to.slice(0, ply));
+      const timer = window.setTimeout(() => {
+        // The reader went somewhere else meanwhile: the rest is theirs.
+        if (nodeOnScreen.current !== expected) return stopSteps();
+        expected = target;
+        core.goToNode(target);
+      }, (ply - from.length) * stepDelayMs);
+      steps.current.push(timer);
+    }
   };
 
   /** Search a position with the engine — once, where the engine is on and its lines are fewer than needed. */
@@ -240,9 +284,9 @@ export const useFindBestMoveSession = () => {
   };
 
   /** Open a position of the session, on the Case's tree as it stands — the one on screen left first, its lines kept. */
-  const open = (index: number) => {
-    if (session === null || caseTree === undefined) return;
-    show(openPosition(leavePosition(session, core.tree), index, caseTree));
+  const open = (index: number, from: FindBestMoveSession | null = session, played?: readonly string[]) => {
+    if (from === null || caseTree === undefined) return;
+    show(openPosition(leavePosition(from, core.tree), index, caseTree), played);
   };
 
   /**
@@ -266,14 +310,22 @@ export const useFindBestMoveSession = () => {
     setSession(answerPosition(session, moves));
   };
 
-  /** **Next**: the next position still to answer — `false` when none is left (the summary's turn). */
-  const next = (): boolean => {
-    if (session === null) return false;
-    const later = nextUnanswered(session);
-    if (later === undefined) return false;
-    open(later);
+  /** On to the next position still to answer after `from`'s, the game's moves played out — `false` when none is left (the summary's turn). */
+  const goOn = (from: FindBestMoveSession): boolean => {
+    const later = nextUnanswered(from);
+    if (later === undefined) {
+      setSession(from);
+      return false;
+    }
+    open(later, from, from.positions[from.index]?.path);
     return true;
   };
+
+  /** **Next**: the next position still to answer — `false` when none is left (the summary's turn). */
+  const next = (): boolean => (session === null ? false : goOn(session));
+
+  /** **Pass**: the position put off for later, and on to the next one at once — `false` when none is left. */
+  const pass = (): boolean => (session === null ? false : goOn(answerPosition(session, [])));
 
   const index = session?.index ?? 0;
   const position = session === null ? undefined : positions[index];
@@ -375,7 +427,7 @@ export const useFindBestMoveSession = () => {
     check: () => {
       if (session !== null) answer(candidatesOf(session.view, core.tree));
     },
-    pass: () => answer([]),
+    pass,
     next,
     board: { onPieceDrop, resolvePromotion },
   };

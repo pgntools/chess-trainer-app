@@ -41,13 +41,19 @@ const ID = "find-best-move-v3";
  * game, its Case, Moves — the reader's moves, reordered and deleted — and Settings). At each position the board shows every move
  * before it and none after; the reader's lines from it are their moves, in
  * their order, and **Check** grades them against the top N. A **pass** is put
- * off for later: its lines stay hidden, and *Answer it now* — here, or on Your
- * moves when the board is back at it — opens it again.
+ * off for later and goes on at once: its lines stay hidden, and *Answer it
+ * now* — on Your moves when the board is back at it — opens it again. On to
+ * the next position, the game's moves between them play out on the board.
  */
-function FindBestMoveV3() {
+type FindBestMoveV3Props = {
+  /** How long each of the game's moves between two positions stays on the board — a test's own (`STEP_DELAY_MS` to start with). */
+  stepDelayMs?: number;
+};
+
+function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
   const { t } = useTranslation();
   const { drawing } = useChessTokens();
-  const run = useFindBestMoveSession();
+  const run = useFindBestMoveSession(stepDelayMs === undefined ? {} : { stepDelayMs });
   const { core, session, position, grade, settings } = run;
 
   const [source, setSource] = useState<SessionSource | null>(null);
@@ -87,11 +93,12 @@ function FindBestMoveV3() {
   }, [position, grade, session, core.nodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 
-  const answer = (how: "pass" | "check") => {
-    if (how === "pass") run.pass();
-    else run.check();
+  const check = () => {
+    run.check();
     setTab("result");
   };
+  // A pass goes on at once — to the next position, or the summary after the last.
+  const pass = () => setTab(run.pass() ? "moves" : "summary");
   const next = () => setTab(run.next() ? "moves" : "summary");
   const reset = () => {
     run.reset();
@@ -255,10 +262,10 @@ function FindBestMoveV3() {
         <Box sx={{ flexGrow: 1 }} />
         {run.answering ? (
           <>
-            <Button variant="outlined" onClick={() => answer("pass")} data-testid={`${ID}-pass`}>
+            <Button variant="outlined" onClick={pass} data-testid={`${ID}-pass`}>
               {t("accuracyTrainer.position.pass")}
             </Button>
-            <Button variant="contained" onClick={() => answer("check")} disabled={run.candidates.length === 0} data-testid={`${ID}-check`}>
+            <Button variant="contained" onClick={check} disabled={run.candidates.length === 0} data-testid={`${ID}-check`}>
               {t("accuracyTrainer.session.check", { count: run.candidates.length })}
             </Button>
           </>
