@@ -9,10 +9,12 @@ import {
   nextUnanswered,
   openPosition,
   positionViewOf,
+  reorderedCandidates,
   sessionBaseTree,
   startSession,
   withPositionEngineLines,
   withPositionJob,
+  withoutCandidate,
   withSessionAnnotations,
 } from "./findBestMoveSession";
 import { addMove, deleteFrom, findNode, mainline, nodeAtSanPath, setComments, treeToPgn, type GameTree } from "./gameTree";
@@ -131,6 +133,44 @@ describe("candidatesOf / isAtPosition", () => {
     const c4 = play(d4.tree, null, "c4");
     expect(candidatesOf(start, c4.tree)).toEqual(["d4", "c4"]);
     expect(isAtPosition(start, c4.tree, null)).toBe(true);
+  });
+});
+
+describe("reorderedCandidates / withoutCandidate", () => {
+  const view = positionViewOf(base, ["e4", "e5"])!;
+  const bc4 = play(view.board, view.nodeId, "Bc4");
+  const nf3 = play(bc4.tree, view.nodeId, "Nf3");
+  const d4 = play(nf3.tree, view.nodeId, "d4");
+  const nf6 = play(d4.tree, bc4.nodeId, "Nf6");
+  const board = nf6.tree;
+
+  it("moves one of the reader's moves up or down their order, its line with it, every id kept", () => {
+    expect(candidatesOf(view, reorderedCandidates(view, board, 1, "up"))).toEqual(["Nf3", "Bc4", "d4"]);
+    const down = reorderedCandidates(view, board, 0, "down");
+    expect(candidatesOf(view, down)).toEqual(["Nf3", "Bc4", "d4"]);
+    // Bc4's own line came with it, its node the same.
+    expect(findNode(down, nf6.nodeId)?.san).toBe("Nf6");
+  });
+
+  it("leaves the order as it is past an end", () => {
+    expect(reorderedCandidates(view, board, 0, "up")).toBe(board);
+    expect(reorderedCandidates(view, board, 2, "down")).toBe(board);
+    expect(reorderedCandidates(view, board, 5, "up")).toBe(board);
+  });
+
+  it("deletes one of the reader's moves, and everything in its line", () => {
+    const without = withoutCandidate(view, board, 0);
+    expect(candidatesOf(view, without)).toEqual(["Nf3", "d4"]);
+    expect(findNode(without, nf6.nodeId)).toBeNull();
+    expect(withoutCandidate(view, board, 7)).toBe(board);
+  });
+
+  it("works from the start position too", () => {
+    const start = positionViewOf(base, [])!;
+    const e4 = play(start.board, null, "e4");
+    const c4 = play(e4.tree, null, "c4");
+    expect(candidatesOf(start, reorderedCandidates(start, c4.tree, 1, "up"))).toEqual(["c4", "e4"]);
+    expect(candidatesOf(start, withoutCandidate(start, c4.tree, 1))).toEqual(["e4"]);
   });
 });
 

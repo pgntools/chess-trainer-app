@@ -38,7 +38,7 @@ const ID = "find-best-move-v3";
  * with editing on: side lines, comments, glyphs, the map), the right panel
  * (the setup, then Moves · Map · Result · Summary, the footer's moves so far
  * with Pass / Check, or Next) and the left one (`AccuracyTrainerDetails`: the
- * game, its Case, Settings). At each position the board shows every move
+ * game, its Case, Moves — the reader's moves, reordered and deleted — and Settings). At each position the board shows every move
  * before it and none after; the reader's lines from it are their moves, in
  * their order, and **Check** grades them against the top N.
  */
@@ -111,7 +111,10 @@ function FindBestMoveV3() {
                 side={side}
                 onSide={setSide}
                 onStart={() => {
-                  if (source !== null) void run.start(source, side);
+                  if (source === null) return;
+                  // The session's moves are where the reader will look first.
+                  setDetailsTab("moves");
+                  void run.start(source, side);
                 }}
                 starting={run.starting}
                 {...(run.startProblem === undefined ? {} : { problem: run.startProblem })}
@@ -267,7 +270,12 @@ function FindBestMoveV3() {
           onShowArrowsChange={(showArrows) => run.setSettings((current) => ({ ...current, showArrows }))}
           engine={settings.engine}
           onEngineChange={(engine) => run.setSettings((current) => ({ ...current, engine }))}
-          {...(session === null ? {} : { caseLink: { component: RouterLink, to: casePath(session.caseRef.projectId, session.caseRef.caseId) } })}
+          {...(session === null
+            ? {}
+            : {
+                caseLink: { component: RouterLink, to: casePath(session.caseRef.projectId, session.caseRef.caseId) },
+                moves: { list: run.candidates, onMove: run.moveCandidate, onRemove: run.removeCandidate, locked: !run.answering },
+              })}
           testId={`${ID}-details`}
         />
       </BoardLeftPanel>

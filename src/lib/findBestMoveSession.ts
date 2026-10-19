@@ -5,6 +5,7 @@ import {
   addLine,
   addMove,
   commentsAt,
+  deleteFrom,
   emptyTree,
   findNode,
   mainline,
@@ -146,6 +147,10 @@ export const positionViewOf = (tree: GameTree, path: readonly string[]): Positio
   return { board: withChildren(tree, at.id, []), nodeId: at.id, hidden };
 };
 
+/** The position's own moves on the board — its node's children, `null` the start's. */
+const positionMovesOf = (view: Pick<PositionView, "nodeId">, board: GameTree): readonly VariationNode[] =>
+  view.nodeId === null ? board.moves : (findNode(board, view.nodeId)?.children ?? []);
+
 /**
  * **The reader's candidates**: the first moves of their lines from the
  * position, **in their order** — the tree's order of the position's moves,
@@ -153,7 +158,30 @@ export const positionViewOf = (tree: GameTree, path: readonly string[]): Positio
  * main line* reorder them).
  */
 export const candidatesOf = (view: Pick<PositionView, "nodeId">, board: GameTree): string[] =>
-  (view.nodeId === null ? board.moves : (findNode(board, view.nodeId)?.children ?? [])).map((node) => node.san);
+  positionMovesOf(view, board).map((node) => node.san);
+
+/** Where one of the reader's moves goes in their order. */
+export type CandidateMove = "up" | "down";
+
+/**
+ * **One of the reader's moves moved** in their order — the `index`-th line
+ * from the position one place up or down, the others kept in theirs, every
+ * id kept. The same tree back past an end, or for an index it lacks.
+ */
+export const reorderedCandidates = (view: Pick<PositionView, "nodeId">, board: GameTree, index: number, move: CandidateMove): GameTree => {
+  const moves = positionMovesOf(view, board);
+  const to = move === "up" ? index - 1 : index + 1;
+  if (index < 0 || index >= moves.length || to < 0 || to >= moves.length) return board;
+  const reordered = [...moves];
+  [reordered[index], reordered[to]] = [reordered[to], reordered[index]];
+  return withChildren(board, view.nodeId, reordered);
+};
+
+/** **One of the reader's moves deleted** — the `index`-th line from the position, and everything in it. */
+export const withoutCandidate = (view: Pick<PositionView, "nodeId">, board: GameTree, index: number): GameTree => {
+  const node = positionMovesOf(view, board)[index];
+  return node === undefined ? board : deleteFrom(board, node.id);
+};
 
 /** Whether the board stands on the position or inside a line from it — where the reader's moves answer it. */
 export const isAtPosition = (view: Pick<PositionView, "nodeId">, board: GameTree, nodeId: string | null): boolean => {

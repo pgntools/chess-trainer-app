@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
@@ -191,6 +191,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const record = await sessionCase();
     expect(record?.name).toBe("Alice – Bob — Find Best Move");
     // Three to find, fixed for the session.
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByRole("slider", { name: "Moves to find" })).toBeDisabled();
 
     // The top 3 here, in order: e4, d4, Nf3.
@@ -257,6 +258,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     drag("e2", "e4");
     await user.click(screen.getByTestId("board-control-first"));
     expect(boardOptions().arrows).toEqual([expect.objectContaining({ startSquare: "e2", endSquare: "e4" })]);
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(screen.getByRole("switch", { name: "Show next-move arrows" }));
     expect(boardOptions().arrows).toEqual([]);
   });
@@ -300,5 +302,42 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(await screen.findByTestId("find-best-move-v3-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
     expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
     await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain("[%eval 0.20,20]"));
+  });
+
+  it("lists the reader's moves on the left panel's Moves tab — moved up or down, deleted, on the board too — and checks them in that order", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White");
+    // A session opens on the left panel's Your moves.
+    expect(screen.getByRole("tab", { name: "Your moves" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toHaveTextContent("No move yet");
+
+    // Three lines from the start position: Nf3, d4, e4 — in the order played.
+    drag("g1", "f3");
+    await user.click(screen.getByTestId("board-control-first"));
+    drag("d2", "d4");
+    await user.click(screen.getByTestId("board-control-first"));
+    drag("e2", "e4");
+    const items = () =>
+      within(screen.getByRole("list", { name: "Your moves, best first" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent);
+    expect(items()).toEqual(["1.Nf3", "2.d4", "3.e4"]);
+
+    // e4 to the top, two steps up; Nf3 deleted.
+    await user.click(screen.getByRole("button", { name: "Move e4 up" }));
+    await user.click(screen.getByRole("button", { name: "Move e4 up" }));
+    expect(items()).toEqual(["1.e4", "2.Nf3", "3.d4"]);
+    await user.click(screen.getByRole("button", { name: "Delete Nf3" }));
+    expect(items()).toEqual(["1.e4", "2.d4"]);
+    // The board's tree followed: the footer's moves, and the mainline the reader's first.
+    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4 2. d4");
+    expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
+
+    // Checked in that order: both of the top 3 found, each in its place; the list read only.
+    await user.click(screen.getByRole("button", { name: "Check (2)" }));
+    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
+    expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
+    expect(items()).toEqual(["1.e4", "2.d4"]);
   });
 });

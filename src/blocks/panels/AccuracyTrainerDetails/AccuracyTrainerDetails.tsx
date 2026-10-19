@@ -1,14 +1,30 @@
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
+import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { useTranslation } from "react-i18next";
 
 import { SliderField, SwitchField } from "../../../design-system/components/forms";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { IconAction } from "../../../design-system/components/toolbars";
 
-/** The panel's tabs — Settings alone today. */
-export type AccuracyTrainerDetailsTab = "settings";
+/** The panel's tabs. */
+export type AccuracyTrainerDetailsTab = "moves" | "settings";
+
+/** The reader's moves at the position on screen, in their order, and what may be done with them. */
+export type AccuracyTrainerMoves = {
+  /** In SAN, their best first. */
+  list: readonly string[];
+  /** One moved a place up or down their order. */
+  onMove: (index: number, move: "up" | "down") => void;
+  /** One deleted — its whole line. */
+  onRemove: (index: number) => void;
+  /** The position is checked: its moves are its answer, fixed. */
+  locked: boolean;
+};
 
 export type AccuracyTrainerDetailsProps = {
   /** The panel's heading: the game loaded, else the exercise's name. */
@@ -33,9 +49,13 @@ export type AccuracyTrainerDetailsProps = {
   onEngineChange: (on: boolean) => void;
   /** The session's Case in Analysis — absent before a session starts. */
   caseLink?: LinkTarget;
+  /** The reader's moves at the position on screen — absent before a session starts. */
+  moves?: AccuracyTrainerMoves;
   /**
    * The root; its parts `-title`, `-case` (the Case's link), `-tabs` (each tab
-   * `<testId>-tab-<id>`), `-settings` (`-moves`, `-arrows`, `-engine`).
+   * `<testId>-tab-<id>`), `-moves-tab` (a move `-move-<index>`, its actions
+   * `-move-<index>-up`, `-down`, `-remove`; none `-moves-empty`), `-settings`
+   * (`-moves`, `-arrows`, `-engine`).
    */
   testId: string;
 };
@@ -47,7 +67,10 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * **An Accuracy Trainer exercise's own panel** (CTA-238) — beside its board,
  * in the main menu's place, as a Case's or a Library game's (`BoardLeftPanel`,
  * `keepShell`): the game loaded as its heading — and, once a session runs,
- * a link to its Case — then tabs — **Settings**: *Moves to find* (how many
+ * a link to its Case — then tabs — **Moves**: the reader's moves at the
+ * position on screen, in their order, each moved up or down or deleted (their
+ * line with it; read only once the position is checked) — and **Settings**:
+ * *Moves to find* (how many
  * best moves, in order, at each position), *Show next-move arrows* (the
  * reader's analysis's continuations, on by default) and *Use the engine*
  * (CTA-238's Evaluate Position). A tab more is a field of
@@ -68,6 +91,7 @@ function AccuracyTrainerDetails({
   engine,
   onEngineChange,
   caseLink,
+  moves,
   testId,
 }: AccuracyTrainerDetailsProps) {
   const { t } = useTranslation();
@@ -96,7 +120,10 @@ function AccuracyTrainerDetails({
       )}
       <Box sx={{ flexShrink: 0, pb: 1 }}>
         <PanelTabs
-          tabs={[{ id: "settings", label: t("accuracyTrainer.details.tabs.settings") }]}
+          tabs={[
+            { id: "moves", label: t("accuracyTrainer.details.tabs.moves") },
+            { id: "settings", label: t("accuracyTrainer.details.tabs.settings") },
+          ]}
           value={tab}
           onChange={(id) => onTabChange(id as AccuracyTrainerDetailsTab)}
           ariaLabel={t("accuracyTrainer.details.tabs.label")}
@@ -107,6 +134,66 @@ function AccuracyTrainerDetails({
       </Box>
       {/* The open tab's content scrolls; the head and the tabs stay. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {tab === "moves" && (
+          <Box {...tabPanelProps(testId, "moves")} data-testid={`${testId}-moves-tab`} sx={{ display: "grid", gap: 1, p: 1 }}>
+            {moves === undefined || moves.list.length === 0 ? (
+              <Typography variant="body2" data-testid={`${testId}-moves-empty`} sx={{ color: "text.secondary" }}>
+                {t(moves === undefined ? "accuracyTrainer.details.movesNoSession" : "accuracyTrainer.details.movesNone")}
+              </Typography>
+            ) : (
+              <>
+                <Box component="ol" aria-label={t("accuracyTrainer.details.movesList")} sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 0.5 }}>
+                  {moves.list.map((san, index) => (
+                    <Box
+                      component="li"
+                      key={`${index}-${san}`}
+                      data-testid={`${testId}-move-${index}`}
+                      sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 32, borderBottom: 1, borderColor: "divider" }}
+                    >
+                      <Typography component="span" variant="body2" sx={{ color: "text.secondary", minWidth: "2ch", textAlign: "end" }}>
+                        {index + 1}.
+                      </Typography>
+                      <Typography component="span" variant="body2" dir="ltr" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                        {san}
+                      </Typography>
+                      {!moves.locked && (
+                        <>
+                          <IconAction
+                            label={t("accuracyTrainer.details.moveUp", { san })}
+                            onClick={() => moves.onMove(index, "up")}
+                            disabled={index === 0}
+                            testId={`${testId}-move-${index}-up`}
+                          >
+                            <ArrowUpwardRoundedIcon fontSize="small" />
+                          </IconAction>
+                          <IconAction
+                            label={t("accuracyTrainer.details.moveDown", { san })}
+                            onClick={() => moves.onMove(index, "down")}
+                            disabled={index === moves.list.length - 1}
+                            testId={`${testId}-move-${index}-down`}
+                          >
+                            <ArrowDownwardRoundedIcon fontSize="small" />
+                          </IconAction>
+                          <IconAction
+                            label={t("accuracyTrainer.details.moveRemove", { san })}
+                            onClick={() => moves.onRemove(index)}
+                            color="error"
+                            testId={`${testId}-move-${index}-remove`}
+                          >
+                            <DeleteOutlineRoundedIcon fontSize="small" />
+                          </IconAction>
+                        </>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+                <Typography variant="caption" component="p" sx={{ color: "text.secondary", m: 0 }}>
+                  {t(moves.locked ? "accuracyTrainer.details.movesLockedHint" : "accuracyTrainer.details.movesHint")}
+                </Typography>
+              </>
+            )}
+          </Box>
+        )}
         {tab === "settings" && (
           <Box
             {...tabPanelProps(testId, "settings")}

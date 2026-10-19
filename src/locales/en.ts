@@ -584,7 +584,16 @@ const en = {
     details: {
       label: "{{name}} — the exercise's own view",
       toggle: "The exercise's settings",
-      tabs: { label: "The exercise's own view", settings: "Settings" },
+      tabs: { label: "The exercise's own view", moves: "Your moves", settings: "Settings" },
+      /** The Moves tab: the reader's moves at the position on screen. */
+      movesList: "Your moves, best first",
+      movesNone: "No move yet — play one from the position on the board.",
+      movesNoSession: "Start a session to find its moves.",
+      movesHint: "Each is a line you played from the position. Moving one moves its line; deleting one deletes it.",
+      movesLockedHint: "Checked — these moves are the position's answer.",
+      moveUp: "Move {{san}} up",
+      moveDown: "Move {{san}} down",
+      moveRemove: "Delete {{san}}",
       arrows: "Show next-move arrows",
       arrowsHelp: "The continuations of your analysis at the position on screen, as arrows on the board.",
       engine: "Use the engine",

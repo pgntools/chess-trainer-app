@@ -23,8 +23,10 @@ import {
   isAtPosition,
   nextUnanswered,
   openPosition,
+  reorderedCandidates,
   startSession,
   withPositionJob,
+  withoutCandidate,
   withSessionAnnotations,
   type FindBestMoveSession,
   type PositionAnnotation,
@@ -301,8 +303,16 @@ export const useFindBestMoveSession = () => {
     grade: session === null ? null : grades[index],
     waiting: session !== null && waitsAt(index),
     engine: session === null ? undefined : engineAt(index),
-    /** The reader's moves at the position, in their order — what Check grades. */
-    candidates: session === null ? [] : candidatesOf(session.view, core.tree),
+    /** The reader's moves at the position, in their order — what Check grades; once checked, the answer. */
+    candidates: session === null ? [] : (answered ?? candidatesOf(session.view, core.tree)),
+    /** One of the reader's moves moved a place up or down their order — its line with it. */
+    moveCandidate: (index: number, move: "up" | "down") => {
+      if (session !== null && answering) core.replaceTree(reorderedCandidates(session.view, core.tree, index, move));
+    },
+    /** One of the reader's moves deleted — its whole line. */
+    removeCandidate: (index: number) => {
+      if (session !== null && answering) core.replaceTree(withoutCandidate(session.view, core.tree, index));
+    },
     /** How many best moves the session asks for at each position. */
     wanted,
     /** Whether the reader may move a piece: while answering, on the position or inside a line from it; once answered, anywhere. */

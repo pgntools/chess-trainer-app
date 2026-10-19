@@ -14,3 +14,6 @@ export const HEBREW_TITLE = "אליס – בוב";
 
 /** The session's Case, as its link points — an address (the gallery has no router). */
 export const CASE_LINK = { href: "/analysis/projects/p1/cases/c1" };
+
+/** The reader's moves at a position, their best first. */
+export const MOVES: readonly string[] = ["Nf3", "d4", "c4"];
