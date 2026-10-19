@@ -240,6 +240,58 @@ export const openingsMock = async (
   };
 };
 
+/** A job as the engine gate reads it (CTA-237) — the fields of the runtime's record it looks at. */
+type GateJobRecord = { id: string; lane: string; status: string; control?: "pause" | "cancel"; title: string };
+
+/**
+ * **The jobs the engine gate reads** (CTA-237, `views/board/core/engineGateJobs.ts`),
+ * stubbed: read at once — none running unless a test sets one — so a board
+ * whose engine starts on (Play with Engine) does not wait on the page's
+ * runtime reading IndexedDB. `set` puts a job running; `pause` records the
+ * gate's pause; `reset` (in an `afterEach`) goes back to none.
+ *
+ * ```ts
+ * vi.mock("../board/core/engineGateJobs", async () =>
+ *   (await import("../board/boardTestHarness")).engineGateJobsMock(),
+ * );
+ * ```
+ */
+export const engineJobsStub = (() => {
+  let records: readonly GateJobRecord[] = [];
+  const listeners = new Set<() => void>();
+  const pauses: string[] = [];
+  return {
+    set: (next: readonly GateJobRecord[]) => {
+      records = next;
+      listeners.forEach((listener) => listener());
+    },
+    reset: () => {
+      records = [];
+      pauses.length = 0;
+      listeners.forEach((listener) => listener());
+    },
+    read: () => records,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    /** The jobs the gate asked to pause, in order. */
+    pauses,
+  };
+})();
+
+export const engineGateJobsMock = async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useEngineGateJobs: () => useSyncExternalStore(engineJobsStub.subscribe, engineJobsStub.read, engineJobsStub.read),
+    pauseEngineJob: async (id: string) => {
+      engineJobsStub.pauses.push(id);
+    },
+  };
+};
+
 /** The board options the stub was last handed, or a legible failure. */
 export const boardOptions = () => {
   if (boardSpy.options === null) {
