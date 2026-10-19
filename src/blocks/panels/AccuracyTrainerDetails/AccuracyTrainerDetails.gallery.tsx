@@ -4,7 +4,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, HEBREW_TITLE, MOVES } from "./fixtures";
+import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES } from "./fixtures";
 
 type Settings = { arrows: boolean; engine: boolean; moves: number };
 
@@ -16,7 +16,9 @@ const moved = (list: readonly string[], index: number, move: "up" | "down"): str
   return next;
 };
 
-const framed = (title: string, testId: string, initial: Settings, withCase = false, tab: AccuracyTrainerDetailsTab = "settings", locked = false) => (
+type Shown = "answering" | "waiting" | "graded";
+
+const framed = (title: string, testId: string, initial: Settings, withCase = false, tab: AccuracyTrainerDetailsTab = "settings", shown: Shown = "answering") => (
   <Box sx={{ width: 300, height: 420, display: "flex", border: 1, borderColor: "divider", p: 1 }}>
     <WithState initial={{ ...initial, list: withCase ? MOVES : [] }}>
       {(settings, set) => (
@@ -33,12 +35,18 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
           {...(withCase
             ? {
                 caseLink: CASE_LINK,
-                moves: {
-                  list: settings.list,
-                  onMove: (index: number, move: "up" | "down") => set({ ...settings, list: moved(settings.list, index, move) }),
-                  onRemove: (index: number) => set({ ...settings, list: settings.list.filter((_, at) => at !== index) }),
-                  locked,
-                },
+                moves:
+                  shown === "graded"
+                    ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED }
+                    : shown === "waiting"
+                      ? { kind: "waiting" as const, label: LABEL, list: settings.list }
+                      : {
+                          kind: "answering" as const,
+                          label: LABEL,
+                          list: settings.list,
+                          onMove: (index: number, move: "up" | "down") => set({ ...settings, list: moved(settings.list, index, move) }),
+                          onRemove: (index: number) => set({ ...settings, list: settings.list.filter((_, at) => at !== index) }),
+                        },
               }
             : {})}
           testId={testId}
@@ -57,8 +65,12 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves", { arrows: true, engine: false, moves: 3 }, true, "moves"),
     },
     {
-      name: "Moves — checked, read only",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-locked", { arrows: true, engine: false, moves: 3 }, true, "moves", true),
+      name: "Moves — checked and graded: every line, the reader's moves marked",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-graded", { arrows: true, engine: false, moves: 2 }, true, "moves", "graded"),
+    },
+    {
+      name: "Moves — checked, waiting for the engine",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-waiting", { arrows: true, engine: true, moves: 3 }, true, "moves", "waiting"),
     },
     {
       name: "Moves — before a session",

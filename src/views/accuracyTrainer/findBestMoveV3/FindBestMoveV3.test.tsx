@@ -334,10 +334,46 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4 2. d4");
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
 
-    // Checked in that order: both of the top 3 found, each in its place; the list read only.
+    // Checked in that order: both of the top 3 found, each in its place — the tab now every line, the reader's marked.
     await user.click(screen.getByRole("button", { name: "Check (2)" }));
     expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
     expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
-    expect(items()).toEqual(["1.e4", "2.d4"]);
+    expect(screen.getByTestId("find-best-move-v3-details-moves-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
+    expect(screen.getByTestId("find-best-move-v3-details-line-1")).toHaveTextContent("Yours #1In place");
+    expect(screen.getByTestId("find-best-move-v3-details-line-3")).not.toHaveTextContent("Yours");
+  });
+
+  it("shows on Your moves the position the board stands at — stepping back to an earlier one, its moves graded among every line", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White");
+    // 1. e4's position: e4 and Nf3 — the 1st and the 3rd of the top 3.
+    drag("e2", "e4");
+    await user.click(screen.getByTestId("board-control-first"));
+    drag("g1", "f3");
+    await user.click(screen.getByRole("button", { name: "Check (2)" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // On 2. Qh5's position: its own moves, none yet.
+    const label = () => screen.getByTestId("find-best-move-v3-details-moves-label");
+    expect(label()).toHaveTextContent("Position 2 of 2 · 2. White");
+    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toHaveTextContent("No move yet");
+
+    // Back to the start: the first position's moves, graded, every line shown with the reader's marked.
+    await user.click(screen.getByTestId("board-control-first"));
+    expect(label()).toHaveTextContent("Position 1 of 2 · 1. White");
+    expect(screen.getByTestId("find-best-move-v3-details-moves-headline")).toHaveTextContent("You found 2 of the top 3 — 1 in their place.");
+    const lines = within(screen.getByRole("list", { name: "The engine's lines, best first, your moves marked" })).getAllByRole("listitem");
+    expect(lines.map((line) => line.textContent)).toEqual([
+      "1.e4GameThe move played in the game+0.30 · −0Yours #1In placeBest",
+      "2.d4+0.25 · −5",
+      "3.Nf3+0.20 · −10Yours #2Good",
+    ]);
+    // Past it, on the way to the next — still the first; forward to the position on screen — its own again.
+    await user.click(screen.getByTestId("move-ply-1"));
+    expect(label()).toHaveTextContent("Position 1 of 2");
+    await user.click(screen.getByTestId("move-ply-2"));
+    expect(label()).toHaveTextContent("Position 2 of 2");
+    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toBeInTheDocument();
   });
 });

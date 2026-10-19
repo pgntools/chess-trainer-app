@@ -45,7 +45,7 @@ each position.)
 | Path | What lives there |
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `targetOf` (the N a position asks for), `gradeSuggestion` / `gradePosition` (the reader's moves in their order against the top N), `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
-| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`). |
+| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
 | `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header and footer, the left panel. |
@@ -202,12 +202,19 @@ moves to find, N.
 - **The left panel** (`AccuracyTrainerDetails`, `BoardLeftPanel` with
   `keepShell`; a drawer under the breakpoint, opened from the header): the
   game's name (the exercise's before), the session's Case linked, then tabs —
-  **Your moves** (where a session opens): the reader's moves at the position
-  on screen, in their order, each **moved up or down** or **deleted** — on
-  the board itself (`reorderedCandidates`, `withoutCandidate` through
-  `core.replaceTree`: a move is its line, so its line moves or goes with it,
-  and the board's mainline from the position is the reader's first); read only
-  once the position is checked (its answer). And **Settings** — *Moves to
+  **Your moves** (where a session opens) — **the trained position the board
+  stands at** (`positionAtPath`: the position on screen inside its lines, an
+  earlier one when the reader steps back to it or past it), named ("Position
+  1 of 12 · 1. White"): being answered, the reader's moves in their order,
+  each **moved up or down** or **deleted** on the board itself
+  (`reorderedCandidates`, `withoutCandidate` through `core.replaceTree`: a
+  move is its line, so its line moves or goes with it); checked, **every one
+  of the engine's lines best first — rank, move, eval, loss — the reader's
+  moves marked** in it (*Yours #n*, *In place*, the verdict), a bolder line
+  closing the top N, the reader's moves none of the lines has after it, and
+  the headline (`gradeHeadlineOf`, `GradedLines`'); checked and waiting for
+  the engine, the moves and a word; an earlier position skipped, not answered
+  yet. And **Settings** — *Moves to
   find* (locked while a session runs), *Show next-move arrows*, *Use the
   engine*. (Named *Your moves*, not *Moves*: the right panel's Moves is the
   move list.)

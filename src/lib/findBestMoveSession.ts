@@ -259,6 +259,22 @@ export const withPositionJob = (session: FindBestMoveSession, index: number, job
   jobs: session.jobs.map((each, at) => (at === index ? jobId : each)),
 });
 
+/**
+ * **The trained position the board stands at** — the session's position
+ * whose SAN path leads to where the board is (`here`, its SAN path from the
+ * start), the deepest of them: the position on screen inside its own lines,
+ * an earlier one when the reader steps back to it or past it. `undefined`
+ * before the first.
+ */
+export const positionAtPath = (positions: readonly Pick<TrainingPosition, "path">[], here: readonly string[]): number | undefined => {
+  let found: number | undefined;
+  positions.forEach((position, index) => {
+    const leads = position.path.length <= here.length && position.path.every((san, at) => here[at] === san);
+    if (leads && (found === undefined || position.path.length > positions[found].path.length)) found = index;
+  });
+  return found;
+};
+
 /** The next position still to answer after the one on screen — `undefined` when none is left. */
 export const nextUnanswered = (session: Pick<FindBestMoveSession, "answers" | "index">): number | undefined => {
   const at = session.answers.findIndex((given, index) => index > session.index && given === null);

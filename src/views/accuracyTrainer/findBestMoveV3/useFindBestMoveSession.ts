@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AccuracyReportRow } from "../../../blocks/panels";
+import type { AccuracyReportRow, AccuracyTrainerMoves } from "../../../blocks/panels";
 import type { SideValue } from "../../../design-system/components/forms";
 import {
   gradePosition,
@@ -23,6 +23,7 @@ import {
   isAtPosition,
   nextUnanswered,
   openPosition,
+  positionAtPath,
   reorderedCandidates,
   startSession,
   withPositionJob,
@@ -31,6 +32,7 @@ import {
   type FindBestMoveSession,
   type PositionAnnotation,
 } from "../../../lib/findBestMoveSession";
+import { sanPathTo } from "../../../lib/gameTree";
 import { useAutosave } from "../../board/core/useAutosave";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { createSessionCase } from "./sessionCase";
@@ -273,6 +275,37 @@ export const useFindBestMoveSession = () => {
     if (piece !== null && answering && atPosition) evaluateAt(index);
   };
 
+  /** One of the reader's moves moved a place up or down their order — its line with it. */
+  const moveCandidate = (at: number, move: "up" | "down") => {
+    if (session !== null && answering) core.replaceTree(reorderedCandidates(session.view, core.tree, at, move));
+  };
+  /** One of the reader's moves deleted — its whole line. */
+  const removeCandidate = (at: number) => {
+    if (session !== null && answering) core.replaceTree(withoutCandidate(session.view, core.tree, at));
+  };
+
+  /**
+   * **What Your moves shows** — the trained position the board stands at
+   * (`positionAtPath`: the one on screen inside its lines, an earlier one when
+   * the reader steps back to it): being answered, its moves to reorder;
+   * checked, waiting for its search or graded — every line, the reader's moves
+   * marked; an earlier one skipped, not answered yet.
+   */
+  const shownMoves = ((): AccuracyTrainerMoves | undefined => {
+    if (session === null) return undefined;
+    const at = positionAtPath(session.positions, sanPathTo(core.tree, core.nodeId)) ?? session.index;
+    const shown = positions[at];
+    if (shown === undefined) return undefined;
+    const label = t("accuracyTrainer.details.positionLabel", { at: at + 1, count: session.positions.length, move: labelOf(shown) });
+    const given = session.answers[at];
+    if (at === session.index && given === null) {
+      return { kind: "answering", label, list: candidatesOf(session.view, core.tree), onMove: moveCandidate, onRemove: removeCandidate };
+    }
+    if (given === null) return { kind: "unanswered", label };
+    const grade = grades[at];
+    return grade === null || grade === undefined ? { kind: "waiting", label, list: given } : { kind: "graded", label, position: shown, grade };
+  })();
+
   const reportRows = useMemo<AccuracyReportRow[]>(
     () =>
       session === null
@@ -305,14 +338,8 @@ export const useFindBestMoveSession = () => {
     engine: session === null ? undefined : engineAt(index),
     /** The reader's moves at the position, in their order — what Check grades; once checked, the answer. */
     candidates: session === null ? [] : (answered ?? candidatesOf(session.view, core.tree)),
-    /** One of the reader's moves moved a place up or down their order — its line with it. */
-    moveCandidate: (index: number, move: "up" | "down") => {
-      if (session !== null && answering) core.replaceTree(reorderedCandidates(session.view, core.tree, index, move));
-    },
-    /** One of the reader's moves deleted — its whole line. */
-    removeCandidate: (index: number) => {
-      if (session !== null && answering) core.replaceTree(withoutCandidate(session.view, core.tree, index));
-    },
+    /** What the left panel's Your moves shows — the position the board stands at. */
+    shownMoves,
     /** How many best moves the session asks for at each position. */
     wanted,
     /** Whether the reader may move a piece: while answering, on the position or inside a line from it; once answered, anywhere. */

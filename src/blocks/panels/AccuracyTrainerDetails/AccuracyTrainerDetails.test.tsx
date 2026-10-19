@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, GAME_TITLE, HEBREW_TITLE, MOVES } from "./fixtures";
+import { CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -17,13 +17,13 @@ function Live({
   title = GAME_TITLE,
   initial = true,
   withCase = false,
-  locked = false,
+  shown = "answering",
   startTab = "settings",
 }: {
   title?: string;
   initial?: boolean;
   withCase?: boolean;
-  locked?: boolean;
+  shown?: "answering" | "waiting" | "graded";
   startTab?: AccuracyTrainerDetailsTab;
 }) {
   const [tab, setTab] = useState<AccuracyTrainerDetailsTab>(startTab);
@@ -45,18 +45,24 @@ function Live({
       {...(withCase
         ? {
             caseLink: CASE_LINK,
-            moves: {
-              list,
-              onMove: (index: number, move: "up" | "down") =>
-                setList((current) => {
-                  const next = [...current];
-                  const to = move === "up" ? index - 1 : index + 1;
-                  [next[index], next[to]] = [next[to], next[index]];
-                  return next;
-                }),
-              onRemove: (index: number) => setList((current) => current.filter((_, at) => at !== index)),
-              locked,
-            },
+            moves:
+              shown === "graded"
+                ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED }
+                : shown === "waiting"
+                  ? { kind: "waiting" as const, label: LABEL, list }
+                  : {
+                      kind: "answering" as const,
+                      label: LABEL,
+                      list,
+                      onMove: (index: number, move: "up" | "down") =>
+                        setList((current) => {
+                          const next = [...current];
+                          const to = move === "up" ? index - 1 : index + 1;
+                          [next[index], next[to]] = [next[to], next[index]];
+                          return next;
+                        }),
+                      onRemove: (index: number) => setList((current) => current.filter((_, at) => at !== index)),
+                    },
           }
         : {})}
       testId="details"
@@ -122,16 +128,36 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     await expectNoAxeViolations();
   });
 
-  it("shows a checked position's moves read only, and says when there are none", async () => {
-    const user = userEvent.setup();
-    const { unmount } = render(<Live withCase locked startTab="moves" />);
-    expect(screen.getByRole("list", { name: "Your moves, best first" })).toBeInTheDocument();
+  it("shows a graded position: every line best first, the reader's moves marked — their rank, In place, the verdict — and theirs outside the lines", () => {
+    render(<Live withCase shown="graded" startTab="moves" />);
+    expect(screen.getByTestId("details-moves-label")).toHaveTextContent(LABEL);
+    expect(screen.getByTestId("details-moves-headline")).toHaveTextContent("You found 2 of the top 2 — 0 in their place.");
+    const lines = within(screen.getByRole("list", { name: "The engine's lines, best first, your moves marked" })).getAllByRole("listitem");
+    expect(lines.map((line) => line.textContent)).toEqual([
+      "1.Nf3+0.30 · −0Yours #2Best",
+      "2.Bc4+0.20 · −10Yours #1Good",
+      // The game's move, below the engine's lines, not the reader's.
+      "3.Qh5GameThe move played in the game−1.50 · −180",
+    ]);
+    expect(within(screen.getByRole("list", { name: "Your moves not among the lines" })).getByRole("listitem")).toHaveTextContent("a3Yours #3Not among the lines");
     expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
-    expect(screen.getByText("Checked — these moves are the position's answer.")).toBeInTheDocument();
+  });
+
+  it("shows a checked position waiting for the engine, and says when there is no session", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<Live withCase shown="waiting" startTab="moves" />);
+    expect(screen.getByRole("list", { name: "Your moves, best first" })).toBeInTheDocument();
+    expect(screen.getByTestId("details-moves-waiting")).toHaveTextContent("waiting for the engine's lines");
+    expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
     unmount();
     render(<Live startTab="settings" />);
     await user.click(screen.getByRole("tab", { name: "Your moves" }));
     expect(screen.getByTestId("details-moves-empty")).toHaveTextContent("Start a session to find its moves.");
+  });
+
+  it("passes axe on a graded position", async () => {
+    render(<Live withCase shown="graded" startTab="moves" />);
+    await expectNoAxeViolations();
   });
 
   it("reads a name in another script in its own direction", () => {

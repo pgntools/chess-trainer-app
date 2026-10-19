@@ -85,6 +85,8 @@ describe("translation catalogs", () => {
       "accuracyTrainer.session.moveLabel",
       // A move in the Case's answer comment, "1. Nf3 (#1, Best)": the values and their punctuation.
       "accuracyTrainer.session.answer.move",
+      // A loss in the left panel's list, "−10": a sign and the value.
+      "accuracyTrainer.details.lossShort",
     ]);
 
     const untranslated = leafKeys(en).filter(

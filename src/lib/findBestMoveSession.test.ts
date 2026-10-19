@@ -8,6 +8,7 @@ import {
   isAtPosition,
   nextUnanswered,
   openPosition,
+  positionAtPath,
   positionViewOf,
   reorderedCandidates,
   sessionBaseTree,
@@ -171,6 +172,24 @@ describe("reorderedCandidates / withoutCandidate", () => {
     const c4 = play(e4.tree, null, "c4");
     expect(candidatesOf(start, reorderedCandidates(start, c4.tree, 1, "up"))).toEqual(["c4", "e4"]);
     expect(candidatesOf(start, withoutCandidate(start, c4.tree, 1))).toEqual(["e4"]);
+  });
+});
+
+describe("positionAtPath", () => {
+  const positions = [{ path: [] }, { path: ["e4", "e5"] }, { path: ["e4", "e5", "Nf3", "Nc6"] }];
+
+  it("is the deepest trained position leading to where the board stands", () => {
+    expect(positionAtPath(positions, [])).toBe(0);
+    expect(positionAtPath(positions, ["e4"])).toBe(0);
+    expect(positionAtPath(positions, ["e4", "e5"])).toBe(1);
+    // Inside a line of the reader's from it, or past it on the way to the next.
+    expect(positionAtPath(positions, ["e4", "e5", "Bc4", "Nf6"])).toBe(1);
+    expect(positionAtPath(positions, ["e4", "e5", "Nf3"])).toBe(1);
+    expect(positionAtPath(positions, ["e4", "e5", "Nf3", "Nc6", "Bb5"])).toBe(2);
+  });
+
+  it("is none before the first", () => {
+    expect(positionAtPath([{ path: ["e4"] }], [])).toBeUndefined();
   });
 });
 

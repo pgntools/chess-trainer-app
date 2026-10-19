@@ -1,3 +1,6 @@
+import { gradePosition, trainingPositionsOf, type PositionGrade, type TrainingPosition } from "../../../lib/accuracyTrainer";
+import { parsePgnTree } from "../../../lib/pgn";
+
 /*
   An Accuracy Trainer exercise's panel (CTA-238): the headings it shows.
   Imported only by the block's gallery and its test.
@@ -17,3 +20,16 @@ export const CASE_LINK = { href: "/analysis/projects/p1/cases/c1" };
 
 /** The reader's moves at a position, their best first. */
 export const MOVES: readonly string[] = ["Nf3", "d4", "c4"];
+
+/** A position checked: 2. Qh5 the game's (below the engine's two lines), Nf3 best, Bc4 second. */
+const ANALYSED = `[AnalysedPlies "3-3"]
+
+1. e4 e5 2. Qh5 { [%eval -1.50,20] } (2. Nf3 { [%eval 0.30,20] }) (2. Bc4 { [%eval 0.20,20] }) *`;
+
+export const GRADED_POSITION: TrainingPosition = trainingPositionsOf(parsePgnTree(ANALYSED))[0];
+
+/** Both found, the wrong way round, and a move outside the lines. */
+export const GRADED: PositionGrade = gradePosition(GRADED_POSITION, ["Bc4", "Nf3", "a3"], { wanted: 2 });
+
+/** The position's label, as the screen names it. */
+export const LABEL = "Position 2 of 3 · 2. White";

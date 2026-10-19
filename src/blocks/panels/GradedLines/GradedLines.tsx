@@ -8,6 +8,7 @@ import { LabelChip, type LabelChipTone } from "../../../design-system/components
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../lib/accuracyTrainer";
 import { formatScore, type Score } from "../../../lib/engineAnalysis";
+import { gradeHeadlineOf } from "./headline";
 
 export type GradedLinesProps = {
   /** The position answered, its lines best first (`trainingPositionsOf`, with the engine's added). */
@@ -122,20 +123,12 @@ function GradedLines({ position, grade, testId }: GradedLinesProps) {
     [t, testId],
   );
 
-  const headline = grade.passed
-    ? { tone: "neutral" as const, text: t("accuracyTrainer.lines.headline.passed") }
-    : grade.target === 0
-      ? { tone: "warning" as const, text: t("accuracyTrainer.lines.headline.noLines") }
-      : grade.inPlace === grade.target
-        ? { tone: "success" as const, text: t("accuracyTrainer.lines.headline.perfect", { count: grade.target }) }
-        : grade.found > 0
-          ? { tone: "info" as const, text: t("accuracyTrainer.lines.headline.found", { found: grade.found, count: grade.target, inPlace: grade.inPlace }) }
-          : { tone: "warning" as const, text: t("accuracyTrainer.lines.headline.none", { count: grade.target }) };
+  const headline = gradeHeadlineOf(grade);
 
   return (
     <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1 }}>
       <StatusText tone={headline.tone} emphasis testId={`${testId}-headline`}>
-        {headline.text}
+        {t(headline.key, headline.values)}
       </StatusText>
       <Typography id={`${testId}-title`} component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
         {t("accuracyTrainer.lines.title")}

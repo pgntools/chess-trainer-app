@@ -590,7 +590,16 @@ const en = {
       movesNone: "No move yet — play one from the position on the board.",
       movesNoSession: "Start a session to find its moves.",
       movesHint: "Each is a line you played from the position. Moving one moves its line; deleting one deletes it.",
-      movesLockedHint: "Checked — these moves are the position's answer.",
+      movesWaiting: "Checked — waiting for the engine's lines to grade them.",
+      movesUnanswered: "Not answered yet — open it from the summary to answer it.",
+      /** Which trained position Your moves shows — the one the board stands at. */
+      positionLabel: "Position {{at}} of {{count}} · {{move}}",
+      /** A graded position: every line, the reader's moves marked. */
+      bestList: "The engine's lines, best first, your moves marked",
+      outsideList: "Your moves not among the lines",
+      yours: "Yours #{{order}}",
+      lossShort: "−{{loss}}",
+      topNote: "The line under the {{count}} best closes the moves you were to find.",
       moveUp: "Move {{san}} up",
       moveDown: "Move {{san}} down",
       moveRemove: "Delete {{san}}",

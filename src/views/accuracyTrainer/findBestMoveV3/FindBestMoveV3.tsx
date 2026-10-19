@@ -274,7 +274,7 @@ function FindBestMoveV3() {
             ? {}
             : {
                 caseLink: { component: RouterLink, to: casePath(session.caseRef.projectId, session.caseRef.caseId) },
-                moves: { list: run.candidates, onMove: run.moveCandidate, onRemove: run.removeCandidate, locked: !run.answering },
+                ...(run.shownMoves === undefined ? {} : { moves: run.shownMoves }),
               })}
           testId={`${ID}-details`}
         />
