@@ -81,6 +81,8 @@ describe("translation catalogs", () => {
       // The Accuracy Trainer's lines (CTA-238): a number sign for the rank, and a loss's bound, "≥ N".
       "accuracyTrainer.lines.rank",
       "accuracyTrainer.lines.lossAtLeast",
+      // A move as a job's title names it, "12. White": the number and the translated side, nothing around them.
+      "accuracyTrainer.v2.moveLabel",
     ]);
 
     const untranslated = leafKeys(en).filter(

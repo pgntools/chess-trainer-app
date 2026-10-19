@@ -6,15 +6,17 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracyTrainerDetails from "./AccuracyTrainerDetails";
-import { GAME_TITLE, HEBREW_TITLE } from "./fixtures";
+import { CASE_LINK, GAME_TITLE, HEBREW_TITLE } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
 /** The panel with its switch live, as a screen holds it. */
-function Live({ title = GAME_TITLE, initial = true }: { title?: string; initial?: boolean }) {
+function Live({ title = GAME_TITLE, initial = true, withCase = false }: { title?: string; initial?: boolean; withCase?: boolean }) {
   const [showArrows, setShowArrows] = useState(initial);
+  const [engine, setEngine] = useState(false);
+  const [lines, setLines] = useState(3);
   return (
     <AccuracyTrainerDetails
       title={title}
@@ -22,6 +24,8 @@ function Live({ title = GAME_TITLE, initial = true }: { title?: string; initial?
       onTabChange={() => {}}
       showArrows={showArrows}
       onShowArrowsChange={setShowArrows}
+      engine={{ on: engine, onChange: setEngine, lines, onLinesChange: setLines }}
+      {...(withCase ? { caseLink: CASE_LINK } : {})}
       testId="details"
     />
   );
@@ -45,13 +49,34 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(arrows).not.toBeChecked();
   });
 
+  it("switches the engine on, which lets the lines needed be set", async () => {
+    const user = userEvent.setup();
+    render(<Live />);
+    const lines = screen.getByRole("slider", { name: "Lines needed" });
+    expect(lines).toHaveValue("3");
+    expect(lines).toBeDisabled();
+    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    expect(lines).toBeEnabled();
+    lines.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(lines).toHaveValue("4");
+  });
+
+  it("links the session's case once there is one", () => {
+    const { unmount } = render(<Live />);
+    expect(screen.queryByRole("link", { name: "Open the session's case" })).not.toBeInTheDocument();
+    unmount();
+    render(<Live withCase />);
+    expect(screen.getByRole("link", { name: "Open the session's case" })).toHaveAttribute("href", CASE_LINK.href);
+  });
+
   it("reads a name in another script in its own direction", () => {
     render(<Live title={HEBREW_TITLE} />);
     expect(screen.getByTestId("details-title")).toHaveAttribute("dir", "auto");
   });
 
   it("passes axe", async () => {
-    render(<Live initial={false} />);
+    render(<Live initial={false} withCase />);
     await expectNoAxeViolations();
   });
 });

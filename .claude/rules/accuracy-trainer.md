@@ -6,6 +6,8 @@ paths:
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
   - "src/blocks/panels/AccuracyTrainerDetails/**"
+  - "src/lib/findBestMoveSession*"
+  - "src/lib/jobs/kinds/evaluatePosition/**"
 ---
 
 # Accuracy Trainer (CTA-238, experimental, dev-only)
@@ -18,7 +20,8 @@ setup (`views/accuracyTrainer/AccuracySetup.tsx`), the grading
 - **Find Best Move v1** — `/accuracy-trainer/find-best-move-v1`: several
   moves suggested by playing them on a board that snaps back (§4).
 - **Find Best Move v2** — `/accuracy-trainer/find-best-move-v2`: a regular
-  analysis board at each position, and one move chosen (§6).
+  analysis board at each position, and one move chosen (§6); the session a
+  Case, the engine asked where the lines are too few (§7).
 
 A later exercise is a screen of its own beside them, under
 `src/views/accuracyTrainer/<exercise>/`, a nav entry in the folder.
@@ -197,6 +200,47 @@ the board.
   tree; coming back loads it (`loadTree`, the board facing the side to move).
   Nothing outlives the session; no engine runs.
 
+## 7. Find Best Move v2's session Case and the engine (CTA-238)
+
+- **The session is a Case.** Start makes it before the first position
+  (`findBestMoveV2/sessionCase.ts`): in **one** project, *Find Best Move*
+  (`accuracyTrainer.v2.projectName`, the reader's language's), at the top
+  level — found by its name, else made — a Game Case named "<game> — Find
+  Best Move v2" holding **the game's mainline alone** (`sessionBaseTree`: its
+  moves and tags, none of its comments, NAGs, side lines or the analysis's
+  tags). A refused write is said under the setup, and nothing starts.
+- **Autosaved from the session** (`useAutosave` → `saveCaseState`): the Case's
+  tree is rebuilt from the base on every change (`sessionCaseTreeOf`,
+  `lib/findBestMoveSession.ts`) — at each trained position (its SAN `path`):
+  the reader's analysis grafted (`graftTree`: moves, comments, glyphs; a move
+  already there followed), the engine's lines (`withPositionEngineLines`, as
+  the computer analysis hangs them, first moves with `[%eval]`), and **the
+  answer as a comment** on the position (`accuracyTrainer.v2.answer.*`:
+  "Find Best Move: Nf3 — Best (0 cp)", "… — outside the top 3 (≥ 120 cp)",
+  "… (evaluating)", "Find Best Move: passed"). The left panel links the Case.
+  A later task downloads it.
+- **The engine** (the left panel's *Use the engine*, off; *Lines needed*,
+  1–10, 3). On, the setup takes **any game** (`trainingPositionsOf`'s
+  `unevaluated`: every analysed position, `topCount` 0 where the tree has no
+  line), and a position with **fewer top lines than needed** (`needsEngine`)
+  is searched by an **Evaluate Position job** ([`jobs.md`](./jobs.md) §3.2) —
+  queued by the reader's **first move there** (the screen's wrapped
+  `onPieceDrop` / `resolvePromotion`), or by Choose if none was; once per
+  position (`Session.jobs`). Its search is the top bar's Engine menu's (the
+  board's engine and its selected preset), MultiPV the lines needed
+  (`useEvaluatePositionJobs`). The footer says while it searches.
+- **Grading waits for it**: a Choose whose position's job is still queued or
+  running is graded **once it ends** — the Result tab says it is waiting —
+  against the position with the engine's lines added (`withEngineResult`:
+  every engine line listed, a move the tree has a line for keeping the
+  tree's, all ranked again). A job that fails, is cancelled or gone: graded
+  with the tree's lines alone, and said. A pass never waits.
+- **The Case and the job never overwrite each other**: the job writes its
+  lines into the stored Case under its id (`merges`); the session's state
+  carries the ids of the jobs it has seen done, so `saveCaseState` writes no
+  tree from before them — and the session's own rebuild holds the same
+  lines.
+
 ## 5. Extending it
 
 - **A new measure**: a field of `SessionSummary` in `sessionSummaryOf`, its
@@ -204,7 +248,6 @@ the board.
 - **Another grading rule** (a missed mate, a weighting by rank): in
   `gradeSuggestion` / `gradePosition`, pure, with its test — the blocks read
   the grade and change only to show a new field.
-- **Persistence** (a session resumed, a history per game): a store over
-  `lib/idbRecordStore.ts` — and with it the Export / Import category, the
-  Storage row and the legal pages' line ([`database.md`](./database.md)).
+- **Persistence**: v1 keeps nothing; v2's session is a Case (§7) — resuming
+  one from its Case is a later task.
 - **Shipping**: the dev-only note at the top.

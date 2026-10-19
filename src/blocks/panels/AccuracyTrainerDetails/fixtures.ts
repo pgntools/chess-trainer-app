@@ -11,3 +11,6 @@ export const EXERCISE_TITLE = "Find Best Move v2";
 
 /** A name in Hebrew, read right to left. */
 export const HEBREW_TITLE = "אליס – בוב";
+
+/** The session's Case, as its link points — an address (the gallery has no router). */
+export const CASE_LINK = { href: "/analysis/projects/p1/cases/c1" };

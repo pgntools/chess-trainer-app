@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
 import i18n from "../../../i18n";
+import { loadAnalysisCases } from "../../../lib/analysisCaseStore";
+import { loadAnalysisProjects } from "../../../lib/analysisProjectStore";
+import { EVALUATE_POSITION_KIND } from "../../../lib/jobs/kinds/evaluatePosition/core";
+import { jobRuntime } from "../../../lib/jobs/runtime";
+import { legalMove } from "../../../test/answeringEngine";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
@@ -13,6 +18,14 @@ import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
   (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
 );
+
+// The page's job runtime, its engine kinds answering every search at once (the jobs kit's engine).
+vi.mock("../../../lib/jobs/kinds", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/jobs/kinds")>();
+  // The answering engine's own module — not the jobs kit, which imports the runtime and so this registry.
+  const { engineDeps } = await import("../../../test/answeringEngine");
+  return { ...actual, jobKinds: () => actual.jobKinds({ engine: engineDeps() }) };
+});
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
@@ -70,6 +83,8 @@ const startWhite = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole("button", { name: "Load" }));
   await user.click(screen.getByRole("button", { name: "White" }));
   await user.click(screen.getByRole("button", { name: "Start" }));
+  // Start makes the session's Case first.
+  await screen.findByTestId("find-best-move-v2-progress");
 };
 
 beforeEach(async () => {
@@ -197,5 +212,66 @@ describe("Find Best Move v2 (CTA-238)", () => {
     await user.click(arrows);
     expect(boardOptions().arrows).toHaveLength(1);
     await expectNoAxeViolations();
+  });
+
+  it("keeps the session as a Case in the Find Best Move project — the mainline, the reader's analysis and the answer", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWhite(user);
+    // Its Case, linked from the panel.
+    expect(screen.getByRole("link", { name: "Open the session's case" })).toHaveAttribute("href", expect.stringMatching(/^\/analysis\/projects\/.+\/cases\/.+/));
+    const project = (await loadAnalysisProjects()).find((each) => each.name === "Find Best Move");
+    expect(project?.folderId).toBeNull();
+    const record = (await loadAnalysisCases()).find((each) => each.projectId === project?.id);
+    expect(record?.name).toBe("Alice – Bob — Find Best Move v2");
+
+    drag("e2", "e4");
+    drag("e7", "e5");
+    await user.click(screen.getByRole("button", { name: "Choose e4" }));
+    await waitFor(async () => {
+      const pgn = (await loadAnalysisCases()).find((each) => each.id === record?.id)?.pgn ?? "";
+      // The game's moves alone, then the session's: the answer on the start position, the reader's line merged in.
+      expect(pgn).toContain("{ Find Best Move: e4 — Best (0 cp) }");
+      expect(pgn).toContain("1. e4 e5 2. Qh5");
+      expect(pgn).not.toContain("[%eval");
+    });
+  });
+
+  it("asks the engine with too few lines: a plain game taken, a job on the first move, Choose waiting for it, its line graded and kept", async () => {
+    const user = userEvent.setup();
+    mount();
+    // Use the engine — a plain game is taken.
+    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    await user.click(screen.getByRole("textbox", { name: "Or paste its PGN" }));
+    await user.paste('[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
+    await user.click(screen.getByRole("button", { name: "Load" }));
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train");
+    await user.click(screen.getByRole("button", { name: "White" }));
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByTestId("find-best-move-v2-progress");
+    expect(jobRuntime().snapshot() ?? []).toEqual([]);
+
+    // The first move queues the position's search — on the session's Case, MultiPV the lines needed.
+    const best = legalMove(START);
+    drag(best.slice(0, 2), best.slice(2, 4));
+    await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
+    const job = jobRuntime().snapshot()![0];
+    expect(job.title).toBe("Evaluate position — Carol – Dan, 1. White");
+    expect(job.subjects[0].type).toBe("analysis-case");
+    expect(job.input).toMatchObject({ fen: START, path: [], search: { multiPv: 3 } });
+    // Another move at the position — a side line — asks nothing more.
+    await user.click(screen.getByTestId("board-control-first"));
+    const other = best === "g1f3" ? "b1c3" : "g1f3";
+    expect(drag(other.slice(0, 2), other.slice(2, 4))).toBe(true);
+
+    // Back on the engine's move, chosen: graded against its line once its search ends.
+    await user.click(screen.getByTestId("move-ply-1"));
+    await user.click(screen.getByRole("button", { name: /^Choose / }));
+    expect(await screen.findByTestId("find-best-move-v2-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("You found the best move.");
+    expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
+    await waitFor(async () => {
+      const pgn = (await loadAnalysisCases()).find((each) => each.id === job.subjects[0].id)?.pgn ?? "";
+      expect(pgn).toContain("[%eval 0.20,20]");
+    });
   });
 });

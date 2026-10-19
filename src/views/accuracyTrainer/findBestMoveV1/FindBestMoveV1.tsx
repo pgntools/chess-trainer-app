@@ -17,6 +17,7 @@ import {
   sanOfMove,
   sessionPositionsOf,
   sessionSummaryOf,
+  trainingPositionsOf,
   type PositionGrade,
   type SuggestionGrade,
   type TrainingPosition,
@@ -99,7 +100,7 @@ function FindBestMoveV1() {
 
   const start = () => {
     if (source === null) return;
-    const positions = sessionPositionsOf(source.positions, side === "all" ? "both" : side === "white" ? "w" : "b");
+    const positions = sessionPositionsOf(trainingPositionsOf(source.tree), side === "all" ? "both" : side === "white" ? "w" : "b");
     if (positions.length === 0) return;
     setTab("train");
     goTo(0, { positions, index: 0, answers: positions.map(() => null) });

@@ -548,6 +548,8 @@ const en = {
       pickCase: "Pick a case…",
       noLines: "This game carries no engine lines, so there is nothing to ask. Run a computer analysis on it (Full) and load its output.",
       loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
+      /** With the engine on (Find Best Move v2): every analysed position, the engine finding lines the game lacks. */
+      loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",
       untitled: "Untitled game",
       side: "Train",
       sides: { white: "White", black: "Black", both: "Both" },
@@ -576,6 +578,11 @@ const en = {
       tabs: { label: "The exercise's own view", settings: "Settings" },
       arrows: "Show next-move arrows",
       arrowsHelp: "The continuations of your analysis at the position on screen, as arrows on the board.",
+      engine: "Use the engine",
+      engineHelp: "When a position has fewer of the engine's lines than needed, the engine searches it once you start on it — an Evaluate position job — and your move is graded against its lines too.",
+      lines: "Lines needed",
+      linesHelp: "How many of the engine's top lines a position should have. The search's depth, move time, Threads and Hash are the Engine menu's.",
+      openCase: "Open the session's case",
     },
     /** Find Best Move v2: an analysis board at each position, then one move chosen. */
     v2: {
@@ -583,6 +590,25 @@ const en = {
       instructions: "Analyse the position as you like — side lines, comments, glyphs. Then stand in the line you would play and choose its first move.",
       choose: "Choose",
       chooseNone: "Play a move to choose it",
+      /** The session's Case (CTA-238): made at Start, in one project of its own. */
+      projectName: "Find Best Move",
+      caseName: "{{name}} — Find Best Move v2",
+      caseProblem: "The session's case could not be made — the browser refused the write.",
+      /** An Evaluate Position job: its title, and the move as its live progress names it. */
+      jobTitle: "Evaluate position — {{name}}, {{move}}",
+      moveLabel: "{{number}}. {{side}}",
+      /** The answer as the Case's comment on the position says it. */
+      answer: {
+        passed: "Find Best Move: passed",
+        evaluating: "Find Best Move: {{san}} (evaluating)",
+        line: "Find Best Move: {{san}} — {{verdict}} ({{loss}} cp)",
+        outside: "Find Best Move: {{san}} — outside the top {{count}} (≥ {{loss}} cp)",
+      },
+      engine: {
+        searching: "The engine is searching this position.",
+        waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
+        unavailable: "The engine could not search this position — graded with the game's lines alone.",
+      },
     },
     suggestions: {
       label: "Your moves",
@@ -2937,6 +2963,16 @@ const en = {
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
       unknown: "Unknown kind ({{id}})",
+      /** Evaluate Position (CTA-238): one position searched, queued by the Accuracy Trainer's Find Best Move v2. */
+      evaluatePosition: {
+        name: "Evaluate position",
+        description: "The engine searches one position of a Find Best Move session — as many lines as the session asks for — and its lines are written into the session's case.",
+        errors: {
+          engine: "The engine gave no evaluation of the position.",
+          storage: "The session's case could not be written — the browser refused.",
+          target: "The session's case is gone — it was deleted.",
+        },
+      },
       /** The computer analysis (CTA-188 — Jobs V2's, the Jobs module's kind since CTA-221): New job's form, its parameters, its results. */
       computerAnalysis: {
         name: "Computer analysis",

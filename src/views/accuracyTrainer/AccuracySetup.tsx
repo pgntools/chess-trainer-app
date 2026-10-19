@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -10,19 +10,25 @@ import { PgnInput } from "../../blocks/forms";
 import { caseDisplayName } from "../../blocks/tables";
 import { StatusText } from "../../design-system/components/feedback";
 import { FieldLabel, SideToggle, type SideValue } from "../../design-system/components/forms";
-import { trainingPositionsOf, type TrainingPosition } from "../../lib/accuracyTrainer";
+import { trainingPositionsOf } from "../../lib/accuracyTrainer";
 import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
 import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
 import type { GameTree } from "../../lib/gameTree";
 import { parsePgnTree } from "../../lib/pgn";
 import { readRepertoireText } from "../../lib/savedRepertoires";
 
-/** A fully analysed game, read: its name and every position it can train. */
-export type AccuracySource = { name: string; positions: readonly TrainingPosition[] };
+/** A game loaded: its name and its tree — the screen reads the positions it trains (`trainingPositionsOf`). */
+export type AccuracySource = { name: string; tree: GameTree };
 
 type AccuracySetupProps = {
   source: AccuracySource | null;
   onSource: (source: AccuracySource | null) => void;
+  /**
+   * Accept a game with no engine lines — every analysed position trained,
+   * the engine finding their lines (CTA-238, Find Best Move v2 with the
+   * engine on). Absent, a full analysis alone, as v1 takes.
+   */
+  unevaluated?: boolean;
   side: SideValue;
   onSide: (side: SideValue) => void;
   onStart: () => void;
@@ -48,7 +54,7 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
  * - **The side** — White, Black or both (`SideToggle`, its *all* button
  *   "Both"); **Start** is off while that side has no position.
  */
-function AccuracySetup({ source, onSource, side, onSide, onStart }: AccuracySetupProps) {
+function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, onStart }: AccuracySetupProps) {
   const { t } = useTranslation();
   const untitled = t("accuracyTrainer.setup.untitled");
   const [pasted, setPasted] = useState("");
@@ -63,14 +69,13 @@ function AccuracySetup({ source, onSource, side, onSide, onStart }: AccuracySetu
 
   /** One game onto the trainer — or refused, when it has no engine lines. */
   const take = (tree: GameTree, name: string) => {
-    const positions = trainingPositionsOf(tree);
-    if (positions.length === 0) {
+    if (trainingPositionsOf(tree, { unevaluated }).length === 0) {
       onSource(null);
       setProblem(t("accuracyTrainer.setup.noLines"));
       return;
     }
     setProblem(null);
-    onSource({ name, positions });
+    onSource({ name, tree });
   };
 
   /** A file and a paste alike. */
@@ -89,8 +94,9 @@ function AccuracySetup({ source, onSource, side, onSide, onStart }: AccuracySetu
     take(trees[0], gameNameOf(trees[0], untitled));
   };
 
-  const white = source?.positions.filter((position) => position.turn === "w").length ?? 0;
-  const black = (source?.positions.length ?? 0) - white;
+  const positions = useMemo(() => (source === null ? [] : trainingPositionsOf(source.tree, { unevaluated })), [source, unevaluated]);
+  const white = positions.filter((position) => position.turn === "w").length;
+  const black = positions.length - white;
   const forSide = side === "white" ? white : side === "black" ? black : white + black;
 
   return (
@@ -145,7 +151,7 @@ function AccuracySetup({ source, onSource, side, onSide, onStart }: AccuracySetu
       </Box>
       {source !== null && (
         <StatusText tone="success" testId="accuracy-setup-loaded">
-          {t("accuracyTrainer.setup.loaded", { name: source.name, count: source.positions.length, white, black })}
+          {t(unevaluated ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count: positions.length, white, black })}
         </StatusText>
       )}
       <Box sx={{ display: "grid", gap: 0.75 }}>
