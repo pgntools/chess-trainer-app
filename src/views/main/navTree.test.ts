@@ -544,21 +544,18 @@ describe("foldSingleEntryFolders folds a folder marked as one destination", () =
 });
 
 describe("the Accuracy Trainer folder (CTA-238)", () => {
-  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v1 and v2 — each marked experimental", () => {
+  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v3 — marked experimental", () => {
     // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
     const ids = navFolders().map((folder) => folder.id);
     expect(ids.indexOf("accuracy-trainer")).toBe(ids.indexOf("engine") + 1);
     expect(navFolders().find((folder) => folder.id === "accuracy-trainer")?.labelKey).toBe("nav.folders.accuracyTrainer");
     expect(navItemsInFolder("accuracy-trainer")).toEqual([
-      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v1", labelKey: "nav.findBestMoveV1", experimental: true }),
-      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v2", labelKey: "nav.findBestMoveV2", experimental: true }),
+      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v3", labelKey: "nav.findBestMoveV3", experimental: true }),
     ]);
     const folder = navTree().find((node) => node.id === "accuracy-trainer");
     expect(folder?.kind).toBe("folder");
-    expect(folder?.children?.map((child) => child.to)).toEqual([
-      "/accuracy-trainer/find-best-move-v1",
-      "/accuracy-trainer/find-best-move-v2",
-    ]);
-    expect(folderPath("/accuracy-trainer/find-best-move-v1")).toEqual(["accuracy-trainer"]);
+    // One screen, still a folder: the top level never folds into its screen.
+    expect(folder?.children?.map((child) => child.to)).toEqual(["/accuracy-trainer/find-best-move-v3"]);
+    expect(folderPath("/accuracy-trainer/find-best-move-v3")).toEqual(["accuracy-trainer"]);
   });
 });

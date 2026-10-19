@@ -5,39 +5,37 @@ import Typography from "@mui/material/Typography";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import { useTranslation } from "react-i18next";
 
-import { CasePickerDialog } from "../../blocks/dialogs";
-import { PgnInput } from "../../blocks/forms";
-import { caseDisplayName } from "../../blocks/tables";
-import { StatusText } from "../../design-system/components/feedback";
-import { FieldLabel, SideToggle, type SideValue } from "../../design-system/components/forms";
-import { trainingPositionsOf } from "../../lib/accuracyTrainer";
-import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
-import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
-import type { GameTree } from "../../lib/gameTree";
-import { parsePgnTree } from "../../lib/pgn";
-import { readRepertoireText } from "../../lib/savedRepertoires";
+import { CasePickerDialog } from "../../../blocks/dialogs";
+import { PgnInput } from "../../../blocks/forms";
+import { caseDisplayName } from "../../../blocks/tables";
+import { StatusText } from "../../../design-system/components/feedback";
+import { FieldLabel, SideToggle, type SideValue } from "../../../design-system/components/forms";
+import { trainingPositionsOf } from "../../../lib/accuracyTrainer";
+import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../../lib/analysisCaseStore";
+import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../../lib/analysisProjectStore";
+import type { GameTree } from "../../../lib/gameTree";
+import { parsePgnTree } from "../../../lib/pgn";
+import { readRepertoireText } from "../../../lib/savedRepertoires";
 
-/** A game loaded: its name and its tree — the screen reads the positions it trains (`trainingPositionsOf`). */
-export type AccuracySource = { name: string; tree: GameTree };
+/** A game loaded: its name and its tree — whether it trains is read from it as it stands (`trainingPositionsOf`). */
+export type SessionSource = { name: string; tree: GameTree };
 
-type AccuracySetupProps = {
-  source: AccuracySource | null;
-  onSource: (source: AccuracySource | null) => void;
+type SessionSetupProps = {
+  source: SessionSource | null;
+  onSource: (source: SessionSource | null) => void;
   /**
-   * Accept a game with no engine lines — every analysed position trained,
-   * the engine finding their lines (CTA-238, Find Best Move v2 with the
-   * engine on). Absent, a full analysis alone, as v1 takes.
+   * The engine is on: a game with no engine lines is taken too — every
+   * analysed position trained, the engine finding the lines. Off, a computer
+   * analysis's output alone, and a plain game is refused with the way out.
    */
-  unevaluated?: boolean;
-  /**
-   * The screen has an engine to turn on (Find Best Move v2): a game with no
-   * engine lines says so as the way out. Absent, it says to run a computer
-   * analysis alone.
-   */
-  engineOffered?: boolean;
+  engine: boolean;
   side: SideValue;
   onSide: (side: SideValue) => void;
   onStart: () => void;
+  /** Starting — the session's Case being made: Start is off. */
+  starting?: boolean;
+  /** Why the last Start was refused. */
+  problem?: string;
 };
 
 const unsubscribed = () => () => {};
@@ -50,17 +48,18 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
 };
 
 /**
- * **The Accuracy Trainer's setup** (CTA-238): the game and the side.
+ * **A Find Best Move session's setup** (CTA-238): the game and the side.
  *
- * - **A fully analysed game** — a PGN uploaded or pasted (a file of several
- *   picks one, `PgnInput`'s games), or **an Analysis Case** picked
- *   (`CasePickerDialog`; the Projects and Cases stores are read only while it
- *   is open). A game whose tree carries no engine lines is refused, plainly
- *   (`trainingPositionsOf` finds nothing).
+ * - **A game** — a PGN uploaded or pasted (a file of several picks one,
+ *   `PgnInput`'s games), or **an Analysis Case** picked (`CasePickerDialog`;
+ *   the Projects and Cases stores are read only while it is open). It is
+ *   kept as loaded, and whether it trains read from it as it stands: with
+ *   the engine off, a game with no engine lines is refused in words — the
+ *   way out, the engine — and turning the engine on takes it.
  * - **The side** — White, Black or both (`SideToggle`, its *all* button
  *   "Both"); **Start** is off while that side has no position.
  */
-function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = false, side, onSide, onStart }: AccuracySetupProps) {
+function SessionSetup({ source, onSource, engine, side, onSide, onStart, starting = false, problem: startProblem }: SessionSetupProps) {
   const { t } = useTranslation();
   const untitled = t("accuracyTrainer.setup.untitled");
   const [pasted, setPasted] = useState("");
@@ -99,13 +98,13 @@ function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = 
     take(trees[0], gameNameOf(trees[0], untitled));
   };
 
-  const positions = useMemo(() => (source === null ? [] : trainingPositionsOf(source.tree, { unevaluated })), [source, unevaluated]);
+  const positions = useMemo(() => (source === null ? [] : trainingPositionsOf(source.tree, { unevaluated: engine })), [source, engine]);
   const white = positions.filter((position) => position.turn === "w").length;
   const black = positions.length - white;
   const forSide = side === "white" ? white : side === "black" ? black : white + black;
-  // A game loaded with nothing to train: refused in words, until the engine is turned on (v2).
+  // A game loaded with nothing to train: refused in words, until the engine is turned on.
   const refused = source !== null && positions.length === 0;
-  const shownProblem = problem ?? (refused ? t(engineOffered ? "accuracyTrainer.setup.noLinesEngine" : "accuracyTrainer.setup.noLines") : null);
+  const shownProblem = problem ?? (refused ? t("accuracyTrainer.setup.noLines") : null);
 
   return (
     <Box data-testid="accuracy-setup" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}>
@@ -159,7 +158,7 @@ function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = 
       </Box>
       {source !== null && !refused && (
         <StatusText tone="success" testId="accuracy-setup-loaded">
-          {t(unevaluated ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count: positions.length, white, black })}
+          {t(engine ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count: positions.length, white, black })}
         </StatusText>
       )}
       <Box sx={{ display: "grid", gap: 0.75 }}>
@@ -183,9 +182,14 @@ function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = 
         )}
       </Box>
       <Box>
-        <Button variant="contained" onClick={onStart} disabled={source === null || forSide === 0} data-testid="accuracy-setup-start">
+        <Button variant="contained" onClick={onStart} disabled={source === null || forSide === 0 || starting} data-testid="accuracy-setup-start">
           {t("accuracyTrainer.setup.start")}
         </Button>
+        {startProblem !== undefined && (
+          <StatusText tone="error" testId="accuracy-setup-start-problem">
+            {startProblem}
+          </StatusText>
+        )}
       </Box>
       <CasePickerDialog
         open={picking}
@@ -217,4 +221,4 @@ function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = 
   );
 }
 
-export default AccuracySetup;
+export default SessionSetup;

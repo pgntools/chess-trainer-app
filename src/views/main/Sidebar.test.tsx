@@ -695,14 +695,13 @@ describe("a row named by data (CTA-135)", () => {
 
 describe("an experimental row (CTA-238)", () => {
   it("carries a chip saying so, read after its name", async () => {
-    renderAt("/accuracy-trainer/find-best-move-v1");
+    renderAt("/accuracy-trainer/find-best-move-v3");
     // Its folder, open on the route, named Accuracy Trainer.
     expect(screen.getByRole("button", { name: "Accuracy Trainer" })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: "Find Best Move v1 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v1");
-    expect(screen.getByTestId("nav-experimental-/accuracy-trainer/find-best-move-v1")).toHaveTextContent("Experimental");
-    // Its sibling too, and no other row.
-    expect(screen.getByRole("link", { name: "Find Best Move v2 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v2");
-    expect(screen.getAllByTestId(/^nav-experimental-/)).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Find Best Move v3 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v3");
+    expect(screen.getByTestId("nav-experimental-/accuracy-trainer/find-best-move-v3")).toHaveTextContent("Experimental");
+    // No other row carries one.
+    expect(screen.getAllByTestId(/^nav-experimental-/)).toHaveLength(1);
     await expectNoAxeViolations();
   });
 });

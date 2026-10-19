@@ -82,7 +82,7 @@ describe("translation catalogs", () => {
       "accuracyTrainer.lines.rank",
       "accuracyTrainer.lines.lossAtLeast",
       // A move as a job's title names it, "12. White": the number and the translated side, nothing around them.
-      "accuracyTrainer.v2.moveLabel",
+      "accuracyTrainer.session.moveLabel",
     ]);
 
     const untranslated = leafKeys(en).filter(

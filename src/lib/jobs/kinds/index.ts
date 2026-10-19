@@ -32,7 +32,7 @@ export type JobKindDeps = {
 export const jobKinds = (deps: JobKindDeps = {}): readonly JobKind<any, any, any>[] => [
   computerAnalysisKind({ engine: deps.engine }),
   repertoireEvaluationKind({ engine: deps.engine }),
-  // CTA-238: one position searched — queued by the Accuracy Trainer's Find Best Move v2 alone, which is
+  // CTA-238: one position searched — queued by the Accuracy Trainer's Find Best Move alone, which is
   // dev-only: so is the kind, a spread the production build drops (no chunk of it, no name).
   ...(import.meta.env.DEV ? [evaluatePositionKind({ engine: deps.engine })] : []),
 ];

@@ -43,10 +43,8 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
-    /** The Accuracy Trainer's Find Best Move v1 (`/accuracy-trainer/find-best-move-v1`, CTA-238) — experimental and dev-only. */
-    findBestMoveV1: "Find Best Move v1",
-    /** Its second exercise (`/accuracy-trainer/find-best-move-v2`, CTA-238) — dev-only. */
-    findBestMoveV2: "Find Best Move v2",
+    /** The Accuracy Trainer's Find Best Move v3 (`/accuracy-trainer/find-best-move-v3`, CTA-238) — experimental and dev-only. */
+    findBestMoveV3: "Find Best Move v3",
     /** The chip on an experimental screen's row (CTA-238). */
     experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
@@ -214,9 +212,8 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
-    /** The Accuracy Trainer's first exercise (CTA-238), dev-only. */
-    findBestMoveV1: "Find Best Move v1",
-    findBestMoveV2: "Find Best Move v2",
+    /** The Accuracy Trainer's exercise (CTA-238), dev-only. */
+    findBestMoveV3: "Find Best Move v3",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -257,8 +254,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
-    findBestMoveV2: "Analyse each position of a fully analysed game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
-    findBestMoveV1: "Suggest the best moves at every position of a fully analysed game, and see how they measure against the engine's lines.",
+    findBestMoveV3: "Analyse each position of a game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
@@ -560,11 +556,10 @@ const en = {
       paste: "Or paste its PGN",
       load: "Load",
       pickCase: "Pick a case…",
-      noLines: "This game carries no engine lines, so there is nothing to ask. Run a computer analysis on it (Full) and load its output.",
-      /** Find Best Move v2, its engine off. */
-      noLinesEngine: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
+      /** A game with nothing to train while the engine is off — the way out said. */
+      noLines: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
       loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
-      /** With the engine on (Find Best Move v2): every analysed position, the engine finding lines the game lacks. */
+      /** With the engine on: every analysed position, the engine finding lines the game lacks. */
       loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",
       untitled: "Untitled game",
       side: "Train",
@@ -580,8 +575,6 @@ const en = {
       train: "Train",
       white: "White",
       black: "Black",
-      instructions: "Play each move you think is best on the board — it goes on the list, and the board comes back. Then Submit, or Pass.",
-      submit: "Submit",
       pass: "Pass",
       next: "Next",
       summary: "Summary",
@@ -600,15 +593,15 @@ const en = {
       linesHelp: "How many of the engine's top lines a position should have. The search's depth, move time, Threads and Hash are the Engine menu's.",
       openCase: "Open the session's case",
     },
-    /** Find Best Move v2: an analysis board at each position, then one move chosen. */
-    v2: {
+    /** A session: an analysis board at each position — every move before it, none after — then one move chosen. */
+    session: {
       tabs: { moves: "Moves", map: "Map", result: "Result" },
       instructions: "Analyse the position as you like — side lines, comments, glyphs. Then stand in the line you would play and choose its first move.",
       choose: "Choose",
       chooseNone: "Play a move to choose it",
       /** The session's Case (CTA-238): made at Start, in one project of its own. */
       projectName: "Find Best Move",
-      caseName: "{{name}} — Find Best Move v2",
+      caseName: "{{name}} — Find Best Move",
       caseProblem: "The session's case could not be made — the browser refused the write.",
       /** An Evaluate Position job: its title, and the move as its live progress names it. */
       jobTitle: "Evaluate position — {{name}}, {{move}}",
@@ -625,11 +618,6 @@ const en = {
         waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
         unavailable: "The engine could not search this position — graded with the game's lines alone.",
       },
-    },
-    suggestions: {
-      label: "Your moves",
-      empty: "No move yet — play one on the board.",
-      remove: "Remove {{san}}",
     },
     lines: {
       title: "The engine's lines",
@@ -2979,7 +2967,7 @@ const en = {
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
       unknown: "Unknown kind ({{id}})",
-      /** Evaluate Position (CTA-238): one position searched, queued by the Accuracy Trainer's Find Best Move v2. */
+      /** Evaluate Position (CTA-238): one position searched, queued by the Accuracy Trainer's Find Best Move. */
       evaluatePosition: {
         name: "Evaluate position",
         description: "The engine searches one position of a Find Best Move session — as many lines as the session asks for — and its lines are written into the session's case.",

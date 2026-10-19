@@ -69,8 +69,7 @@ import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
-import FindBestMoveV1 from "../accuracyTrainer/findBestMoveV1/FindBestMoveV1";
-import FindBestMoveV2 from "../accuracyTrainer/findBestMoveV2/FindBestMoveV2";
+import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -114,14 +113,11 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
 
 /**
  * The boards that open with no move list — the experimental Accuracy
- * Trainer's (CTA-238, dev-only): v1 holds one position at a time and never
- * has a Moves tab; v2 opens on its setup. Their panel is the one skeleton
- * all the same.
+ * Trainer's Find Best Move (CTA-238, dev-only) opens on its setup, its Moves
+ * tab only once a session starts. Its panel is the one skeleton all the same.
  */
 const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
-  { name: "Accuracy Trainer — Find Best Move v1", panelId: "find-best-move-v1-panel", Screen: FindBestMoveV1 },
-  // v2 is an analysis board at each position, but it opens on its setup — no Moves tab until a session starts.
-  { name: "Accuracy Trainer — Find Best Move v2", panelId: "find-best-move-v2-panel", Screen: FindBestMoveV2 },
+  { name: "Accuracy Trainer — Find Best Move v3", panelId: "find-best-move-v3-panel", Screen: FindBestMoveV3 },
 ];
 
 const renderBoard = (Screen: () => ReactNode) =>

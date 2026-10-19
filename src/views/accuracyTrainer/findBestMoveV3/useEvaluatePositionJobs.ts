@@ -46,7 +46,7 @@ const stateOf = (jobId: string, record: JobRecord | undefined, read: boolean): P
 };
 
 /**
- * **Find Best Move v2's Evaluate Position jobs** (CTA-238) — the screen's
+ * **A Find Best Move session's Evaluate Position jobs** (CTA-238) — the screen's
  * side of the kind: `evaluate` queues one for a position, with the search
  * the top bar's Engine menu sets (the board's engine and its selected
  * preset, depth, move time, Threads and Hash) and MultiPV `lines`; `stateOf`

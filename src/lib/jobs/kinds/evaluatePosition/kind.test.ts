@@ -29,7 +29,7 @@ const afterE4 = mainline(base)[0];
 
 /** The session's Case — the job's subject. */
 const seed = async (id = "session") => {
-  await addAnalysisCases([gameCaseOf({ id, projectId: "p", name: "Alice – Bob — Find Best Move v2" }, base)]);
+  await addAnalysisCases([gameCaseOf({ id, projectId: "p", name: "Alice – Bob — Find Best Move" }, base)]);
 };
 
 const inputOf = (caseId = "session") => ({

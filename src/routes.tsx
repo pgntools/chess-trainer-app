@@ -80,21 +80,14 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
       {
-        // The Accuracy Trainer's Find Best Move v1 (CTA-238, experimental): a
-        // fully analysed game's positions, the reader's moves graded against
-        // the engine's lines in the tree. A board route, in the Accuracy
-        // Trainer folder — dev-only until it is ready to ship.
-        path: "/accuracy-trainer/find-best-move-v1",
-        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV1/Main")),
-        handle: { title: "pages.findBestMoveV1" },
-      },
-      {
-        // Find Best Move v2 (CTA-238): v1's setup, then a regular analysis
-        // board at each position — side lines, comments, glyphs — and the
-        // line on screen's first move chosen as the answer.
-        path: "/accuracy-trainer/find-best-move-v2",
-        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV2/Main")),
-        handle: { title: "pages.findBestMoveV2" },
+        // The Accuracy Trainer's Find Best Move v3 (CTA-238, experimental): a
+        // game's positions on an analysis board of the reader's own — every
+        // move before each, none after — the move chosen graded against the
+        // engine's lines. A board route, in the Accuracy Trainer folder —
+        // dev-only until it is ready to ship.
+        path: "/accuracy-trainer/find-best-move-v3",
+        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV3/Main")),
+        handle: { title: "pages.findBestMoveV3" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the

@@ -13,7 +13,5 @@ export * from "./JobHistory";
 export * from "./JobOutputsList";
 export * from "./OpeningBookList";
 export * from "./RepertoiresList";
-// CTA-238: the Accuracy Trainer's suggested moves at one position.
-export * from "./SuggestionList";
 export { SAVED_LIST_DEFAULT_VIEW, SAVED_LIST_VIEWS, type SavedListView } from "./savedListView";
 export * from "./TeamRosters";

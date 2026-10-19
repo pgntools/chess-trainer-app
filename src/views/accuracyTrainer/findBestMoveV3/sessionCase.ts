@@ -9,7 +9,7 @@ import { newRecordId } from "../../../lib/recordId";
 export type SessionCase = { projectId: string; caseId: string; base: GameTree };
 
 /**
- * **A Find Best Move v2 session's Case** (CTA-238) — made as the session
+ * **A Find Best Move session's Case** (CTA-238) — made as the session
  * starts: in the one **Find Best Move** project at the top level (`projectName`,
  * the reader's language's; found by its name, else made), a Game Case of the
  * game's mainline alone (`sessionBaseTree`) named `caseName`. Every later

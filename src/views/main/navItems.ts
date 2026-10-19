@@ -19,7 +19,6 @@ import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import TrackChangesRoundedIcon from "@mui/icons-material/TrackChangesRounded";
-import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
 import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
@@ -71,20 +70,13 @@ export const navItems = (): readonly NavItem[] => [
     icon: VisibilityOffRoundedIcon,
     folder: "engine",
   },
-  // The Accuracy Trainer's exercises (CTA-238) — in its own folder, experimental, dev-only.
+  // The Accuracy Trainer's exercise (CTA-238) — in its own folder, experimental, dev-only.
   ...(import.meta.env.DEV
     ? [
         {
-          to: "/accuracy-trainer/find-best-move-v1",
-          labelKey: "nav.findBestMoveV1",
+          to: "/accuracy-trainer/find-best-move-v3",
+          labelKey: "nav.findBestMoveV3",
           icon: TrackChangesRoundedIcon,
-          folder: "accuracy-trainer",
-          experimental: true,
-        },
-        {
-          to: "/accuracy-trainer/find-best-move-v2",
-          labelKey: "nav.findBestMoveV2",
-          icon: AccountTreeRoundedIcon,
           folder: "accuracy-trainer",
           experimental: true,
         },

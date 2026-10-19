@@ -6,7 +6,7 @@ import { positionResultFrom, type RanEngine } from "../computerAnalysis/core";
 
 /**
  * **Evaluate Position** (CTA-238, `analysis.evaluate-position`) — pure: one
- * position searched once, for the Accuracy Trainer's Find Best Move v2. The
+ * position searched once, for the Accuracy Trainer's Find Best Move. The
  * reference is `.claude/rules/jobs.md` §3 and `accuracy-trainer.md` §7.
  *
  * The trainer queues it when the reader starts analysing a position (their
