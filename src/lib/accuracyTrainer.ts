@@ -189,6 +189,30 @@ const rankedLines = (unranked: Omit<TrainingLine, "rank" | "loss">[]): Pick<Trai
   };
 };
 
+/** One of a position's lines as a record keeps it (CTA-239) — what {@link TrainingLine} is before it is scored and ranked. */
+export type StoredTrainingLine = Pick<TrainingLine, "san" | "score" | "listed" | "played" | "sans">;
+
+/**
+ * **A position rebuilt from its stored lines** (CTA-239, a Find Best Move
+ * session read back from its PGN): each scored from the mover's view and the
+ * whole ranked, as {@link trainingPositionsOf} does — a delivered mate
+ * (`mate 0`, only ever the game's move's own eval: the next position's
+ * search) signed by the side to move after it. The same lines give the same
+ * position.
+ */
+export const trainingPositionFrom = (
+  position: Omit<TrainingPosition, "lines" | "topCount">,
+  lines: readonly StoredTrainingLine[],
+): TrainingPosition => {
+  const sign = position.turn === "w" ? 1 : -1;
+  const after: Turn = position.turn === "w" ? "b" : "w";
+  const scored = lines.map((line) => ({
+    ...line,
+    moverCp: whiteCp(line.score, line.score.kind === "mate" && line.score.value === 0 ? after : position.turn) * sign,
+  }));
+  return { ...position, ...rankedLines(scored) };
+};
+
 /** A UCI line from `fen` in SAN, cut at the first move that does not play. */
 export const sanLineOf = (fen: string, pv: readonly string[]): string[] => {
   const sans: string[] = [];
