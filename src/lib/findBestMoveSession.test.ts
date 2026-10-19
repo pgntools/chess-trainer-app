@@ -216,7 +216,7 @@ describe("the session's transitions", () => {
 
   it("starts on its first position's view", () => {
     const session = startSession({ caseRef, positions, wanted: 3, tree: base })!;
-    expect(session).toMatchObject({ index: 0, wanted: 3, answers: [null, null], jobs: [null, null], work: [null, null] });
+    expect(session).toMatchObject({ index: 0, wanted: 3, answers: [null, null], jobs: [null, null], work: [null, null], reopened: null });
     expect(session.view.nodeId).toBeNull();
     expect(startSession({ caseRef, positions: [], wanted: 3, tree: base })).toBeUndefined();
   });
@@ -272,10 +272,22 @@ describe("reopenPassed / withoutPositionComment", () => {
     const again = reopenPassed(session, 0, base);
     expect(again.index).toBe(0);
     expect(again.answers).toEqual([null, ["Nf3"]]);
+    expect(again.reopened).toBe(0);
     expect(again.view.nodeId).toBeNull();
     // The answered one, and one never answered, stay.
     expect(reopenPassed(session, 1, base)).toBe(session);
     expect(reopenPassed(startSession({ caseRef, positions, wanted: 3, tree: base })!, 0, base).answers).toEqual([null, null]);
+  });
+
+  it("passes a reopened position again when it is left unanswered — not once it is answered", () => {
+    let session = answerPosition(startSession({ caseRef, positions, wanted: 3, tree: base })!, []);
+    session = reopenPassed(openPosition(session, 1, base), 0, base);
+    // Left unanswered: passed again.
+    expect(openPosition(leavePosition(session, session.view.board), 1, base).answers).toEqual([[], null]);
+    // Answered: kept.
+    const answered = answerPosition(session, ["e4"]);
+    expect(answered.reopened).toBeNull();
+    expect(openPosition(leavePosition(answered, answered.view.board), 1, base).answers).toEqual([["e4"], null]);
   });
 
   it("takes an answer's comment off its position, and nothing else", () => {

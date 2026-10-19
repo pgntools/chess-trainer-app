@@ -481,8 +481,11 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(boardOptions().position).toBe(AFTER_E5);
     expect(drag("g1", "f3")).toBe(true);
     expect(screen.getByRole("button", { name: "Check (1)" })).toBeEnabled();
-    // Passed no more: it is the one on screen, being answered.
-    expect(list().getAllByRole("button")).toHaveLength(1);
+    // Still listed, in its place: the one being answered now.
+    expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Open 1. White — 1/3 · 1 in place",
+      "Back to 2. White — answering now",
+    ]);
 
     // The answered one: its result.
     await user.click(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" }));
@@ -490,5 +493,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
     expect(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" })).toHaveAttribute("aria-current", "true");
+    // The reopened one, left unanswered: passed again, still there to answer.
+    expect(list().getByRole("button", { name: "Answer 2. White now — passed" })).toBeInTheDocument();
   });
 });

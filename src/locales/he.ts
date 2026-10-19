@@ -433,6 +433,8 @@ const he: typeof en = {
       resultNoLines: "אין קו להשוואה",
       resultOpen: "פתיחת {{move}} — {{score}}",
       resultAnswer: "לענות עכשיו על {{move}} — דילגתם",
+      resultAnswering: "בתשובה עכשיו",
+      resultBack: "חזרה אל {{move}} — בתשובה עכשיו",
       movesList: "המסעים שלכם, מהטוב ביותר",
       movesNone: "עוד אין מסע — שחקו אחד מהעמדה על הלוח.",
       movesNoSession: "התחילו אימון כדי למצוא את המסעים שלו.",

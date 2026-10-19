@@ -38,10 +38,11 @@ export const LABEL = "Position 2 of 3 · 2. White";
 /** Both best moves, in order. */
 const PERFECT: PositionGrade = gradePosition(GRADED_POSITION, ["Nf3", "Bc4"], { wanted: 2 });
 
-/** Four positions of a session: perfect, passed, found two the wrong way round (on screen), waiting for the engine. */
+/** Five positions of a session: perfect, passed, found two the wrong way round (on screen), waiting for the engine, being answered. */
 export const RESULTS: readonly AccuracyTrainerResult[] = [
   { index: 0, label: "1. White", playedSan: "e4", state: "graded", grade: PERFECT, current: false },
   { index: 1, label: "1. Black", playedSan: "e5", state: "passed", current: false },
   { index: 2, label: "2. White", playedSan: "Qh5", state: "graded", grade: GRADED, current: true },
   { index: 3, label: "3. White", playedSan: "Bc4", state: "waiting", current: false },
+  { index: 4, label: "4. White", playedSan: "O-O", state: "answering", current: false },
 ];

@@ -595,6 +595,8 @@ const en = {
       resultNoLines: "No line to compare",
       resultOpen: "Open {{move}} — {{score}}",
       resultAnswer: "Answer {{move}} now — passed",
+      resultAnswering: "Answering now",
+      resultBack: "Back to {{move}} — answering now",
       /** The Moves tab: the reader's moves at the position on screen. */
       movesList: "Your moves, best first",
       movesNone: "No move yet — play one from the position on the board.",

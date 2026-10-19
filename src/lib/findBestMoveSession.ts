@@ -212,6 +212,8 @@ export type FindBestMoveSession = {
    * there, and a position's view hides everything under it.
    */
   work: readonly (GameTree | null)[];
+  /** A passed position opened to be answered now (`reopenPassed`) — left unanswered, it is passed again. */
+  reopened: number | null;
   /** The Case's tree as it stood when the position on screen was opened. */
   tree: GameTree;
   /** The position on screen's view of it. */
@@ -241,7 +243,14 @@ export const leavePosition = (session: FindBestMoveSession, board: GameTree): Fi
   const position = session.positions[session.index];
   if (position === undefined) return session;
   const work = moves.length === 0 ? null : { ...emptyTree(position.fen), moves: [...moves] };
-  return { ...session, work: session.work.map((each, at) => (at === session.index ? work : each)) };
+  // A pass reopened and left unanswered is a pass again.
+  const passedAgain = session.reopened === session.index && session.answers[session.index] === null;
+  return {
+    ...session,
+    work: session.work.map((each, at) => (at === session.index ? work : each)),
+    reopened: null,
+    ...(passedAgain ? { answers: session.answers.map((each, at) => (at === session.index ? [] : each)) } : {}),
+  };
 };
 
 /**
@@ -278,6 +287,7 @@ export const startSession = ({
     answers: positions.map(() => null),
     jobs: positions.map(() => null),
     work: positions.map(() => null),
+    reopened: null,
     tree,
     view,
   };
@@ -293,7 +303,7 @@ export const reopenPassed = (session: FindBestMoveSession, index: number, tree: 
   const given = session.answers[index];
   if (given === null || given === undefined || given.length > 0) return session;
   const opened = openPosition(session, index, tree);
-  return opened === session ? session : { ...opened, answers: opened.answers.map((each, at) => (at === index ? null : each)) };
+  return opened === session ? session : { ...opened, answers: opened.answers.map((each, at) => (at === index ? null : each)), reopened: index };
 };
 
 /** A comment taken off a position (its SAN path) — the answer it said, once the position is answered again. */
@@ -307,6 +317,7 @@ export const withoutPositionComment = (tree: GameTree, path: readonly string[], 
 /** The position on screen answered — the reader's moves in their order, or none (a pass). */
 export const answerPosition = (session: FindBestMoveSession, moves: readonly string[]): FindBestMoveSession => ({
   ...session,
+  reopened: session.reopened === session.index ? null : session.reopened,
   answers: session.answers.map((given, index) => (index === session.index ? [...moves] : given)),
 });
 

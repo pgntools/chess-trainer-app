@@ -378,20 +378,33 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     return grade === null || grade === undefined ? { kind: "waiting", label, list: given } : { kind: "graded", label, position: shown, grade };
   })();
 
-  /** **Results** — every position answered or passed, in game order: graded, waiting for the engine, or passed. */
+  /**
+   * **Results** — every position answered or passed, and the one being
+   * answered now (so a pass reopened stays in its place), in game order:
+   * graded, waiting for the engine, passed, or answering.
+   */
   const results: AccuracyTrainerResult[] =
     session === null
       ? []
       : session.positions.flatMap((each, at): AccuracyTrainerResult[] => {
           const given = session.answers[at];
-          if (given === null || given === undefined) return [];
+          if (given === undefined || (given === null && at !== session.index)) return [];
           const grade = grades[at];
-          const state = given.length === 0 ? "passed" : grade === null || grade === undefined ? "waiting" : "graded";
+          const state =
+            given === null ? "answering" : given.length === 0 ? "passed" : grade === null || grade === undefined ? "waiting" : "graded";
           return [{ index: at, label: labelOf(each), playedSan: each.playedSan, state, ...(state === "graded" && grade !== null && grade !== undefined ? { grade } : {}), current: at === shownAt }];
         });
 
-  /** Back to a position from Results — passed, to answer it now; answered, its result. Straight there, no moves played out. */
+  /**
+   * Back to a position from Results — passed, to answer it now; answered, its
+   * result; the one being answered, the board back on it. Straight there, no
+   * moves played out.
+   */
   const openResult = (at: number): "answer" | "result" => {
+    if (session !== null && at === session.index && session.answers[at] === null) {
+      core.goToNode(session.view.nodeId);
+      return "answer";
+    }
     if (session?.answers[at]?.length === 0) {
       answerAgain(at);
       return "answer";

@@ -173,7 +173,7 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(onAnswerAgain).toHaveBeenCalled();
   });
 
-  it("lists on Results every position answered or passed — its score, or passed — each a button back to it, the one on screen current", async () => {
+  it("lists on Results every position answered or passed, and the one being answered — its score, passed, or answering — each a button back to it, the one on screen current", async () => {
     const user = userEvent.setup();
     const onOpen = vi.fn();
     render(<Live withCase startTab="results" onOpen={onOpen} />);
@@ -183,6 +183,7 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
       "Answer 1. Black now — passed",
       "Open 2. White — 2/2 · 0 in place",
       "Open 3. White — Waiting for the engine",
+      "Back to 4. White — answering now",
     ]);
     expect(rows[0]).toHaveTextContent("Perfect");
     expect(rows[2]).toHaveAttribute("aria-current", "true");

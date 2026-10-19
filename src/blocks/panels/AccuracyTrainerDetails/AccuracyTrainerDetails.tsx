@@ -28,15 +28,15 @@ export type AccuracyTrainerResult = {
   label: string;
   /** The game's move there. */
   playedSan: string;
-  /** Answered and graded, checked and waiting for the engine, or passed. */
-  state: "graded" | "waiting" | "passed";
+  /** Answered and graded, checked and waiting for the engine, passed — or the one on screen, being answered now. */
+  state: "graded" | "waiting" | "passed" | "answering";
   /** Its grade, graded. */
   grade?: PositionGrade;
   /** The position the board stands at. */
   current: boolean;
 };
 
-/** The session's answered and passed positions, and the way back to one. */
+/** The session's answered and passed positions — and the one being answered — and the way back to one. */
 export type AccuracyTrainerResults = {
   rows: readonly AccuracyTrainerResult[];
   /** Back to a position — answered, its result; passed, to answer it. */
@@ -122,9 +122,11 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * reader's moves marked** in it (their rank, *In place*, the verdict), a
  * divider closing the top N, and the reader's moves outside the lines after
  * it; passed — put off for later — its lines hidden, and **Answer it now** —
- * **Results**: every position answered or passed, in game order, each a
+ * **Results**: every position answered or passed — and the one being
+ * answered now, so a pass reopened stays in its place — in game order, each a
  * button back to it (its score — found / in place, *Perfect* —, waiting for
- * the engine, or passed: to answer it), the one the board stands at current —
+ * the engine, passed: to answer it, or *Answering now*), the one the board
+ * stands at current —
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position), *Show next-move arrows* (the
@@ -292,6 +294,7 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
   const { t } = useTranslation();
   const scoreOf = (row: AccuracyTrainerResult): string => {
     if (row.state === "passed") return t("accuracyTrainer.details.resultPassed");
+    if (row.state === "answering") return t("accuracyTrainer.details.resultAnswering");
     if (row.state === "waiting" || row.grade === undefined) return t("accuracyTrainer.details.resultWaiting");
     if (row.grade.target === 0) return t("accuracyTrainer.details.resultNoLines");
     return t("accuracyTrainer.report.foundOf", { found: row.grade.found, count: row.grade.target, inPlace: row.grade.inPlace });
@@ -308,7 +311,14 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
               variant={row.current ? "outlined" : "text"}
               onClick={() => results.onOpen(row.index)}
               aria-current={row.current ? "true" : undefined}
-              aria-label={t(row.state === "passed" ? "accuracyTrainer.details.resultAnswer" : "accuracyTrainer.details.resultOpen", { move: row.label, score })}
+              aria-label={t(
+                row.state === "passed"
+                  ? "accuracyTrainer.details.resultAnswer"
+                  : row.state === "answering"
+                    ? "accuracyTrainer.details.resultBack"
+                    : "accuracyTrainer.details.resultOpen",
+                { move: row.label, score },
+              )}
               data-testid={`${testId}-result-${row.index}`}
               sx={{ justifyContent: "space-between", gap: 1, textTransform: "none", textAlign: "start", color: "text.primary" }}
             >
