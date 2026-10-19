@@ -43,6 +43,10 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
+    /** The Accuracy Trainer's Find Best Move v3 (`/accuracy-trainer/find-best-move-v3`, CTA-238) — experimental and dev-only. */
+    findBestMoveV3: "Find Best Move v3",
+    /** The chip on an experimental screen's row (CTA-238). */
+    experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -95,6 +99,8 @@ const en = {
       analysisV2: "Analysis",
       /** The Jobs module (CTA-221). */
       jobs: "Jobs",
+      /** The Accuracy Trainer (CTA-238) — its experiments, dev-only. */
+      accuracyTrainer: "Accuracy Trainer",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -206,6 +212,8 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
+    /** The Accuracy Trainer's exercise (CTA-238), dev-only. */
+    findBestMoveV3: "Find Best Move v3",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -246,6 +254,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
+    findBestMoveV3: "Analyse each position of a game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
@@ -530,6 +539,176 @@ const en = {
       "Off by default: an engine line is a list of the pieces the mask is hiding. The evaluation bar and the score are unaffected.",
     /** The Saved games list's marker on a game played on Masked Pieces. */
     marker: "Masked",
+  },
+  /**
+   * **The Accuracy Trainer** (CTA-238, experimental, dev-only): a fully
+   * analysed game's positions, each answered with the moves the reader
+   * thinks best, graded against the engine's lines in the tree
+   * (`lib/accuracyTrainer.ts`, `.claude/rules/accuracy-trainer.md`).
+   */
+  accuracyTrainer: {
+    experimental: "Experimental",
+    experimentalHint: "An experiment: what it asks and how it grades may change.",
+    setup: {
+      title: "A fully analysed game",
+      help: "A computer analysis's output — the Full variant leaves the engine's lines at every move. Upload or paste its PGN, or pick a case that holds one.",
+      chooseFile: "Choose a .pgn file",
+      paste: "Or paste its PGN",
+      load: "Load",
+      pickCase: "Pick a case…",
+      /** A game with nothing to train while the engine is off — the way out said. */
+      noLines: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
+      loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
+      /** With the engine on: every analysed position, the engine finding lines the game lacks. */
+      loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",
+      untitled: "Untitled game",
+      side: "Train",
+      sides: { white: "White", black: "Black", both: "Both" },
+      noneForSide: "No position of that side has the engine's lines.",
+      start: "Start",
+      games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
+      caseProblem: "That case could not be read.",
+    },
+    casePicker: { title: "Pick a case", submit: "Load", none: "There is no case yet — make one in Analysis." },
+    position: {
+      progress: "Position {{at}} of {{count}}",
+      train: "Train",
+      white: "White",
+      black: "Black",
+      pass: "Pass",
+      next: "Next",
+      summary: "Summary",
+      newSession: "New session",
+    },
+    /** An exercise's own panel beside its board (`AccuracyTrainerDetails`). */
+    details: {
+      label: "{{name}} — the exercise's own view",
+      toggle: "The exercise's settings",
+      tabs: { label: "The exercise's own view", moves: "Your moves", results: "Results", settings: "Settings" },
+      /** The Results tab: every position answered or passed. */
+      resultsList: "The positions answered or passed",
+      resultsNone: "No position answered or passed yet.",
+      resultGame: "Game:",
+      resultPassed: "Passed",
+      resultLater: "Answer it",
+      resultWaiting: "Waiting for the engine",
+      resultNoLines: "No line to compare",
+      resultOpen: "Open {{move}} — {{score}}",
+      resultAnswer: "Answer {{move}} now — passed",
+      resultAnswering: "Answering now",
+      resultBack: "Back to {{move}} — answering now",
+      /** The Moves tab: the reader's moves at the position on screen. */
+      movesList: "Your moves, best first",
+      movesNone: "No move yet — play one from the position on the board.",
+      movesNoSession: "Start a session to find its moves.",
+      movesHint: "Each is a line you played from the position. Moving one moves its line; deleting one deletes it.",
+      movesWaiting: "Checked — waiting for the engine's lines to grade them.",
+      movesUnanswered: "Not answered yet — open it from the summary to answer it.",
+      /** A pass is "later": its lines stay hidden until it is answered. */
+      movesPassed: "Passed — put off for later. Its lines stay hidden until you answer it.",
+      answerAgain: "Answer it now",
+      /** Which trained position Your moves shows — the one the board stands at. */
+      positionLabel: "Position {{at}} of {{count}} · {{move}}",
+      /** A graded position: every line, the reader's moves marked. */
+      bestList: "The engine's lines, best first, your moves marked",
+      outsideList: "Your moves not among the lines",
+      yours: "Yours #{{order}}",
+      lossShort: "−{{loss}}",
+      topNote: "The line under the {{count}} best closes the moves you were to find.",
+      moveUp: "Move {{san}} up",
+      moveDown: "Move {{san}} down",
+      moveRemove: "Delete {{san}}",
+      arrows: "Show next-move arrows",
+      arrowsHelp: "The continuations of your analysis at the position on screen, as arrows on the board.",
+      engine: "Use the engine",
+      engineHelp: "When a position has fewer of the engine's lines than moves to find, the engine searches it once you start on it — an Evaluate position job — and your moves are graded against its lines too. The search's depth, move time, Threads and Hash are the Engine menu's.",
+      moves: "Moves to find",
+      movesHelp: "How many best moves to find at each position, best first: your lines from the position are your moves, in their order.",
+      movesLocked: "Fixed for this session — set it before the next one starts.",
+      openCase: "Open the session's case",
+    },
+    /** A session: an analysis board at each position — every move before it, none after — then one move chosen. */
+    session: {
+      tabs: { moves: "Moves", map: "Map", result: "Result" },
+      instructions: "Find the {{count}} best moves, best first: each line you play from the position is one, in the order of the lines — reorder them with the move menu's Promote variation. Then Check.",
+      candidates: "Your moves:",
+      noCandidates: "none yet — play one from the position.",
+      check: "Check ({{count}})",
+      /** A pass on Result: put off for later, its lines hidden. */
+      passed: "You passed — put off for later. Its lines stay hidden; answer it now, or later from Your moves when the board is back at it.",
+      /** The session's Case (CTA-238): made at Start, in one project of its own. */
+      projectName: "Find Best Move",
+      caseName: "{{name}} — Find Best Move",
+      caseProblem: "The session's case could not be made — the browser refused the write.",
+      /** An Evaluate Position job: its title, and the move as its live progress names it. */
+      jobTitle: "Evaluate position — {{name}}, {{move}}",
+      moveLabel: "{{number}}. {{side}}",
+      /** The answer as the Case's comment on the position says it. */
+      answer: {
+        passed: "Find Best Move: passed",
+        moves: "Find Best Move: {{moves}} — {{found}} of the top {{count}}, {{inPlace}} in place",
+        move: "{{order}}. {{san}} (#{{rank}}, {{verdict}})",
+        moveOutside: "{{order}}. {{san}} (not among the lines)",
+      },
+      engine: {
+        searching: "The engine is searching this position.",
+        waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
+        unavailable: "The engine could not search this position — graded with the game's lines alone.",
+      },
+    },
+    lines: {
+      title: "The engine's lines",
+      rank: "#",
+      move: "Move",
+      eval: "Eval",
+      loss: "Loss",
+      /** The reader's own rank for a move of theirs. */
+      order: "Your #",
+      inPlace: "In place",
+      verdict: "Verdict",
+      gameMove: "Game",
+      gameMoveName: "The move played in the game",
+      best: "Best",
+      good: "Good",
+      outside: "Not among the lines",
+      lossAtLeast: "≥ {{loss}}",
+      headline: {
+        perfect: "Every best move found, each in its place — {{count}} of {{count}}.",
+        found: "You found {{found}} of the top {{count}} — {{inPlace}} in their place.",
+        none: "None of your moves is among the top {{count}}.",
+        noLines: "There is no line here to compare your moves with.",
+        passed: "You passed.",
+      },
+    },
+    report: {
+      title: "Session summary",
+      measures: "Measures",
+      positions: "Positions",
+      answered: "Answered",
+      passed: "Passed",
+      foundRate: "Best moves found",
+      inPlaceRate: "In their place",
+      perfect: "Positions done perfectly",
+      perfectMark: "Perfect",
+      found: "Found",
+      foundOf: "{{found}}/{{count}} · {{inPlace}} in place",
+      bestRate: "The best move found",
+      averageLoss: "Average loss of your best move",
+      inaccuracies: "Inaccuracies",
+      mistakes: "Mistakes",
+      blunders: "Blunders",
+      outside: "Outside the top N",
+      rate: "{{percent}}% ({{count}} of {{total}})",
+      table: "Every position",
+      move: "Move",
+      game: "Game",
+      best: "Best",
+      yours: "Your moves",
+      result: "Result",
+      notYet: "Not answered yet",
+      passedMark: "Passed",
+      open: "Open {{move}}",
+    },
   },
   /**
    * The variations explorer's right-click menu on a move (CTA-64) — shared by
@@ -2834,6 +3013,16 @@ const en = {
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
       unknown: "Unknown kind ({{id}})",
+      /** Evaluate Position (CTA-238): one position searched, queued by the Accuracy Trainer's Find Best Move. */
+      evaluatePosition: {
+        name: "Evaluate position",
+        description: "The engine searches one position of a Find Best Move session — as many lines as the session asks for — and its lines are written into the session's case.",
+        errors: {
+          engine: "The engine gave no evaluation of the position.",
+          storage: "The session's case could not be written — the browser refused.",
+          target: "The session's case is gone — it was deleted.",
+        },
+      },
       /** The computer analysis (CTA-188 — Jobs V2's, the Jobs module's kind since CTA-221): New job's form, its parameters, its results. */
       computerAnalysis: {
         name: "Computer analysis",

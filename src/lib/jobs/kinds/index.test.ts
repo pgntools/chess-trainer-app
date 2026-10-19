@@ -9,6 +9,8 @@ import { COMPUTER_ANALYSIS_ERRORS, COMPUTER_ANALYSIS_KIND } from "./computerAnal
 import { isRegisteredJobKind, jobKinds, jobKindLocaleKey, JOB_KIND_LOCALE_KEYS, RETIRED_JOB_KIND_LOCALE_KEYS } from ".";
 import { DEFAULT_REPERTOIRE_EVALUATION_SETTINGS, REPERTOIRE_EVALUATION_KIND } from "./repertoireEvaluation/core";
 import { REPERTOIRE_EVALUATION_ERRORS } from "./repertoireEvaluation/kind";
+import { EVALUATE_POSITION_KIND } from "./evaluatePosition/core";
+import { EVALUATE_POSITION_ERRORS } from "./evaluatePosition/kind";
 
 /*
   **The kind registry's checklist, held** (CTA-221, `.claude/rules/jobs.md`):
@@ -35,12 +37,23 @@ const SAMPLES: Record<string, unknown> = {
     preset: null,
     ...DEFAULT_REPERTOIRE_EVALUATION_SETTINGS,
   },
+  [EVALUATE_POSITION_KIND]: {
+    caseId: "c",
+    name: "Evaluate position — A game, 1. White",
+    fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    path: [],
+    label: "1. White",
+    engine: "stockfish-19-lite",
+    preset: null,
+    search: { depth: 12, moveTimeMs: 1000, threads: 1, hashMb: 16, multiPv: 3 },
+  },
 };
 
 /** Each kind's error codes — every one worded. */
 const ERRORS: Record<string, readonly string[]> = {
   [COMPUTER_ANALYSIS_KIND]: COMPUTER_ANALYSIS_ERRORS,
   [REPERTOIRE_EVALUATION_KIND]: REPERTOIRE_EVALUATION_ERRORS,
+  [EVALUATE_POSITION_KIND]: EVALUATE_POSITION_ERRORS,
 };
 
 const read = (catalog: unknown, path: string): unknown =>
@@ -51,7 +64,7 @@ const ctx = { jobId: "j", attempt: 1, signal: new AbortController().signal } as 
 
 describe("the kind registry (CTA-221)", () => {
   it("registers each kind once, every one with a locale key", () => {
-    expect(kinds.map((kind) => kind.id)).toEqual([COMPUTER_ANALYSIS_KIND, REPERTOIRE_EVALUATION_KIND]);
+    expect(kinds.map((kind) => kind.id)).toEqual([COMPUTER_ANALYSIS_KIND, REPERTOIRE_EVALUATION_KIND, EVALUATE_POSITION_KIND]);
     expect(Object.keys(JOB_KIND_LOCALE_KEYS).sort()).toEqual(kinds.map((kind) => kind.id).sort());
   });
 

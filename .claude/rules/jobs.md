@@ -50,7 +50,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `package.json` | `"@pgntools/jobs-runtime": "^0.2.1"` — from npm (published from the runtime's CI with provenance; `npm audit signatures`). A dev build is a git tag carrying `dist/` (`github:pgntools/jobs-runtime#v0.3.0-dev.N`). |
 | `src/lib/jobs/runtime.ts` | **The page's one runtime**: `jobRuntime()` (made lazily, touching nothing), `startJobRuntime()` (the shell's effect), `stopJobRuntime()` / `deleteJobsDb()` (tests). Namespace and database `chessapp.backgroundJobs`, one lane `{ engine: 1 }` (the `cpu` lane went with the merge, CTA-232), at most 200 jobs, the browser adapters (`indexedDbJobStore`, `webLocksLeader`, `broadcastBus`), `newRecordId` ids. |
 | `src/lib/jobs/kinds/index.ts` | **The kind registry** — `jobKinds(deps)`, one line per kind; `JOB_KIND_LOCALE_KEYS`; `RETIRED_JOB_KIND_LOCALE_KEYS` (a retired kind's old name, CTA-232) and `isRegisteredJobKind`. A factory: a test hands in an engine. |
-| `src/lib/jobs/kinds/<kind>/` | **A kind**: `core.ts` (pure: input and state types, lenient parsers, plan, one step, the outputs planned), `kind.ts` (the `JobKind` adapter over the core and the app's stores), their tests. `computerAnalysis/` (with `liveAnalysis.ts`, a running job's results so far), `repertoireEvaluation/`. |
+| `src/lib/jobs/kinds/<kind>/` | **A kind**: `core.ts` (pure: input and state types, lenient parsers, plan, one step, the outputs planned), `kind.ts` (the `JobKind` adapter over the core and the app's stores), their tests. `computerAnalysis/` (with `liveAnalysis.ts`, a running job's results so far), `repertoireEvaluation/`, `evaluatePosition/` (CTA-238, dev-only — §3.2). |
 | `src/lib/jobs/engineSession.ts` | **The engine work every engine-lane kind shares** (CTA-218): the engine resolved (as a board falls back; a `hosted:…` id waiting for the engine server's list), the `uci` handshake, Threads / Hash / MultiPV clamped to what it declared, the job's preset, the eval sources asked first and written back, the silence timeout fed by `info` lines and an engine server's heartbeat, the live payload (`EngineSessionLive`). |
 | `src/lib/jobs/engineJobSettings.ts`, `continueJob.ts` | **Resume against the settings in effect** (CTA-236, §4.1): `jobEngineChanges` (a job's engine, preset values, depth, move time, Threads and Hash against the current ones — pure), `currentJobEngineSettings` (what a new job would be given now), `JobContinuation`; `resumeChangesOf` (what Resume asks about) and `continueWithCurrentSettings` (a new job queued, then the old one removed), one entry per engine kind. |
 | `src/lib/jobs/kinds/engineRuns.ts` | One engine session per job **run**, kept across its steps by job id and closed when a step's signal aborts, a step throws, or at `finalize`; an engine server's engine failing becomes the retryable `EngineServerUnreachableError`. |
@@ -58,7 +58,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `src/lib/jobs/subjectDeletion.ts` | **The deletion rule's hook**: the stores call `removeUnfinishedJobsOf`; the runtime registers itself (a delete before it exists is held). |
 | `src/views/jobs/` | **The screens**: `JobsScreen` (`/jobs`), `JobScreen` (`/jobs/<id>`), `JobsSettingsScreen` (`/jobs/settings`), `JobsShell` (the runtime's start, the eval sources' warning, the header indicator), `useJobs.ts` (the runtime's React hooks over the page's runtime), `jobViews.ts` (a record mapped onto the blocks' view models), `kindViews.ts` + `kindViewTypes.ts` (each kind's views), `kinds/` (those views), `useNewJob.ts` + `NewJobHost.tsx`, `useResumeJob.ts` (Resume, asking first — CTA-236), `paths.ts`, `useJobsSettings.ts`. |
 | `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable` (its filters in its headers since CTA-221, `JobQueueFilters` gone), `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221), `JobSettingsChangedDialog` (CTA-236); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`; `JobsSettingsForm`. (`CollectionMergeForm` is the Library's since CTA-232, in its `CollectionMergeDialog`; `CollectionMergeSummary` is gone.) Block-local view models: no block imports the runtime. |
-| `src/test/jobsKit.ts` | The kinds' test kit (§6). |
+| `src/test/jobsKit.ts` | The kinds' test kit (§6); its answering engine in `src/test/answeringEngine.ts` (no runtime import — a screen test mocking the registry imports it from its mock). |
 
 Routes and nav: `/jobs`, `/jobs/settings` and `/jobs/<id>` (full width,
 `pages.jobs`, `pages.jobsSettings`, `pages.job`). The sidebar's **Jobs** is
@@ -155,12 +155,13 @@ of it still read (§3.1). Its lane goes if nothing else uses it.
 
 ---
 
-## 3. The two kinds
+## 3. The kinds
 
 | Kind | Lane | Applies to | Resumes by itself | Retry | Outputs |
 | --- | --- | --- | --- | --- | --- |
 | `analysis.computer-analysis` | engine | a Case | no — interrupted, Resume asked | an engine server gone: 3 attempts from 30 s; anything else fails at once | per ticked variant a Game Case (`<jobId>:<variant>`) linked from the source, or the one variant merged into the source Case (by the job's id in its `merges`) |
 | `repertoire.evaluation` | engine | a repertoire | no | as above | the report (data, `repertoire.evaluation.report@1`); ticked, a repertoire "<name> — evaluated" (`r<jobId>e`) and the annotated PGN as a file |
+| `analysis.evaluate-position` (CTA-238, **dev-only**, §3.2) | engine | none offered (`appliesTo` empty) — its subject a Case | **yes** — one search, re-queued after a lost lease (`autoResume`) | as above | the search's result (data, `analysis.evaluate-position.result@1`), then its lines written into the Case at the position (`mergeIntoAnalysisCase`, the job's id among its `merges`) |
 
 - **The computer analysis** is Jobs V2's behaviour (its input, its
   positions-and-checkpoint state, its error codes `source`, `engine`,
@@ -213,6 +214,35 @@ left as they are** — no migration, no deletion — and read as follows:
   only jobs of registered kinds, so a queued orphan is not "waiting".
 - **The deletion rule** still holds: deleting a collection removes its
   unfinished merge jobs (`library-collection` stays in the entity registry).
+
+### 3.2 Evaluate Position — `analysis.evaluate-position` (CTA-238, dev-only)
+
+**One position searched once**, for the Accuracy Trainer's Find Best Move
+v2 ([`accuracy-trainer.md`](./accuracy-trainer.md) §7), which alone queues
+it — no New-job dialog offers it (`appliesTo: []`) and it has no form. Like
+its screen it is **dev-only**: its line in `jobKinds`, its
+`JOB_KIND_LOCALE_KEYS` entry and its views are spreads under
+`import.meta.env.DEV`, so a production build has no code of it (its words
+stay in the catalogs, as the dev screens' do).
+
+- **Input**: the session's Case (`caseId`, its one subject — deleted, its
+  unfinished jobs go), the position (`fen`, its SAN `path` in the Case, the
+  move's `label`), the engine, its preset (id, name, values sent) and the
+  search — the **top bar's Engine menu's** depth, move time, Threads and
+  Hash, MultiPV the session's *Moves to find* (`core.ts`, read leniently).
+- **One step**: the search to the depth asked, no early stop; the state its
+  result and the engine. `resumable: false` (nothing to resume from),
+  `autoResume: true` — cheap, so a lost lease re-queues it. Errors
+  `engine`, `storage`, `target` (the Case gone).
+- **Outputs**: `result` (data) — the trainer reads it from the job's record
+  (`useEvaluatePositionJobs`) and grades with it; then `case` — its lines
+  hung at the position in the Case as stored now (`withPositionEngineLines`,
+  `lib/findBestMoveSession.ts`) under the job's id, so the trainer's autosave
+  (which carries the done jobs' ids) never writes the Case from before them.
+  Applied twice, written once.
+- **Not in Resume's comparison** (§4.1): one search, re-planned anyway.
+- Tests: `kinds/evaluatePosition/core.test.ts`, `kind.test.ts` (the run,
+  the crash between every pair of writes, the deletion rule, a Case gone).
 
 ---
 

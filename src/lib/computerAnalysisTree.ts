@@ -177,9 +177,10 @@ const editComments = (
  * An engine line as a side line from `parentId`, whose position is `fen`:
  * its moves replayed and added in one `addLine` (a move already there is
  * followed, not added again), **cut at the first move that does not play**.
- * Its first move carries the line's `[%eval]`.
+ * Its first move carries the line's `[%eval]`. Exported for the Accuracy
+ * Trainer's Evaluate Position job (CTA-238), which hangs its lines the same way.
  */
-const withEngineLine = (
+export const withEngineLine = (
   tree: GameTree,
   parentId: string | null,
   fen: string,

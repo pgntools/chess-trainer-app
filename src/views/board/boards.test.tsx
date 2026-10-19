@@ -52,6 +52,7 @@ import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
+import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
 
@@ -181,6 +182,22 @@ beforeEach(async () => {
   localStorage.clear();
   FakeEngine.reset();
   await i18n.changeLanguage("en");
+});
+
+describe("the Accuracy Trainer's Find Best Move v3 (CTA-238, dev-only), from the same core — with no engine", () => {
+  it("renders the shared board square and panel skeleton, and builds no engine", () => {
+    const { unmount } = renderBoard(FindBestMoveV3);
+    expect(screen.getByTestId("find-best-move-v3-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("find-best-move-v3-board")).toBeInTheDocument();
+    expect(boardOptions().id).toBe("find-best-move-v3");
+    expect(screen.getByTestId("find-best-move-v3-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("board-controls")).toBeInTheDocument();
+    // No engine of its own: no status row, no lines, no engine control — and none built.
+    expect(screen.queryByTestId("find-best-move-v3-panel-status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("find-best-move-v3-setting-engine")).not.toBeInTheDocument();
+    expect(FakeEngine.instances).toHaveLength(0);
+    unmount();
+  });
 });
 
 describe("every v2 board, from the same core", () => {

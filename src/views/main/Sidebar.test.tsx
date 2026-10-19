@@ -39,9 +39,9 @@ const ADD_COLLECTION = "/library/new";
  * same resolver the sidebar uses, so a node named by data (`label`) is named
  * the way the app renders it.
  */
-/** A row's accessible name — a draft's chip (CTA-135, `yarn dev` and tests only) read after it. */
-const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"]; draft?: boolean }) =>
-  `${navLabel(node, (key) => i18n.t(key), "en")}${node.draft === true ? " Draft" : ""}`;
+/** A row's accessible name — a draft's chip (CTA-135, `yarn dev` and tests only) or an experiment's (CTA-238) read after it. */
+const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"]; draft?: boolean; experimental?: boolean }) =>
+  `${navLabel(node, (key) => i18n.t(key), "en")}${node.draft === true ? " Draft" : ""}${node.experimental === true ? " Experimental" : ""}`;
 
 /** A folder's rendered name, at any depth — so a test can name its row. */
 const folderNameOf = (
@@ -690,5 +690,18 @@ describe("a row named by data (CTA-135)", () => {
   it("marks nothing in English", () => {
     renderAt("/", tree);
     expect(screen.getByText("Only in English: [%cal]")).not.toHaveAttribute("lang");
+  });
+});
+
+describe("an experimental row (CTA-238)", () => {
+  it("carries a chip saying so, read after its name", async () => {
+    renderAt("/accuracy-trainer/find-best-move-v3");
+    // Its folder, open on the route, named Accuracy Trainer.
+    expect(screen.getByRole("button", { name: "Accuracy Trainer" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Find Best Move v3 Experimental" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v3");
+    expect(screen.getByTestId("nav-experimental-/accuracy-trainer/find-best-move-v3")).toHaveTextContent("Experimental");
+    // No other row carries one.
+    expect(screen.getAllByTestId(/^nav-experimental-/)).toHaveLength(1);
+    await expectNoAxeViolations();
   });
 });

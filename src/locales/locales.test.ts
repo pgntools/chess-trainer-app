@@ -78,6 +78,15 @@ describe("translation catalogs", () => {
       "tournament.arena.withNotes",
       // Resume's settings dialog's Hash value (CTA-236): a number and its unit, as the job's page writes it.
       "jobs.settingsChanged.megabytes",
+      // The Accuracy Trainer's lines (CTA-238): a number sign for the rank, and a loss's bound, "≥ N".
+      "accuracyTrainer.lines.rank",
+      "accuracyTrainer.lines.lossAtLeast",
+      // A move as a job's title names it, "12. White": the number and the translated side, nothing around them.
+      "accuracyTrainer.session.moveLabel",
+      // A move in the Case's answer comment, "1. Nf3 (#1, Best)": the values and their punctuation.
+      "accuracyTrainer.session.answer.move",
+      // A loss in the left panel's list, "−10": a sign and the value.
+      "accuracyTrainer.details.lossShort",
     ]);
 
     const untranslated = leafKeys(en).filter(

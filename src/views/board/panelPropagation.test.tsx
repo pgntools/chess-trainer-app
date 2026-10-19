@@ -69,6 +69,7 @@ import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
+import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -110,6 +111,15 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
     { name: "Analysis V2 case", panelId: "analysis-case-panel", Screen: AnalysisCase },
   ];
 
+/**
+ * The boards that open with no move list — the experimental Accuracy
+ * Trainer's Find Best Move (CTA-238, dev-only) opens on its setup, its Moves
+ * tab only once a session starts. Its panel is the one skeleton all the same.
+ */
+const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
+  { name: "Accuracy Trainer — Find Best Move v3", panelId: "find-best-move-v3-panel", Screen: FindBestMoveV3 },
+];
+
 const renderBoard = (Screen: () => ReactNode) =>
   render(
     <AppThemeWithLang>
@@ -130,7 +140,7 @@ beforeEach(async () => {
 });
 
 describe("the one panel skeleton", () => {
-  it.each(BOARDS)(
+  it.each([...BOARDS, ...POSITION_BOARDS])(
     "$name renders it, and no panel of its own",
     ({ panelId, Screen }) => {
       const { unmount } = renderBoard(Screen);

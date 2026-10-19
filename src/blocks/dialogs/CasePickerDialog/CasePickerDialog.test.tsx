@@ -99,4 +99,14 @@ describe("CasePickerDialog (CTA-188; autocompletes since CTA-199)", () => {
     rerender(<CasePickerDialog open projects={PROJECTS} cases={CASES} initialProjectId="p-najdorf" onSubmit={() => {}} onClose={() => {}} problem="Refused." testId="picker" />);
     expect(screen.getByTestId("picker-problem")).toHaveTextContent("Refused.");
   });
+
+  it("takes another screen's words — its title, its submit and its empty line (CTA-238)", () => {
+    const { rerender } = render(
+      <CasePickerDialog open projects={PROJECTS} cases={CASES} initialProjectId="p-najdorf" onSubmit={() => {}} onClose={() => {}} title="Pick a case" submitLabel="Load" testId="picker" />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Pick a case" });
+    expect(within(dialog).getByRole("button", { name: "Load" })).toBeDisabled();
+    rerender(<CasePickerDialog open projects={PROJECTS} cases={[]} initialProjectId="p" onSubmit={() => {}} onClose={() => {}} emptyText="No case yet." testId="picker" />);
+    expect(screen.getByTestId("picker-empty")).toHaveTextContent("No case yet.");
+  });
 });

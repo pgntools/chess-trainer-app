@@ -33,7 +33,8 @@ import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
- * gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
+ * gallery (CTA-107), the theme editor (CTA-115), the MDX editor and the
+ * experimental Accuracy Trainer (CTA-238).
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -77,6 +78,16 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         path: "/dev/theme-editor",
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
+      },
+      {
+        // The Accuracy Trainer's Find Best Move v3 (CTA-238, experimental): a
+        // game's positions on an analysis board of the reader's own — every
+        // move before each, none after — the move chosen graded against the
+        // engine's lines. A board route, in the Accuracy Trainer folder —
+        // dev-only until it is ready to ship.
+        path: "/accuracy-trainer/find-best-move-v3",
+        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV3/Main")),
+        handle: { title: "pages.findBestMoveV3" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the

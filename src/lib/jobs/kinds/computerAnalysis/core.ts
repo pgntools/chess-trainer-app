@@ -153,8 +153,8 @@ const lineFrom = (value: unknown): PositionLine | undefined => {
   return { score, depth, pv };
 };
 
-/** A stored position result, read back strictly: its FEN and at least line 1. */
-const positionResultFrom = (value: unknown): PositionResult | undefined => {
+/** A stored position result, read back strictly: its FEN and at least line 1. Shared with the Evaluate Position kind (CTA-238). */
+export const positionResultFrom = (value: unknown): PositionResult | undefined => {
   if (!isRow(value) || typeof value.fen !== "string" || !Array.isArray(value.lines)) return undefined;
   const lines = value.lines.map(lineFrom);
   // A line that will not read cuts the list there: what follows would be out of order.

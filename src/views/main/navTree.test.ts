@@ -542,3 +542,20 @@ describe("foldSingleEntryFolders folds a folder marked as one destination", () =
     expect(foldSingleEntryFolders([nested])[0]).toEqual(nested);
   });
 });
+
+describe("the Accuracy Trainer folder (CTA-238)", () => {
+  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v3 — marked experimental", () => {
+    // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
+    const ids = navFolders().map((folder) => folder.id);
+    expect(ids.indexOf("accuracy-trainer")).toBe(ids.indexOf("engine") + 1);
+    expect(navFolders().find((folder) => folder.id === "accuracy-trainer")?.labelKey).toBe("nav.folders.accuracyTrainer");
+    expect(navItemsInFolder("accuracy-trainer")).toEqual([
+      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v3", labelKey: "nav.findBestMoveV3", experimental: true }),
+    ]);
+    const folder = navTree().find((node) => node.id === "accuracy-trainer");
+    expect(folder?.kind).toBe("folder");
+    // One screen, still a folder: the top level never folds into its screen.
+    expect(folder?.children?.map((child) => child.to)).toEqual(["/accuracy-trainer/find-best-move-v3"]);
+    expect(folderPath("/accuracy-trainer/find-best-move-v3")).toEqual(["accuracy-trainer"]);
+  });
+});

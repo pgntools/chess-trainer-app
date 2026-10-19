@@ -18,6 +18,7 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import TrackChangesRoundedIcon from "@mui/icons-material/TrackChangesRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
 import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
@@ -36,6 +37,8 @@ export type NavItem = {
   folder: NavFolderId;
   /** Not yet published — a Blog draft, listed in `yarn dev` only (CTA-135). */
   draft?: boolean;
+  /** An experiment — the row carries a chip saying so (CTA-238). */
+  experimental?: boolean;
 };
 
 /**
@@ -67,6 +70,18 @@ export const navItems = (): readonly NavItem[] => [
     icon: VisibilityOffRoundedIcon,
     folder: "engine",
   },
+  // The Accuracy Trainer's exercise (CTA-238) — in its own folder, experimental, dev-only.
+  ...(import.meta.env.DEV
+    ? [
+        {
+          to: "/accuracy-trainer/find-best-move-v3",
+          labelKey: "nav.findBestMoveV3",
+          icon: TrackChangesRoundedIcon,
+          folder: "accuracy-trainer",
+          experimental: true,
+        },
+      ]
+    : []),
   /*
     The Library (CTA-75): the collections, and the screen one is brought in
     on. A collection's table and a game's board are reached from the list —

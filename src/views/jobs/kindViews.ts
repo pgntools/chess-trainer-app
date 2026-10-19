@@ -1,4 +1,5 @@
 import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
+import { EVALUATE_POSITION_KIND } from "../../lib/jobs/kinds/evaluatePosition/core";
 import { REPERTOIRE_EVALUATION_KIND } from "../../lib/jobs/kinds/repertoireEvaluation/core";
 import type { JobKindViews } from "./kindViewTypes";
 import ComputerAnalysisNewJob from "./kinds/ComputerAnalysisNewJob";
@@ -30,6 +31,9 @@ const JOB_KIND_VIEWS: Readonly<Record<string, JobKindViews>> = {
     Data: RepertoireEvaluationData,
     liveSummary: engineLiveSummary,
   },
+  // CTA-238: queued by Find Best Move alone (no New-job form); its result is the trainer's, its lines the
+  // session Case's. Dev-only, as its kind.
+  ...(import.meta.env.DEV ? { [EVALUATE_POSITION_KIND]: { Live: EngineLiveView, liveSummary: engineLiveSummary } } : {}),
 };
 
 /** A kind's views — none for a kind not registered here (a retired kind's stored jobs are drawn generically). */

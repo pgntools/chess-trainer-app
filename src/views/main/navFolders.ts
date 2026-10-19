@@ -10,6 +10,7 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import SnippetFolderRoundedIcon from "@mui/icons-material/SnippetFolderRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
+import TrackChangesRoundedIcon from "@mui/icons-material/TrackChangesRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
 import { BLOG_FOLDERS, blogNavFolderId, blogParentOf, type BlogFolder } from "../blog/articles";
@@ -99,6 +100,14 @@ export const navFolders = (): readonly NavFolder[] => [
     labelKey: "nav.folders.engine",
     icon: MemoryRoundedIcon,
   },
+  /*
+    The Accuracy Trainer (CTA-238): its exercises — Find Best Move v3 today,
+    experimental. Dev-only, a spread gated on `import.meta.env.DEV`; a
+    top-level folder with one screen stays a folder (only a sub-folder folds).
+  */
+  ...(import.meta.env.DEV
+    ? [{ id: "accuracy-trainer", labelKey: "nav.folders.accuracyTrainer", icon: TrackChangesRoundedIcon }]
+    : []),
   /*
     The Library (CTA-75): collections of games — the shipped `.pgn` files and
     the reader's uploads — each a table, each game an analysis board.
