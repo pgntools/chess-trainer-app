@@ -18,8 +18,8 @@ export type AccuracyReportRow = {
   turn: Turn;
   /** The game's move there. */
   playedSan: string;
-  /** Line 1. */
-  bestSan: string;
+  /** The engine's best moves there — its top N, best first. */
+  best: readonly string[];
   /** What the reader suggested, in SAN. */
   suggestions: readonly string[];
   /** `null` while the position is still to be answered. */
@@ -39,7 +39,7 @@ export type AccuracySessionReportProps = {
   testId: string;
 };
 
-type Column = "move" | "game" | "best" | "yours" | "loss" | "result";
+type Column = "move" | "game" | "best" | "yours" | "found" | "loss" | "result";
 
 /** A move number as a PGN writes it: `12.` for White, `12…` for Black. */
 const moveLabelOf = (row: Pick<AccuracyReportRow, "moveNumber" | "turn">) => `${row.moveNumber}${row.turn === "w" ? "." : "…"}`;
@@ -47,6 +47,7 @@ const moveLabelOf = (row: Pick<AccuracyReportRow, "moveNumber" | "turn">) => `${
 /** A position's result as a chip: its words' key and its tone. */
 const resultOf = (grade: PositionGrade): { key: string; tone: LabelChipTone } | null => {
   if (grade.passed) return null;
+  if (grade.target > 0 && grade.inPlace === grade.target) return { key: "accuracyTrainer.report.perfectMark", tone: "success" };
   if (grade.bestFound) return { key: "accuracyTrainer.lines.best", tone: "success" };
   if (grade.worstVerdict === "blunder") return { key: "computerAnalysis.verdicts.blunder", tone: "error" };
   if (grade.worstVerdict !== null) return { key: `computerAnalysis.verdicts.${grade.worstVerdict}`, tone: "warning" };
@@ -56,13 +57,15 @@ const resultOf = (grade: PositionGrade): { key: string; tone: LabelChipTone } | 
 
 /**
  * **An Accuracy Trainer session's summary** (CTA-238): the measures —
- * positions answered and passed, how often the best move and a top move
- * were found, the average loss of the reader's best suggestion (over the
- * positions where it is known), and every suggestion's inaccuracies,
- * mistakes, blunders and moves outside the top N — then **every position**
- * in game order: its move, the game's move, line 1, the reader's moves, the
- * best one's loss and a result (Best, the worst verdict, Good, Outside, or
- * Passed). Each position's move is a button back to it.
+ * positions answered and passed, **the best moves found and how many in
+ * their place** (over every best move there was to find), the positions done
+ * perfectly (every one found, in order), how often the best move was found,
+ * the average loss of the reader's best move (where it is known), and every
+ * move's inaccuracies, mistakes, blunders and moves not among the lines —
+ * then **every position** in game order: its move, the game's move, the
+ * engine's top N, the reader's moves in their order, found / in place, the
+ * best one's loss and a result (Perfect, Best, the worst verdict, Good,
+ * Outside, or Passed). Each position's move is a button back to it.
  *
  * Presentational: the summary and the rows are props
  * (`lib/accuracyTrainer.ts`'s `sessionSummaryOf`). Its words are
@@ -71,15 +74,20 @@ const resultOf = (grade: PositionGrade): { key: string; tone: LabelChipTone } | 
 function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessionReportProps) {
   const { t } = useTranslation();
 
-  const rate = (value: number | null, count: number) =>
-    value === null ? "–" : t("accuracyTrainer.report.rate", { percent: Math.round(value * 100), count, total: summary.positions });
+  const rate = (value: number | null, count: number) => share(value, count, summary.positions);
+  /** A share as "57% (4 of 7)". */
+  function share(value: number | null, count: number, total: number) {
+    return value === null ? "–" : t("accuracyTrainer.report.rate", { percent: Math.round(value * 100), count, total });
+  }
 
   const measures: KeyValueRow[] = [
     { id: "positions", label: t("accuracyTrainer.report.positions"), value: summary.positions, dir: "ltr" },
     { id: "answered", label: t("accuracyTrainer.report.answered"), value: summary.answered, dir: "ltr" },
     { id: "passed", label: t("accuracyTrainer.report.passed"), value: summary.passed, dir: "ltr" },
+    { id: "foundRate", label: t("accuracyTrainer.report.foundRate"), value: share(summary.foundRate, summary.found, summary.wanted) },
+    { id: "inPlaceRate", label: t("accuracyTrainer.report.inPlaceRate"), value: share(summary.inPlaceRate, summary.inPlace, summary.wanted) },
+    { id: "perfect", label: t("accuracyTrainer.report.perfect"), value: summary.perfect, dir: "ltr" },
     { id: "bestRate", label: t("accuracyTrainer.report.bestRate"), value: rate(summary.bestRate, summary.bestFound) },
-    { id: "topRate", label: t("accuracyTrainer.report.topRate"), value: rate(summary.topRate, summary.topFound) },
     { id: "averageLoss", label: t("accuracyTrainer.report.averageLoss"), value: summary.averageBestLoss ?? "–", dir: "ltr" },
     { id: "inaccuracies", label: t("accuracyTrainer.report.inaccuracies"), value: summary.inaccuracies, dir: "ltr" },
     { id: "mistakes", label: t("accuracyTrainer.report.mistakes"), value: summary.mistakes, dir: "ltr" },
@@ -107,7 +115,7 @@ function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessio
         ),
       },
       { id: "game", header: t("accuracyTrainer.report.game"), dir: "ltr", render: (row) => row.playedSan },
-      { id: "best", header: t("accuracyTrainer.report.best"), dir: "ltr", render: (row) => row.bestSan },
+      { id: "best", header: t("accuracyTrainer.report.best"), dir: "ltr", wrap: true, render: (row) => (row.best.length === 0 ? "–" : row.best.join(", ")) },
       {
         id: "yours",
         header: t("accuracyTrainer.report.yours"),
@@ -124,6 +132,14 @@ function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessio
               {row.suggestions.join(", ")}
             </Box>
           ),
+      },
+      {
+        id: "found",
+        header: t("accuracyTrainer.report.found"),
+        align: "end",
+        dir: "ltr",
+        cellTestId: (row) => `${testId}-found-${row.index}`,
+        render: (row) => (row.grade === null || row.grade.passed || row.grade.target === 0 ? "–" : t("accuracyTrainer.report.foundOf", { found: row.grade.found, count: row.grade.target, inPlace: row.grade.inPlace })),
       },
       { id: "loss", header: t("accuracyTrainer.lines.loss"), align: "end", dir: "ltr", render: (row) => row.grade?.bestLoss ?? "–" },
       {

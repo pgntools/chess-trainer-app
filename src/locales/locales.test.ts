@@ -83,6 +83,8 @@ describe("translation catalogs", () => {
       "accuracyTrainer.lines.lossAtLeast",
       // A move as a job's title names it, "12. White": the number and the translated side, nothing around them.
       "accuracyTrainer.session.moveLabel",
+      // A move in the Case's answer comment, "1. Nf3 (#1, Best)": the values and their punctuation.
+      "accuracyTrainer.session.answer.move",
     ]);
 
     const untranslated = leafKeys(en).filter(

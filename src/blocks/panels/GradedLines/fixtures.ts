@@ -15,14 +15,14 @@ const ANALYSED = `[AnalysedPlies "3-3"]
 
 export const POSITION: TrainingPosition = trainingPositionsOf(parsePgnTree(ANALYSED))[0];
 
-/** The best move, a listed line and one outside them. */
-export const MIXED: PositionGrade = gradePosition(POSITION, ["Nf3", "Bc4", "a3"]);
+/** Both best moves, each in its place. */
+export const PERFECT: PositionGrade = gradePosition(POSITION, ["Nf3", "Bc4"], { wanted: 2 });
 
-/** One of the top lines, not the best. */
-export const TOP: PositionGrade = gradePosition(POSITION, ["Bc4"]);
+/** Both found, the wrong way round — and a move outside the lines. */
+export const SWAPPED: PositionGrade = gradePosition(POSITION, ["Bc4", "Nf3", "a3"], { wanted: 2 });
 
-/** The game's move — a mistake against line 1 — and a move outside the lines. */
-export const MISSED: PositionGrade = gradePosition(POSITION, ["Qh5", "h4"]);
+/** The game's move — a mistake against line 1 — and a move outside the lines: none of the top 2. */
+export const MISSED: PositionGrade = gradePosition(POSITION, ["Qh5", "h4"], { wanted: 2 });
 
 /** A pass. */
-export const PASSED: PositionGrade = gradePosition(POSITION, []);
+export const PASSED: PositionGrade = gradePosition(POSITION, [], { wanted: 2 });

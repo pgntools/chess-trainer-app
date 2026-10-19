@@ -16,7 +16,7 @@ beforeEach(async () => {
 function Live({ title = GAME_TITLE, initial = true, withCase = false }: { title?: string; initial?: boolean; withCase?: boolean }) {
   const [showArrows, setShowArrows] = useState(initial);
   const [engine, setEngine] = useState(false);
-  const [lines, setLines] = useState(3);
+  const [moves, setMoves] = useState(3);
   return (
     <AccuracyTrainerDetails
       title={title}
@@ -24,7 +24,10 @@ function Live({ title = GAME_TITLE, initial = true, withCase = false }: { title?
       onTabChange={() => {}}
       showArrows={showArrows}
       onShowArrowsChange={setShowArrows}
-      engine={{ on: engine, onChange: setEngine, lines, onLinesChange: setLines }}
+      movesToFind={moves}
+      onMovesToFindChange={setMoves}
+      engine={engine}
+      onEngineChange={setEngine}
       {...(withCase ? { caseLink: CASE_LINK } : {})}
       testId="details"
     />
@@ -49,17 +52,18 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(arrows).not.toBeChecked();
   });
 
-  it("switches the engine on, which lets the lines needed be set", async () => {
+  it("sets the moves to find, and switches the engine", async () => {
     const user = userEvent.setup();
     render(<Live />);
-    const lines = screen.getByRole("slider", { name: "Lines needed" });
-    expect(lines).toHaveValue("3");
-    expect(lines).toBeDisabled();
-    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
-    expect(lines).toBeEnabled();
-    lines.focus();
+    const moves = screen.getByRole("slider", { name: "Moves to find" });
+    expect(moves).toHaveValue("3");
+    moves.focus();
     await user.keyboard("{ArrowRight}");
-    expect(lines).toHaveValue("4");
+    expect(moves).toHaveValue("4");
+    const engine = screen.getByRole("switch", { name: "Use the engine" });
+    expect(engine).not.toBeChecked();
+    await user.click(engine);
+    expect(engine).toBeChecked();
   });
 
   it("links the session's case once there is one", () => {

@@ -10,17 +10,21 @@ import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../
 import { formatScore, type Score } from "../../../lib/engineAnalysis";
 
 export type GradedLinesProps = {
-  /** The position answered, its lines best first (`trainingPositionsOf`). */
+  /** The position answered, its lines best first (`trainingPositionsOf`, with the engine's added). */
   position: TrainingPosition;
-  /** The reader's suggestions there, graded (`gradePosition`). */
+  /** The reader's moves there, in their order, graded (`gradePosition`). */
   grade: PositionGrade;
-  /** The root; the headline `-headline`, the table `-table` (a row `-table-row-<san>`), a row's verdict `-verdict-<san>`. */
+  /**
+   * The root; the headline `-headline`, the table `-table` (a row
+   * `-table-row-<san>`), a row's verdict `-verdict-<san>`, its place
+   * `-order-<san>`.
+   */
   testId: string;
 };
 
-type Column = "rank" | "move" | "eval" | "loss" | "yours";
+type Column = "rank" | "move" | "eval" | "loss" | "order" | "verdict";
 
-/** A row: one of the lines, or a suggestion outside them. */
+/** A row: one of the lines, or a reader's move outside them. */
 type Row = {
   san: string;
   rank?: number;
@@ -31,24 +35,25 @@ type Row = {
   suggestion?: SuggestionGrade;
 };
 
-/** A suggestion's verdict as a chip: its words and its tone. */
+/** A suggestion's verdict as a chip: its words' key and its tone. */
 const verdictOf = (grade: SuggestionGrade): { key: string; tone: LabelChipTone } => {
-  if (grade.kind === "outside") return { key: "outside", tone: "secondary" };
-  if (grade.verdict === "blunder") return { key: "blunder", tone: "error" };
-  if (grade.verdict === "mistake" || grade.verdict === "inaccuracy") return { key: grade.verdict, tone: "warning" };
-  return grade.loss === 0 ? { key: "best", tone: "success" } : { key: "good", tone: "info" };
+  if (grade.kind === "outside") return { key: "accuracyTrainer.lines.outside", tone: "secondary" };
+  if (grade.verdict === "blunder") return { key: "computerAnalysis.verdicts.blunder", tone: "error" };
+  if (grade.verdict !== null) return { key: `computerAnalysis.verdicts.${grade.verdict}`, tone: "warning" };
+  return grade.loss === 0 ? { key: "accuracyTrainer.lines.best", tone: "success" } : { key: "accuracyTrainer.lines.good", tone: "info" };
 };
 
 /**
- * **A graded position** of the Accuracy Trainer (CTA-238): after Submit, a
- * headline — the best move found, how many of the top lines, none, or a
- * pass — over **the engine's lines** as the tree has them, best first: each
- * one's rank, move (the game's marked), eval (White's view) and loss against
- * line 1 in centipawns, and, where the reader suggested it, its verdict
- * (Best, Good, Inaccuracy, Mistake, Blunder — the computer analysis's
- * thresholds). A suggestion none of the lines has comes after them,
- * *outside the top N*, its loss a bound (≥ the worst listed line's) and
- * never a number.
+ * **A graded position** of the Accuracy Trainer (CTA-238): a headline — how
+ * many of the top N best moves the reader found and how many in their right
+ * place, all of them in order, none, or a pass — over **the engine's lines**,
+ * best first: each one's rank, move (the game's marked), eval (White's view)
+ * and loss against line 1 in centipawns; and, where the reader played it,
+ * **their own rank for it** (marked *In place* when it is the engine's) and its
+ * verdict (Best, Good, Inaccuracy, Mistake, Blunder — the computer analysis's
+ * thresholds). A line closes the top N. A move of the reader's none of the
+ * lines has comes after them, *not among the lines*, its loss a bound (≥ the
+ * worst listed line's) and never a number.
  *
  * Presentational: the position and its grade are props
  * (`lib/accuracyTrainer.ts`). Its words are `accuracyTrainer.lines.*` and the
@@ -58,12 +63,11 @@ function GradedLines({ position, grade, testId }: GradedLinesProps) {
   const { t } = useTranslation();
 
   const rows = useMemo<Row[]>(() => {
-    const suggested = new Map(grade.suggestions.map((each) => [each.san, each]));
     const lines = position.lines.map((line): Row => {
       const suggestion = grade.suggestions.find((each) => each.kind === "line" && each.rank === line.rank);
       return { san: line.san, rank: line.rank, score: line.score, loss: line.loss, played: line.played, ...(suggestion === undefined ? {} : { suggestion }) };
     });
-    const outside = [...suggested.values()].flatMap((each): Row[] =>
+    const outside = grade.suggestions.flatMap((each): Row[] =>
       each.kind === "outside" ? [{ san: each.san, lossAtLeast: each.lossAtLeast, played: false, suggestion: each }] : [],
     );
     return [...lines, ...outside];
@@ -94,31 +98,39 @@ function GradedLines({ position, grade, testId }: GradedLinesProps) {
         render: (row) => (row.lossAtLeast !== undefined ? t("accuracyTrainer.lines.lossAtLeast", { loss: row.lossAtLeast }) : row.loss),
       },
       {
-        id: "yours",
-        header: t("accuracyTrainer.lines.yours"),
+        id: "order",
+        header: t("accuracyTrainer.lines.order"),
+        cellTestId: (row) => `${testId}-order-${row.san}`,
+        render: (row) =>
+          row.suggestion === undefined ? null : (
+            <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+              <span>{row.suggestion.order}</span>
+              {row.suggestion.inPlace && <LabelChip label={t("accuracyTrainer.lines.inPlace")} tone="success" />}
+            </Box>
+          ),
+      },
+      {
+        id: "verdict",
+        header: t("accuracyTrainer.lines.verdict"),
         render: (row) => {
           if (row.suggestion === undefined) return null;
           const verdict = verdictOf(row.suggestion);
-          const label =
-            verdict.key === "outside"
-              ? t("accuracyTrainer.lines.outside", { count: position.topCount })
-              : verdict.key === "best" || verdict.key === "good"
-                ? t(`accuracyTrainer.lines.${verdict.key}`)
-                : t(`computerAnalysis.verdicts.${verdict.key}`);
-          return <LabelChip label={label} tone={verdict.tone} testId={`${testId}-verdict-${row.san}`} />;
+          return <LabelChip label={t(verdict.key)} tone={verdict.tone} testId={`${testId}-verdict-${row.san}`} />;
         },
       },
     ],
-    [t, position.topCount, testId],
+    [t, testId],
   );
 
   const headline = grade.passed
     ? { tone: "neutral" as const, text: t("accuracyTrainer.lines.headline.passed") }
-    : grade.bestFound
-      ? { tone: "success" as const, text: t("accuracyTrainer.lines.headline.best") }
-      : grade.topFound > 0
-        ? { tone: "info" as const, text: t("accuracyTrainer.lines.headline.top", { found: grade.topFound, count: position.topCount }) }
-        : { tone: "warning" as const, text: t("accuracyTrainer.lines.headline.none", { count: position.topCount }) };
+    : grade.target === 0
+      ? { tone: "warning" as const, text: t("accuracyTrainer.lines.headline.noLines") }
+      : grade.inPlace === grade.target
+        ? { tone: "success" as const, text: t("accuracyTrainer.lines.headline.perfect", { count: grade.target }) }
+        : grade.found > 0
+          ? { tone: "info" as const, text: t("accuracyTrainer.lines.headline.found", { found: grade.found, count: grade.target, inPlace: grade.inPlace }) }
+          : { tone: "warning" as const, text: t("accuracyTrainer.lines.headline.none", { count: grade.target }) };
 
   return (
     <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1 }}>
@@ -134,8 +146,8 @@ function GradedLines({ position, grade, testId }: GradedLinesProps) {
         rowId={(row) => row.san}
         stickyHeader={false}
         density="dense"
-        // The lines end where the suggestions outside them begin.
-        groupEnd={(row, next) => row.rank !== undefined && next !== undefined && next.rank === undefined}
+        // The top N end on a bolder line, and so do the lines, before the reader's moves outside them.
+        groupEnd={(row, next) => row.rank === grade.target || (row.rank !== undefined && next !== undefined && next.rank === undefined)}
         emptyLabel={t("accuracyTrainer.lines.title")}
         ariaLabel={t("accuracyTrainer.lines.title")}
         testId={`${testId}-table`}

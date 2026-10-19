@@ -229,7 +229,7 @@ stay in the catalogs, as the dev screens' do).
   unfinished jobs go), the position (`fen`, its SAN `path` in the Case, the
   move's `label`), the engine, its preset (id, name, values sent) and the
   search — the **top bar's Engine menu's** depth, move time, Threads and
-  Hash, MultiPV the session's *Lines needed* (`core.ts`, read leniently).
+  Hash, MultiPV the session's *Moves to find* (`core.ts`, read leniently).
 - **One step**: the search to the depth asked, no early stop; the state its
   result and the engine. `resumable: false` (nothing to resume from),
   `autoResume: true` — cheap, so a lost lease re-queues it. Errors

@@ -3,32 +3,32 @@ import Box from "@mui/material/Box";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { BlockFamilyId } from "../../families";
 import GradedLines from "./GradedLines";
-import { MISSED, MIXED, PASSED, POSITION, TOP } from "./fixtures";
+import { MISSED, PASSED, PERFECT, POSITION, SWAPPED } from "./fixtures";
 
 const gallery: GalleryModule<BlockFamilyId> = {
   section: "panels",
   title: "GradedLines",
   demos: [
     {
-      name: "The best move found, a top line and one outside the lines",
+      name: "Both found, the wrong way round — and a move outside the lines",
       render: () => (
-        <Box sx={{ maxWidth: 420 }}>
-          <GradedLines position={POSITION} grade={MIXED} testId="gallery-graded" />
+        <Box sx={{ maxWidth: 480 }}>
+          <GradedLines position={POSITION} grade={SWAPPED} testId="gallery-graded" />
         </Box>
       ),
     },
     {
-      name: "One of the top lines",
+      name: "All found, each in its place",
       render: () => (
-        <Box sx={{ maxWidth: 420 }}>
-          <GradedLines position={POSITION} grade={TOP} testId="gallery-graded-top" />
+        <Box sx={{ maxWidth: 480 }}>
+          <GradedLines position={POSITION} grade={PERFECT} testId="gallery-graded-perfect" />
         </Box>
       ),
     },
     {
       name: "None of the top lines — the game's mistake and a move outside them",
       render: () => (
-        <Box sx={{ maxWidth: 420 }}>
+        <Box sx={{ maxWidth: 480 }}>
           <GradedLines position={POSITION} grade={MISSED} testId="gallery-graded-missed" />
         </Box>
       ),
@@ -36,7 +36,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Passed",
       render: () => (
-        <Box sx={{ maxWidth: 420 }}>
+        <Box sx={{ maxWidth: 480 }}>
           <GradedLines position={POSITION} grade={PASSED} testId="gallery-graded-passed" />
         </Box>
       ),

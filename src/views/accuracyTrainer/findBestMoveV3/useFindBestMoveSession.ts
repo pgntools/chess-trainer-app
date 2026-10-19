@@ -8,6 +8,7 @@ import {
   needsEngine,
   sessionPositionsOf,
   sessionSummaryOf,
+  targetOf,
   trainingPositionsOf,
   withEngineResult,
   type PositionGrade,
@@ -17,8 +18,8 @@ import { saveCaseState } from "../../../lib/analysisCaseStore";
 import { caseStateOf, DEFAULT_CASE_DISPLAY, type CaseState } from "../../../lib/analysisProjects";
 import {
   answerPosition,
+  candidatesOf,
   caseTreeOf,
-  chosenMoveOf,
   isAtPosition,
   nextUnanswered,
   openPosition,
@@ -34,16 +35,19 @@ import { createSessionCase } from "./sessionCase";
 import type { SessionSource } from "./SessionSetup";
 import { useEvaluatePositionJobs, type PositionEngineState } from "./useEvaluatePositionJobs";
 
-/** How many of the engine's lines a position needs, to start with. */
-const DEFAULT_LINES = 3;
+/** How many best moves to find at each position, to start with. */
+const DEFAULT_MOVES = 3;
 
 const NO_JOBS: readonly (string | null)[] = [];
 
 /** The side a position's board faces: its side to move. */
 const facing = (position: TrainingPosition): "white" | "black" => (position.turn === "w" ? "white" : "black");
 
-/** The session's settings — the left panel's, for the session. */
-export type SessionSettings = { showArrows: boolean; engine: boolean; lines: number };
+/**
+ * The left panel's settings: how many best moves to find (fixed for a
+ * session once it starts), the next-move arrows, the engine.
+ */
+export type SessionSettings = { moves: number; showArrows: boolean; engine: boolean };
 
 /**
  * **A Find Best Move session, run** (CTA-238, v3) — the screen's one hook:
@@ -60,16 +64,19 @@ export type SessionSettings = { showArrows: boolean; engine: boolean; lines: num
  *   (`caseTreeOf`) and the session's annotations written — the engine's lines
  *   and the graded answers (`withSessionAnnotations`); autosaved, with the
  *   done jobs' ids as its merges.
- * - **The engine**: on, a position with fewer top lines than needed is
- *   searched once the reader moves a piece there (or chooses); a choice its
- *   search is still running for **waits** for it, then is graded against the
- *   tree's lines and the engine's.
+ * - **The answer**: the reader's lines from the position, their first moves
+ *   **in their order** (`candidatesOf`) — Check grades them against the top N
+ *   the session asks for (`gradePosition`'s `wanted`): found, in place.
+ * - **The engine**: on, a position with fewer top lines than N is searched
+ *   once the reader moves a piece there (or checks); a check its search is
+ *   still running for **waits** for it, then is graded against the tree's
+ *   lines and the engine's.
  */
 export const useFindBestMoveSession = () => {
   const { t } = useTranslation();
   const core = useBoardCore();
 
-  const [settings, setSettings] = useState<SessionSettings>({ showArrows: true, engine: false, lines: DEFAULT_LINES });
+  const [settings, setSettings] = useState<SessionSettings>({ moves: DEFAULT_MOVES, showArrows: true, engine: false });
   const [session, setSession] = useState<FindBestMoveSession | null>(null);
   const [starting, setStarting] = useState(false);
   const [startProblem, setStartProblem] = useState<string | undefined>(undefined);
@@ -78,7 +85,9 @@ export const useFindBestMoveSession = () => {
   // The game's name, for the jobs' titles — the source's when the session started.
   const sourceName = useRef("");
 
-  const engineJobs = useEvaluatePositionJobs({ caseId: session?.caseRef.caseId, lines: settings.lines, jobIds: session?.jobs ?? NO_JOBS });
+  // The session's moves to find, once it runs; the setting's before.
+  const wanted = session?.wanted ?? settings.moves;
+  const engineJobs = useEvaluatePositionJobs({ caseId: session?.caseRef.caseId, lines: wanted, jobIds: session?.jobs ?? NO_JOBS });
   const engineAt = useCallback((index: number): PositionEngineState => engineJobs.states[index] ?? { kind: "none" }, [engineJobs.states]);
 
   /** Each position with its engine search, once it has one. */
@@ -106,9 +115,9 @@ export const useFindBestMoveSession = () => {
     (): (PositionGrade | null)[] =>
       positions.map((each, index) => {
         const given = session?.answers[index];
-        return given === null || given === undefined || waitsAt(index) ? null : gradePosition(each, given);
+        return given === null || given === undefined || waitsAt(index) ? null : gradePosition(each, given, { wanted });
       }),
-    [positions, session, waitsAt],
+    [positions, session, waitsAt, wanted],
   );
 
   /** A position's move, as a job's title and the live progress name it ("12. White"). */
@@ -127,18 +136,19 @@ export const useFindBestMoveSession = () => {
       const given = session?.answers[index];
       if (given === null || given === undefined) return undefined;
       if (given.length === 0) return t("accuracyTrainer.session.answer.passed");
-      const graded = grades[index]?.suggestions[0];
-      if (graded === undefined) return undefined;
-      if (graded.kind === "outside") {
-        return t("accuracyTrainer.session.answer.outside", { san: graded.san, count: positions[index]?.topCount ?? 0, loss: graded.lossAtLeast });
-      }
-      const verdict =
-        graded.verdict !== null
-          ? t(`computerAnalysis.verdicts.${graded.verdict}`)
-          : t(graded.loss === 0 ? "accuracyTrainer.lines.best" : "accuracyTrainer.lines.good");
-      return t("accuracyTrainer.session.answer.line", { san: graded.san, verdict, loss: graded.loss });
+      const grade = grades[index];
+      if (grade === null || grade === undefined) return undefined;
+      const moves = grade.suggestions.map((each) => {
+        if (each.kind === "outside") return t("accuracyTrainer.session.answer.moveOutside", { order: each.order, san: each.san });
+        const verdict =
+          each.verdict !== null
+            ? t(`computerAnalysis.verdicts.${each.verdict}`)
+            : t(each.loss === 0 ? "accuracyTrainer.lines.best" : "accuracyTrainer.lines.good");
+        return t("accuracyTrainer.session.answer.move", { order: each.order, san: each.san, rank: each.rank, verdict });
+      });
+      return t("accuracyTrainer.session.answer.moves", { moves: moves.join(", "), found: grade.found, count: grade.target, inPlace: grade.inPlace });
     },
-    [session, grades, positions, t],
+    [session, grades, t],
   );
 
   /** The Case's tree now: the board's, its continuation back, the session's annotations written. */
@@ -179,7 +189,7 @@ export const useFindBestMoveSession = () => {
     if (!settings.engine || session === null || session.jobs[index] !== null) return;
     const target = positions[index];
     const key = `${session.caseRef.caseId}:${index}`;
-    if (target === undefined || !needsEngine(target, settings.lines) || queuing.current.has(key)) return;
+    if (target === undefined || !needsEngine(target, session.wanted) || queuing.current.has(key)) return;
     queuing.current.add(key);
     const forCase = session.caseRef.caseId;
     void engineJobs
@@ -207,7 +217,7 @@ export const useFindBestMoveSession = () => {
       caseName: t("accuracyTrainer.session.caseName", { name: source.name }),
     });
     setStarting(false);
-    const started = made === undefined ? undefined : startSession({ caseRef: made, positions: trained, tree: made.base });
+    const started = made === undefined ? undefined : startSession({ caseRef: made, positions: trained, wanted: settings.moves, tree: made.base });
     if (started === undefined) {
       setStartProblem(t("accuracyTrainer.session.caseProblem"));
       return;
@@ -228,7 +238,7 @@ export const useFindBestMoveSession = () => {
     show(openPosition(session, index, caseTree));
   };
 
-  /** Answer the position on screen — the move chosen, or a pass. A choice its lines are too few for asks the engine. */
+  /** Answer the position on screen — the reader's moves in their order, or a pass. Moves its lines are too few for ask the engine. */
   const answer = (moves: readonly string[]) => {
     if (session === null) return;
     if (moves.length > 0) evaluateAt(session.index);
@@ -270,11 +280,11 @@ export const useFindBestMoveSession = () => {
             moveNumber: each.moveNumber,
             turn: each.turn,
             playedSan: each.playedSan,
-            bestSan: each.lines[0]?.san ?? "–",
+            best: each.lines.slice(0, targetOf(each, wanted)).map((line) => line.san),
             suggestions: session.answers[at] ?? [],
             grade: grades[at],
           })),
-    [session, positions, grades],
+    [session, positions, grades, wanted],
   );
   const summary = useMemo(() => sessionSummaryOf(grades.flatMap((each) => (each === null ? [] : [each]))), [grades]);
 
@@ -291,8 +301,10 @@ export const useFindBestMoveSession = () => {
     grade: session === null ? null : grades[index],
     waiting: session !== null && waitsAt(index),
     engine: session === null ? undefined : engineAt(index),
-    /** The move Choose would take — the line on screen's first from the position. */
-    candidate: session === null ? undefined : chosenMoveOf(session.view, core.tree, core.nodeId),
+    /** The reader's moves at the position, in their order — what Check grades. */
+    candidates: session === null ? [] : candidatesOf(session.view, core.tree),
+    /** How many best moves the session asks for at each position. */
+    wanted,
     /** Whether the reader may move a piece: while answering, on the position or inside a line from it; once answered, anywhere. */
     canMove: session !== null && (atPosition || !answering),
     hasNext: session !== null && nextUnanswered(session) !== undefined,
@@ -303,7 +315,9 @@ export const useFindBestMoveSession = () => {
     start,
     reset,
     open,
-    choose: (san: string) => answer([san]),
+    check: () => {
+      if (session !== null) answer(candidatesOf(session.view, core.tree));
+    },
     pass: () => answer([]),
     next,
     board: { onPieceDrop, resolvePromotion },

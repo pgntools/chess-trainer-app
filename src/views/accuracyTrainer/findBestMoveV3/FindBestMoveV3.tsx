@@ -36,10 +36,11 @@ const ID = "find-best-move-v3";
  * Composition alone: the session is `useFindBestMoveSession`'s, and this is
  * where its parts go — the board (`BoardShell` over the core, the explorer
  * with editing on: side lines, comments, glyphs, the map), the right panel
- * (the setup, then Moves · Map · Result · Summary, the footer's Pass / Choose
- * or Next) and the left one (`AccuracyTrainerDetails`: the game, its Case,
- * Settings). At each position the board shows every move before it and none
- * after; **Choose** takes the line on screen's first move from the position.
+ * (the setup, then Moves · Map · Result · Summary, the footer's moves so far
+ * with Pass / Check, or Next) and the left one (`AccuracyTrainerDetails`: the
+ * game, its Case, Settings). At each position the board shows every move
+ * before it and none after; the reader's lines from it are their moves, in
+ * their order, and **Check** grades them against the top N.
  */
 function FindBestMoveV3() {
   const { t } = useTranslation();
@@ -66,28 +67,26 @@ function FindBestMoveV3() {
     map: { linked: true },
   });
 
-  // Once graded, on the position itself: line 1 in green, a different choice in red, over the reader's own arrows.
+  // Once graded, on the position itself: the top N in green, the reader's moves outside them in red, over the reader's own arrows.
   const arrows = useMemo(() => {
-    const best = position?.lines[0];
-    if (position === undefined || best === undefined || grade === null || session === null || core.nodeId !== session.view.nodeId) {
-      return explorer.arrows;
-    }
+    if (position === undefined || grade === null || session === null || core.nodeId !== session.view.nodeId) return explorer.arrows;
     const arrowOf = (san: string, color: string) => {
       const squares = moveSquaresOf(position.fen, san);
       return squares === undefined ? [] : [{ startSquare: squares.from, endSquare: squares.to, color }];
     };
-    const chosen = grade.suggestions[0];
+    const top = position.lines.slice(0, grade.target);
+    const missed = grade.suggestions.filter((each) => !each.inTop && !top.some((line) => bareSan(line.san) === bareSan(each.san)));
     return [
       ...explorer.arrows,
-      ...arrowOf(best.san, drawing.green),
-      ...(chosen === undefined || bareSan(chosen.san) === bareSan(best.san) ? [] : arrowOf(chosen.san, drawing.red)),
+      ...top.flatMap((line) => arrowOf(line.san, drawing.green)),
+      ...missed.flatMap((each) => arrowOf(each.san, drawing.red)),
     ];
   }, [position, grade, session, core.nodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 
-  const answer = (moves: "pass" | string) => {
-    if (moves === "pass") run.pass();
-    else run.choose(moves);
+  const answer = (how: "pass" | "check") => {
+    if (how === "pass") run.pass();
+    else run.check();
     setTab("result");
   };
   const next = () => setTab(run.next() ? "moves" : "summary");
@@ -196,9 +195,25 @@ function FindBestMoveV3() {
       {explorer.annotations}
       {activeTab === "moves" && explorer.nextMoves}
       {run.answering && (
-        <Typography variant="caption" component="p" sx={{ color: "text.secondary", px: 1, m: 0 }}>
-          {t("accuracyTrainer.session.instructions")}
-        </Typography>
+        <Box sx={{ px: 1, display: "grid", gap: 0.5 }}>
+          <Typography variant="caption" component="p" sx={{ color: "text.secondary", m: 0 }}>
+            {t("accuracyTrainer.session.instructions", { count: run.wanted })}
+          </Typography>
+          <Typography variant="body2" component="p" data-testid={`${ID}-candidates`} sx={{ m: 0 }}>
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {t("accuracyTrainer.session.candidates")}
+            </Box>{" "}
+            {run.candidates.length === 0 ? (
+              <Box component="span" sx={{ color: "text.secondary" }}>
+                {t("accuracyTrainer.session.noCandidates")}
+              </Box>
+            ) : (
+              <Box component="span" dir="ltr">
+                {run.candidates.map((san, index) => `${index + 1}. ${san}`).join("  ")}
+              </Box>
+            )}
+          </Typography>
+        </Box>
       )}
       {run.answering && run.engine?.kind === "pending" && (
         <Box sx={{ px: 1 }}>
@@ -217,22 +232,8 @@ function FindBestMoveV3() {
             <Button variant="outlined" onClick={() => answer("pass")} data-testid={`${ID}-pass`}>
               {t("accuracyTrainer.position.pass")}
             </Button>
-            <Button
-              variant="contained"
-              onClick={() => run.candidate !== undefined && answer(run.candidate)}
-              disabled={run.candidate === undefined}
-              data-testid={`${ID}-choose`}
-            >
-              {run.candidate === undefined ? (
-                t("accuracyTrainer.session.chooseNone")
-              ) : (
-                <>
-                  {t("accuracyTrainer.session.choose")}{" "}
-                  <Box component="span" dir="ltr" sx={{ marginInlineStart: 0.5 }}>
-                    {run.candidate}
-                  </Box>
-                </>
-              )}
+            <Button variant="contained" onClick={() => answer("check")} disabled={run.candidates.length === 0} data-testid={`${ID}-check`}>
+              {t("accuracyTrainer.session.check", { count: run.candidates.length })}
             </Button>
           </>
         ) : (
@@ -259,14 +260,13 @@ function FindBestMoveV3() {
           title={title}
           tab={detailsTab}
           onTabChange={setDetailsTab}
+          movesToFind={run.wanted}
+          onMovesToFindChange={(moves) => run.setSettings((current) => ({ ...current, moves }))}
+          movesLocked={session !== null}
           showArrows={settings.showArrows}
           onShowArrowsChange={(showArrows) => run.setSettings((current) => ({ ...current, showArrows }))}
-          engine={{
-            on: settings.engine,
-            onChange: (engine) => run.setSettings((current) => ({ ...current, engine })),
-            lines: settings.lines,
-            onLinesChange: (lines) => run.setSettings((current) => ({ ...current, lines })),
-          }}
+          engine={settings.engine}
+          onEngineChange={(engine) => run.setSettings((current) => ({ ...current, engine }))}
           {...(session === null ? {} : { caseLink: { component: RouterLink, to: casePath(session.caseRef.projectId, session.caseRef.caseId) } })}
           testId={`${ID}-details`}
         />

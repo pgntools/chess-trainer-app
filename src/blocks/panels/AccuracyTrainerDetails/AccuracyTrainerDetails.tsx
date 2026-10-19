@@ -19,37 +19,57 @@ export type AccuracyTrainerDetailsProps = {
   /** The next-move arrows over the reader's own analysis. */
   showArrows: boolean;
   onShowArrowsChange: (on: boolean) => void;
+  /** How many best moves to find at each position, in order — and how many lines the engine is asked for. */
+  movesToFind: number;
+  onMovesToFindChange: (count: number) => void;
+  /** A session runs: its moves to find are fixed — the slider off, saying so. */
+  movesLocked?: boolean;
   /**
    * The engine (CTA-238): on, a position with fewer of its top lines than
-   * `lines` is searched — an Evaluate Position job — once the reader starts
-   * on it.
+   * the moves to find is searched — an Evaluate Position job — once the
+   * reader starts on it.
    */
-  engine: { on: boolean; onChange: (on: boolean) => void; lines: number; onLinesChange: (lines: number) => void };
+  engine: boolean;
+  onEngineChange: (on: boolean) => void;
   /** The session's Case in Analysis — absent before a session starts. */
   caseLink?: LinkTarget;
   /**
    * The root; its parts `-title`, `-case` (the Case's link), `-tabs` (each tab
-   * `<testId>-tab-<id>`), `-settings` (`-arrows`, `-engine`, `-lines`).
+   * `<testId>-tab-<id>`), `-settings` (`-moves`, `-arrows`, `-engine`).
    */
   testId: string;
 };
 
-/** How many lines the engine may be asked for — the Engine menu's own range. */
-const LINES_BOUNDS = { min: 1, max: 10 } as const;
+/** How many best moves may be asked for — the Engine menu's own range of lines. */
+const MOVES_BOUNDS = { min: 1, max: 10 } as const;
 
 /**
  * **An Accuracy Trainer exercise's own panel** (CTA-238) — beside its board,
  * in the main menu's place, as a Case's or a Library game's (`BoardLeftPanel`,
  * `keepShell`): the game loaded as its heading — and, once a session runs,
- * a link to its Case — then tabs — **Settings**: *Show next-move arrows*
- * (the reader's analysis's continuations, on by default), *Use the engine*
- * and *Lines needed* (CTA-238's Evaluate Position). A tab more is a field of
+ * a link to its Case — then tabs — **Settings**: *Moves to find* (how many
+ * best moves, in order, at each position), *Show next-move arrows* (the
+ * reader's analysis's continuations, on by default) and *Use the engine*
+ * (CTA-238's Evaluate Position). A tab more is a field of
  * {@link AccuracyTrainerDetailsTab} and its content here.
  *
  * Presentational: the settings and the tab are props; the screen holds them
  * for the session. Its words are `accuracyTrainer.details.*`.
  */
-function AccuracyTrainerDetails({ title, tab, onTabChange, showArrows, onShowArrowsChange, engine, caseLink, testId }: AccuracyTrainerDetailsProps) {
+function AccuracyTrainerDetails({
+  title,
+  tab,
+  onTabChange,
+  showArrows,
+  onShowArrowsChange,
+  movesToFind,
+  onMovesToFindChange,
+  movesLocked = false,
+  engine,
+  onEngineChange,
+  caseLink,
+  testId,
+}: AccuracyTrainerDetailsProps) {
   const { t } = useTranslation();
   return (
     <Box
@@ -93,6 +113,17 @@ function AccuracyTrainerDetails({ title, tab, onTabChange, showArrows, onShowArr
             data-testid={`${testId}-settings`}
             sx={{ display: "flex", flexDirection: "column", gap: 2, p: 1 }}
           >
+            <SliderField
+              label={t("accuracyTrainer.details.moves")}
+              value={movesToFind}
+              onChange={onMovesToFindChange}
+              min={MOVES_BOUNDS.min}
+              max={MOVES_BOUNDS.max}
+              help={t("accuracyTrainer.details.movesHelp")}
+              disabled={movesLocked}
+              {...(movesLocked ? { notice: t("accuracyTrainer.details.movesLocked") } : {})}
+              testId={`${testId}-moves`}
+            />
             <SwitchField
               size="small"
               testIdOn="control"
@@ -106,20 +137,10 @@ function AccuracyTrainerDetails({ title, tab, onTabChange, showArrows, onShowArr
               size="small"
               testIdOn="control"
               testId={`${testId}-engine`}
-              checked={engine.on}
-              onChange={engine.onChange}
+              checked={engine}
+              onChange={onEngineChange}
               label={t("accuracyTrainer.details.engine")}
               help={t("accuracyTrainer.details.engineHelp")}
-            />
-            <SliderField
-              label={t("accuracyTrainer.details.lines")}
-              value={engine.lines}
-              onChange={engine.onLinesChange}
-              min={LINES_BOUNDS.min}
-              max={LINES_BOUNDS.max}
-              help={t("accuracyTrainer.details.linesHelp")}
-              disabled={!engine.on}
-              testId={`${testId}-lines`}
             />
           </Box>
         )}

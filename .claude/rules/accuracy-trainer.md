@@ -13,12 +13,15 @@ paths:
 
 A sidebar folder of its own, **Accuracy Trainer**, for exercises that grade
 the reader's moves against an engine's. Today it holds one: **Find Best Move
-v3** — `/accuracy-trainer/find-best-move-v3`. The reader loads a game, picks a
-side, and at each of that side's positions analyses on a board of their own —
-every move before the position shown, none after — then chooses a move; it is
-graded against the engine's lines (the game's computer analysis, or the
-engine's own search), the lines revealed, and a summary at the end. The
-session is kept as an Analysis Case.
+v3** — `/accuracy-trainer/find-best-move-v3`. **The exercise: find the N best
+moves of each position, in the right order** (N, *Moves to find*, 3 to
+start). The reader loads a game, picks a side, and at each of that side's
+positions analyses on a board of their own — every move before the position
+shown, none after — each line they play from the position one of their
+moves, the lines' order their ranking; **Check** compares them with the top N
+(the game's computer analysis, or the engine's own search): which were found,
+which in their right place, each one's rank and loss; then Next, and a
+summary at the end. The session is kept as an Analysis Case.
 
 (v1 — several moves suggested on a board that snapped back — and v2 — the
 first analysis board, its own tree per position — were deleted when v3
@@ -41,8 +44,8 @@ each position.)
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `gradeSuggestion` / `gradePosition`, `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
-| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `chosenMoveOf`, `isAtPosition`). |
+| `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `targetOf` (the N a position asks for), `gradeSuggestion` / `gradePosition` (the reader's moves in their order against the top N), `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
+| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `isAtPosition`). |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
 | `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header and footer, the left panel. |
@@ -84,18 +87,32 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   listed, a move the tree already has a line for keeping the tree's — and the
   position is ranked again.
 
-## 2. Grading — `gradeSuggestion`, `gradePosition`, `sessionSummaryOf`
+## 2. Grading — the N best moves, in order
 
-- **A move on the lines**: its rank, its loss (line 1 against it, each
-  clamped to ±1000 from the mover's view, at least 0), its verdict by the
-  computer analysis's thresholds (inaccuracy > 50, mistake > 100, blunder >
-  300). **A move none of the lines has** is *outside the top N*: its loss a
-  bound (`lossAtLeast`, the worst listed line's), never a number.
-- **A position**: `passed`, `bestFound` (a loss of 0), `topFound`,
-  `bestLoss`, `worstVerdict`, `outside`.
-- **The summary**: answered and passed; the best-move and top-move rates over
-  every graded position (a pass found nothing); the average best loss where
-  known; the inaccuracies, mistakes, blunders and moves outside the top N.
+- **The moves to find** (`targetOf`): the session's N (*Moves to find*,
+  1–10, 3 to start — fixed when the session starts, the slider locked while
+  it runs), held to the engine's top lines at the position (a position with
+  two of them asks for two; with none, nothing to compare — said).
+- **The reader's moves** are their lines' first moves from the position, in
+  the lines' order (§5): their 1st, 2nd, ….
+- **Each move** (`gradeSuggestion`): on the lines, its rank, its loss (line 1
+  against it, each clamped to ±1000 from the mover's view, at least 0) and
+  its verdict by the computer analysis's thresholds (inaccuracy > 50, mistake
+  > 100, blunder > 300); **in the top N** when it is one of the engine's top
+  N lines; **in place** when, besides, its rank is the reader's order for it
+  (their 1st the engine's 1st…). None of the lines has it: *not among the
+  lines*, its loss a bound (`lossAtLeast`, the worst listed line's), never a
+  number.
+- **A position** (`gradePosition`): `target` (N there), `found` (how many of
+  the top N), `inPlace`, `bestFound` (a loss of 0), `bestLoss`,
+  `worstVerdict`, `outside`; perfect when every one was found in place. A
+  move given twice counts once, in its first place.
+- **The summary** (`sessionSummaryOf`): answered and passed; **the best moves
+  found and in their place** over every one there was to find
+  (`foundRate`, `inPlaceRate`); the positions done perfectly; the best move
+  found (over every graded position, a pass finding nothing); the average
+  best loss where known; the inaccuracies, mistakes, blunders and moves not
+  among the lines.
 
 ## 3. The session — one tree, the Case's
 
@@ -127,26 +144,27 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
 - **Autosaved** (`useAutosave` → `saveCaseState`) on every change, its merges
   the done jobs' ids (§4). **Opening** another position (`openPosition`)
   takes the Case's tree as it stands now.
-- **The answer** is written once it is graded — never "evaluating", so a
-  comment is never rewritten: "Find Best Move: Nf3 — Best (0 cp)", "… —
-  outside the top 3 (≥ 120 cp)", "Find Best Move: passed"
-  (`accuracyTrainer.session.answer.*`).
+- **The answer** is written once it is graded — never while it waits, so a
+  comment is never rewritten: "Find Best Move: 1. e4 (#1, Best), 2. Nf3 (#3,
+  Good), 3. h3 (not among the lines) — 2 of the top 3, 1 in place", "Find
+  Best Move: passed" (`accuracyTrainer.session.answer.*`).
 
 ## 4. The engine — the Evaluate Position job
 
-The left panel's **Use the engine** (off) and **Lines needed** (1–10, 3).
+The left panel's **Use the engine** (off); the lines it is asked for are the
+moves to find, N.
 
 - **On, the setup takes any game** (`unevaluated`). A game loaded before the
   switch is kept, and whether it trains is read from it as it stands, so the
   switch takes it — and off again refuses it, the refusal naming the way out.
-- **A position with fewer top lines than needed** (`needsEngine`) is searched
+- **A position with fewer top lines than N** (`needsEngine`) is searched
   by an **Evaluate Position job** ([`jobs.md`](./jobs.md) §3.2) — queued by
   the reader's **first move there** (the hook's wrapped `onPieceDrop` /
-  `resolvePromotion`, a move made on or inside the position), or by Choose if
+  `resolvePromotion`, a move made on or inside the position), or by Check if
   none was; once per position. Its search is the top bar's Engine menu's (the
   board's engine and its selected preset, depth, move time, Threads, Hash),
-  MultiPV the lines needed. The footer says while it searches.
-- **A choice waits for its search**: the Result tab says so, and the move is
+  MultiPV N. The footer says while it searches.
+- **A check waits for its search**: the Result tab says so, and the moves are
   graded against the position with the engine's lines once the job ends. A job
   that fails, is cancelled or gone: graded with the tree's lines alone, and
   said. A pass never waits.
@@ -164,21 +182,28 @@ The left panel's **Use the engine** (off) and **Lines needed** (1–10, 3).
   [`tree-views.md`](./tree-views.md)), no engine of its own.
 - **The board moves** only on the position or inside a line from it while the
   position is answered (`isAtPosition`); once answered, anywhere.
-- **Choose** (the footer, beside Pass): **the first move from the position of
-  the line on screen** (`chosenMoveOf`) — however deep; off at the position
-  itself or before it ("Play a move to choose it").
+- **The reader's moves** (`candidatesOf`): **each line they play from the
+  position is one, the lines' order their ranking** — a new line goes last,
+  and the move menu's *Promote variation* / *Make main line* reorder them; a
+  reply inside a line is analysis, not a move of theirs. The footer lists
+  them ("Your moves: 1. Nf3 2. d4 3. c4") over **Check (n)** (off with none),
+  beside Pass.
 - **The right panel**: the setup before a session; then **Moves · Map ·
   Result** (off until answered) **· Summary**; the header — the
   *Experimental* chip, "Position 3 of 12 · 12. White"; the footer — the
-  comment block, the next-moves bar (Moves), the instructions and the engine's
-  word while answering, New session, Pass / Choose or Next / Summary.
-- **The arrows**: the explorer's; once graded, on the position itself, line 1
-  in green and a different choice in red over them.
+  comment block, the next-moves bar (Moves), the instructions, the reader's
+  moves and the engine's word while answering, New session, Pass / Check or
+  Next / Summary. **Result** (`GradedLines`): the headline (found, in place;
+  every one in place; none; a pass), the lines best first — rank, move, eval,
+  loss, the reader's rank for it (*In place*), its verdict — a line under the
+  top N.
+- **The arrows**: the explorer's; once graded, on the position itself, the
+  top N in green and the reader's moves outside them in red over them.
 - **The left panel** (`AccuracyTrainerDetails`, `BoardLeftPanel` with
   `keepShell`; a drawer under the breakpoint, opened from the header): the
   game's name (the exercise's before), the session's Case linked, then
-  **Settings** — *Show next-move arrows*, *Use the engine*, *Lines needed* —
-  for the session.
+  **Settings** — *Moves to find* (locked while a session runs), *Show
+  next-move arrows*, *Use the engine*.
 
 ## 6. Extending it
 
