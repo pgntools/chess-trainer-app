@@ -147,20 +147,19 @@ export const positionViewOf = (tree: GameTree, path: readonly string[]): Positio
 };
 
 /**
- * **The move the reader would choose**: the first move from the position of
- * the line on screen — `undefined` at the position itself, or before it
- * (the reader looking at the moves that led there).
+ * **The reader's candidates**: the first moves of their lines from the
+ * position, **in their order** — the tree's order of the position's moves,
+ * the first their best (a new line goes last; *Promote variation* and *Make
+ * main line* reorder them).
  */
-export const chosenMoveOf = (view: Pick<PositionView, "nodeId">, board: GameTree, nodeId: string | null): string | undefined => {
-  const line = pathTo(board, nodeId);
-  if (view.nodeId === null) return line[0]?.san;
-  const at = line.findIndex((node) => node.id === view.nodeId);
-  return at < 0 ? undefined : line[at + 1]?.san;
-};
+export const candidatesOf = (view: Pick<PositionView, "nodeId">, board: GameTree): string[] =>
+  (view.nodeId === null ? board.moves : (findNode(board, view.nodeId)?.children ?? [])).map((node) => node.san);
 
 /** Whether the board stands on the position or inside a line from it — where the reader's moves answer it. */
-export const isAtPosition = (view: Pick<PositionView, "nodeId">, board: GameTree, nodeId: string | null): boolean =>
-  nodeId === view.nodeId || chosenMoveOf(view, board, nodeId) !== undefined;
+export const isAtPosition = (view: Pick<PositionView, "nodeId">, board: GameTree, nodeId: string | null): boolean => {
+  if (nodeId === view.nodeId || view.nodeId === null) return true;
+  return pathTo(board, nodeId).some((node) => node.id === view.nodeId);
+};
 
 /* ─── The session ─────────────────────────────────────────────────────── */
 
@@ -169,9 +168,11 @@ export type FindBestMoveSession = {
   caseRef: { projectId: string; caseId: string };
   /** The positions asked, in game order. */
   positions: readonly TrainingPosition[];
+  /** How many best moves to find at each, in order — fixed for the session. */
+  wanted: number;
   /** The one on screen. */
   index: number;
-  /** Each position's answer: the move chosen (`[san]`), `[]` a pass, `null` not yet. */
+  /** Each position's answer: the reader's moves in their order, `[]` a pass, `null` not yet. */
   answers: readonly (readonly string[] | null)[];
   /** Each position's Evaluate Position job, `null` none. */
   jobs: readonly (string | null)[];
@@ -209,15 +210,16 @@ export const openPosition = (session: FindBestMoveSession, index: number, tree: 
 export const startSession = ({
   caseRef,
   positions,
+  wanted,
   tree,
-}: Pick<FindBestMoveSession, "caseRef" | "positions" | "tree">): FindBestMoveSession | undefined => {
+}: Pick<FindBestMoveSession, "caseRef" | "positions" | "wanted" | "tree">): FindBestMoveSession | undefined => {
   const first = positions[0];
   const view = first === undefined ? undefined : positionViewOf(tree, first.path);
   if (view === undefined) return undefined;
-  return { caseRef, positions, index: 0, answers: positions.map(() => null), jobs: positions.map(() => null), tree, view };
+  return { caseRef, positions, wanted, index: 0, answers: positions.map(() => null), jobs: positions.map(() => null), tree, view };
 };
 
-/** The position on screen answered — the move chosen, or none (a pass). */
+/** The position on screen answered — the reader's moves in their order, or none (a pass). */
 export const answerPosition = (session: FindBestMoveSession, moves: readonly string[]): FindBestMoveSession => ({
   ...session,
   answers: session.answers.map((given, index) => (index === session.index ? [...moves] : given)),

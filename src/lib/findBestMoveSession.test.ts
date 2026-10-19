@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { trainingPositionsOf } from "./accuracyTrainer";
 import {
   answerPosition,
+  candidatesOf,
   caseTreeOf,
-  chosenMoveOf,
   isAtPosition,
   nextUnanswered,
   openPosition,
@@ -107,30 +107,30 @@ describe("caseTreeOf", () => {
   });
 });
 
-describe("chosenMoveOf / isAtPosition", () => {
+describe("candidatesOf / isAtPosition", () => {
   const view = positionViewOf(base, ["e4", "e5"])!;
   const bc4 = play(view.board, view.nodeId, "Bc4");
   const nf6 = play(bc4.tree, bc4.nodeId, "Nf6");
+  const nf3 = play(nf6.tree, view.nodeId, "Nf3");
 
-  it("is the line's first move from the position, however deep the board stands", () => {
-    expect(chosenMoveOf(view, nf6.tree, nf6.nodeId)).toBe("Bc4");
-    expect(chosenMoveOf(view, nf6.tree, bc4.nodeId)).toBe("Bc4");
-    expect(isAtPosition(view, nf6.tree, nf6.nodeId)).toBe(true);
+  it("are the first moves of the reader's lines from the position, in the tree's order", () => {
+    expect(candidatesOf(view, view.board)).toEqual([]);
+    expect(candidatesOf(view, nf3.tree)).toEqual(["Bc4", "Nf3"]);
   });
 
-  it("is none at the position, or before it", () => {
-    expect(chosenMoveOf(view, nf6.tree, view.nodeId)).toBeUndefined();
-    expect(isAtPosition(view, nf6.tree, view.nodeId)).toBe(true);
-    const e4 = nodeAtSanPath(nf6.tree, ["e4"]);
-    expect(chosenMoveOf(view, nf6.tree, e4)).toBeUndefined();
-    expect(isAtPosition(view, nf6.tree, e4)).toBe(false);
+  it("stand on the position or inside a line from it — not before it", () => {
+    expect(isAtPosition(view, nf3.tree, view.nodeId)).toBe(true);
+    expect(isAtPosition(view, nf3.tree, nf6.nodeId)).toBe(true);
+    expect(isAtPosition(view, nf3.tree, nodeAtSanPath(nf3.tree, ["e4"]))).toBe(false);
+    expect(isAtPosition(view, nf3.tree, null)).toBe(false);
   });
 
-  it("reads from the start position too", () => {
+  it("read from the start position too", () => {
     const start = positionViewOf(base, [])!;
     const d4 = play(start.board, null, "d4");
-    expect(chosenMoveOf(start, d4.tree, d4.nodeId)).toBe("d4");
-    expect(chosenMoveOf(start, d4.tree, null)).toBeUndefined();
+    const c4 = play(d4.tree, null, "c4");
+    expect(candidatesOf(start, c4.tree)).toEqual(["d4", "c4"]);
+    expect(isAtPosition(start, c4.tree, null)).toBe(true);
   });
 });
 
@@ -153,16 +153,16 @@ describe("the session's transitions", () => {
   const caseRef = { projectId: "p", caseId: "c" };
 
   it("starts on its first position's view", () => {
-    const session = startSession({ caseRef, positions, tree: base })!;
-    expect(session).toMatchObject({ index: 0, answers: [null, null], jobs: [null, null] });
+    const session = startSession({ caseRef, positions, wanted: 3, tree: base })!;
+    expect(session).toMatchObject({ index: 0, wanted: 3, answers: [null, null], jobs: [null, null] });
     expect(session.view.nodeId).toBeNull();
-    expect(startSession({ caseRef, positions: [], tree: base })).toBeUndefined();
+    expect(startSession({ caseRef, positions: [], wanted: 3, tree: base })).toBeUndefined();
   });
 
   it("answers, queues a job, finds the next position and opens it on the tree as it stands", () => {
-    let session = startSession({ caseRef, positions, tree: base })!;
-    session = withPositionJob(answerPosition(session, ["e4"]), 0, "job-1");
-    expect(session.answers).toEqual([["e4"], null]);
+    let session = startSession({ caseRef, positions, wanted: 3, tree: base })!;
+    session = withPositionJob(answerPosition(session, ["e4", "d4"]), 0, "job-1");
+    expect(session.answers).toEqual([["e4", "d4"], null]);
     expect(session.jobs).toEqual(["job-1", null]);
     expect(nextUnanswered(session)).toBe(1);
     const opened = openPosition(session, 1, base);

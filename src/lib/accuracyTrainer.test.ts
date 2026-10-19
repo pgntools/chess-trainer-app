@@ -8,6 +8,7 @@ import {
   sanLineOf,
   sessionPositionsOf,
   sessionSummaryOf,
+  targetOf,
   trainingPositionsOf,
   withEngineResult,
   type TrainingPosition,
@@ -125,15 +126,30 @@ describe("sessionPositionsOf", () => {
 });
 
 describe("grading (CTA-238)", () => {
-  it("grades a suggestion on the lines by its rank, its loss and the thresholds", () => {
-    expect(gradeSuggestion(at(3), "Nf3")).toEqual({ san: "Nf3", kind: "line", rank: 1, loss: 0, verdict: null, listed: true, played: false });
-    expect(gradeSuggestion(at(3), "Qh5")).toEqual({ san: "Qh5", kind: "line", rank: 3, loss: 80, verdict: "inaccuracy", listed: false, played: true });
-    expect(gradeSuggestion(at(1), "d4+")).toMatchObject({ kind: "line", rank: 2 });
+  it("grades a suggestion on the lines by its rank, its loss and the thresholds — and against the top N, in the reader's order", () => {
+    expect(gradeSuggestion(at(3), "Nf3", 1, 2)).toEqual({
+      san: "Nf3",
+      order: 1,
+      kind: "line",
+      rank: 1,
+      loss: 0,
+      verdict: null,
+      listed: true,
+      played: false,
+      inTop: true,
+      inPlace: true,
+    });
+    // The game's move, below the engine's lines: never one of the top N.
+    expect(gradeSuggestion(at(3), "Qh5", 2, 2)).toMatchObject({ kind: "line", rank: 3, loss: 80, verdict: "inaccuracy", listed: false, inTop: false, inPlace: false });
+    // In the top 3, but not where the reader put it.
+    expect(gradeSuggestion(at(1), "d4+", 3, 3)).toMatchObject({ kind: "line", rank: 2, inTop: true, inPlace: false });
+    // Outside a top 1.
+    expect(gradeSuggestion(at(1), "d4", 1, 1)).toMatchObject({ rank: 2, inTop: false });
   });
 
-  it("calls a move none of the lines has outside the top N, its loss at least the worst listed line's — never a number", () => {
+  it("calls a move none of the lines has outside them, its loss at least the worst listed line's — never a number", () => {
     // Qh5 is a line but not a listed one: the bound is Bc4's 10.
-    expect(gradeSuggestion(at(3), "d4")).toEqual({ san: "d4", kind: "outside", lossAtLeast: 10 });
+    expect(gradeSuggestion(at(3), "d4", 1, 2)).toEqual({ san: "d4", order: 1, kind: "outside", lossAtLeast: 10, inTop: false, inPlace: false });
   });
 
   it("uses the thresholds: inaccuracy above 50, mistake above 100, blunder above 300", () => {
@@ -141,7 +157,7 @@ describe("grading (CTA-238)", () => {
       ...at(1),
       lines: [0, 50, 51, 101, 301].map((loss, index) => ({ ...at(1).lines[0], san: `m${index}`, rank: index + 1, loss, played: false })),
     };
-    expect(["m0", "m1", "m2", "m3", "m4"].map((san) => gradeSuggestion(position, san))).toMatchObject([
+    expect(["m0", "m1", "m2", "m3", "m4"].map((san, index) => gradeSuggestion(position, san, index + 1, 3))).toMatchObject([
       { verdict: null },
       { verdict: null },
       { verdict: "inaccuracy" },
@@ -150,51 +166,85 @@ describe("grading (CTA-238)", () => {
     ]);
   });
 
-  it("grades a position: best found, top lines found, the best suggestion's loss, the worst verdict, the outside ones", () => {
-    expect(gradePosition(at(3), ["Bc4", "Qh5", "d4"])).toMatchObject({
-      passed: false,
+  it("holds the moves to find to the engine's top lines", () => {
+    expect(targetOf(at(1), 3)).toBe(3);
+    expect(targetOf(at(1), 5)).toBe(3);
+    expect(targetOf(at(3), 3)).toBe(2);
+    expect(targetOf({ ...at(1), topCount: 0 }, 3)).toBe(0);
+  });
+
+  it("grades a position against its top N: found, in place, the best suggestion's loss, the worst verdict, the outside ones", () => {
+    // The top 3 are e4, d4, Nf3: all found, only e4 in its place.
+    expect(gradePosition(at(1), ["e4", "Nf3", "d4"], { wanted: 3 })).toMatchObject({
+      target: 3,
+      found: 3,
+      inPlace: 1,
+      bestFound: true,
+      bestLoss: 0,
+      worstVerdict: null,
+      outside: 0,
+    });
+    // Exactly in order.
+    expect(gradePosition(at(1), ["e4", "d4", "Nf3"], { wanted: 3 })).toMatchObject({ found: 3, inPlace: 3 });
+    // The top 2 here are Nf3 and Bc4; Qh5 is a line below them, d4 none at all.
+    expect(gradePosition(at(3), ["Bc4", "Qh5", "d4"], { wanted: 3 })).toMatchObject({
+      target: 2,
+      found: 1,
+      inPlace: 0,
       bestFound: false,
-      topFound: 1,
       bestLoss: 10,
       worstVerdict: "inaccuracy",
       outside: 1,
     });
-    expect(gradePosition(at(1), ["d4", "e4", "Nf3"])).toMatchObject({ bestFound: true, topFound: 3, bestLoss: 0, worstVerdict: null, outside: 0 });
+    // One to find, to start with.
+    expect(gradePosition(at(1), ["d4"])).toMatchObject({ target: 1, found: 0 });
   });
 
   it("grades a pass as no suggestion", () => {
-    expect(gradePosition(at(1), [])).toEqual({
+    expect(gradePosition(at(1), [], { wanted: 3 })).toEqual({
       suggestions: [],
       passed: true,
+      target: 3,
+      found: 0,
+      inPlace: 0,
       bestFound: false,
-      topFound: 0,
       bestLoss: null,
       worstVerdict: null,
       outside: 0,
     });
   });
 
-  it("knows no best loss where every suggestion is outside the lines, and counts a move once", () => {
+  it("knows no best loss where every suggestion is outside the lines, and counts a move once, in its first place", () => {
     expect(gradePosition(at(1), ["a3", "h3"])).toMatchObject({ bestLoss: null, outside: 2, bestFound: false });
-    expect(gradePosition(at(1), ["e4", "e4"]).suggestions).toHaveLength(1);
+    const twice = gradePosition(at(1), ["e4", "d4", "e4"], { wanted: 3 });
+    expect(twice.suggestions.map((grade) => [grade.san, grade.order])).toEqual([
+      ["e4", 1],
+      ["d4", 2],
+    ]);
+    expect(twice).toMatchObject({ found: 2, inPlace: 2 });
   });
 });
 
 describe("sessionSummaryOf", () => {
-  it("counts the positions, the hit rates, the average best loss and every suggestion's verdict", () => {
+  it("counts the positions, the moves found and in place, the perfect positions, the average best loss and every verdict", () => {
     const grades = [
-      gradePosition(at(1), ["e4", "d4"]),
-      gradePosition(at(2), []),
-      gradePosition(at(3), ["Bc4", "Qh5", "d4"]),
+      gradePosition(at(1), ["e4", "d4", "Nf3"], { wanted: 3 }),
+      gradePosition(at(2), [], { wanted: 3 }),
+      gradePosition(at(3), ["Bc4", "Qh5", "d4"], { wanted: 3 }),
     ];
     expect(sessionSummaryOf(grades)).toEqual({
       positions: 3,
       answered: 2,
       passed: 1,
+      // 3 + 2 + 2 to find; 3 + 0 + 1 found; 3 + 0 + 0 in place.
+      wanted: 7,
+      found: 4,
+      inPlace: 3,
+      foundRate: 4 / 7,
+      inPlaceRate: 3 / 7,
+      perfect: 1,
       bestFound: 1,
-      topFound: 2,
       bestRate: 1 / 3,
-      topRate: 2 / 3,
       // 0 and 10; the pass knows none.
       averageBestLoss: 5,
       inaccuracies: 1,
@@ -205,7 +255,7 @@ describe("sessionSummaryOf", () => {
   });
 
   it("has no rates or average with nothing graded", () => {
-    expect(sessionSummaryOf([])).toMatchObject({ positions: 0, bestRate: null, topRate: null, averageBestLoss: null });
+    expect(sessionSummaryOf([])).toMatchObject({ positions: 0, foundRate: null, inPlaceRate: null, bestRate: null, averageBestLoss: null });
   });
 });
 

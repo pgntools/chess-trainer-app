@@ -259,10 +259,9 @@ export const moveSquaresOf = (fen: string, san: string): { from: string; to: str
   }
 };
 
-/** **One suggestion, graded.** */
-export type SuggestionGrade =
+/** **One suggestion, graded** — against the position's lines, and against the top N the reader was to find. */
+export type SuggestionGrade = (
   | {
-      san: string;
       kind: "line";
       /** Its line's rank among the position's lines. */
       rank: number;
@@ -275,68 +274,103 @@ export type SuggestionGrade =
       played: boolean;
     }
   | {
-      san: string;
       kind: "outside";
       /** Its loss is unknown, but at least this — the worst listed line's. */
       lossAtLeast: number;
-    };
+    }
+) & {
+  san: string;
+  /** The reader's own rank for it — 1 their best. */
+  order: number;
+  /** One of the top N the reader was to find. */
+  inTop: boolean;
+  /** One of them, and where the reader put it: its rank is their order. */
+  inPlace: boolean;
+};
 
-/** **A position's grade.** */
+/** **A position's grade** — the reader's moves, in their order, against the top N. */
 export type PositionGrade = {
-  /** In the order the reader entered them. */
+  /** In the reader's order. */
   suggestions: readonly SuggestionGrade[];
   /** No suggestion: a Pass. */
   passed: boolean;
+  /** How many best moves there were to find here: the number asked for, held to the engine's top lines. */
+  target: number;
+  /** How many of those the reader found. */
+  found: number;
+  /** How many of them in their right place. */
+  inPlace: number;
   /** A suggestion lost nothing against line 1 — line 1 itself, or one as good. */
   bestFound: boolean;
-  /** How many of the engine's top lines the suggestions found. */
-  topFound: number;
   /** The best suggestion's loss; `null` for a pass, or where every suggestion is outside the lines. */
   bestLoss: number | null;
   /** The worst verdict among the suggestions on the lines (`null`: none worse than the threshold). */
   worstVerdict: MoveVerdictKind | null;
-  /** How many suggestions were outside the top N. */
+  /** How many suggestions were outside the lines. */
   outside: number;
 };
 
 const VERDICT_ORDER: readonly (MoveVerdictKind | null)[] = [null, "inaccuracy", "mistake", "blunder"];
 
-/** Grade one suggestion against a position's lines. */
+/** How many best moves a position asks for: `wanted`, held to the engine's top lines there. */
+export const targetOf = (position: TrainingPosition, wanted: number): number => Math.max(0, Math.min(wanted, position.topCount));
+
+/** What a grade is measured against: how many best moves to find (1 — the best — to start with), and the thresholds. */
+export type GradeOptions = { wanted?: number; thresholds?: VerdictThresholds };
+
+/** Grade one suggestion — the reader's `order`-th — against a position's lines and its top `target`. */
 export const gradeSuggestion = (
   position: TrainingPosition,
   san: string,
+  order: number,
+  target: number,
   thresholds: VerdictThresholds = ACCURACY_THRESHOLDS,
 ): SuggestionGrade => {
   const line = position.lines.find((each) => bareSan(each.san) === bareSan(san));
   if (line === undefined) {
     const listed = position.lines.filter((each) => each.listed);
-    return { san, kind: "outside", lossAtLeast: Math.max(0, ...listed.map((each) => each.loss)) };
+    return { san, order, kind: "outside", lossAtLeast: Math.max(0, ...listed.map((each) => each.loss)), inTop: false, inPlace: false };
   }
-  return { san, kind: "line", rank: line.rank, loss: line.loss, verdict: kindOfLoss(line.loss, thresholds), listed: line.listed, played: line.played };
+  const inTop = line.listed && line.rank <= target;
+  return {
+    san,
+    order,
+    kind: "line",
+    rank: line.rank,
+    loss: line.loss,
+    verdict: kindOfLoss(line.loss, thresholds),
+    listed: line.listed,
+    played: line.played,
+    inTop,
+    inPlace: inTop && line.rank === order,
+  };
 };
 
-/** **Grade a position's suggestions** — none is a pass. A move suggested twice counts once. */
-export const gradePosition = (
-  position: TrainingPosition,
-  sans: readonly string[],
-  thresholds: VerdictThresholds = ACCURACY_THRESHOLDS,
-): PositionGrade => {
+/**
+ * **Grade a position's suggestions**, in the reader's order — none is a pass;
+ * a move suggested twice counts once. Against the top `wanted` (held to the
+ * engine's top lines, {@link targetOf}): how many the reader found, and how
+ * many in their right place — the reader's 1st the engine's 1st, and so on.
+ */
+export const gradePosition = (position: TrainingPosition, sans: readonly string[], { wanted = 1, thresholds = ACCURACY_THRESHOLDS }: GradeOptions = {}): PositionGrade => {
+  const target = targetOf(position, wanted);
   const unique = sans.filter((san, index) => sans.findIndex((other) => bareSan(other) === bareSan(san)) === index);
-  const suggestions = unique.map((san) => gradeSuggestion(position, san, thresholds));
-  const onLines = suggestions.filter((grade) => grade.kind === "line");
-  const losses = onLines.map((grade) => grade.loss);
-  const worstVerdict = onLines.reduce<MoveVerdictKind | null>(
-    (worst, grade) => (VERDICT_ORDER.indexOf(grade.verdict) > VERDICT_ORDER.indexOf(worst) ? grade.verdict : worst),
+  const suggestions = unique.map((san, index) => gradeSuggestion(position, san, index + 1, target, thresholds));
+  const losses = suggestions.flatMap((grade) => (grade.kind === "line" ? [grade.loss] : []));
+  const worstVerdict = suggestions.reduce<MoveVerdictKind | null>(
+    (worst, grade) => (grade.kind === "line" && VERDICT_ORDER.indexOf(grade.verdict) > VERDICT_ORDER.indexOf(worst) ? grade.verdict : worst),
     null,
   );
   return {
     suggestions,
     passed: suggestions.length === 0,
+    target,
+    found: suggestions.filter((grade) => grade.inTop).length,
+    inPlace: suggestions.filter((grade) => grade.inPlace).length,
     bestFound: losses.includes(0),
-    topFound: onLines.filter((grade) => grade.listed).length,
     bestLoss: losses.length === 0 ? null : Math.min(...losses),
     worstVerdict,
-    outside: suggestions.length - onLines.length,
+    outside: suggestions.filter((grade) => grade.kind === "outside").length,
   };
 };
 
@@ -348,14 +382,22 @@ export type SessionSummary = {
   positions: number;
   answered: number;
   passed: number;
+  /** The best moves there were to find, over every position. */
+  wanted: number;
+  /** How many of them were found. */
+  found: number;
+  /** How many of them in their right place. */
+  inPlace: number;
+  /** `found` / `wanted`, 0–1; `null` with nothing to find. */
+  foundRate: number | null;
+  /** `inPlace` / `wanted`, 0–1; `null` with nothing to find. */
+  inPlaceRate: number | null;
+  /** Positions whose every best move was found, each in its place. */
+  perfect: number;
   /** Positions where the best move was found — a pass found none. */
   bestFound: number;
-  /** Positions where at least one of the engine's top lines was found. */
-  topFound: number;
   /** `bestFound` / `positions`, 0–1; `null` with nothing graded. */
   bestRate: number | null;
-  /** `topFound` / `positions`, 0–1; `null` with nothing graded. */
-  topRate: number | null;
   /** The best suggestion's loss, averaged over the positions where it is known (rounded); `null` for none. */
   averageBestLoss: number | null;
   /** Over every suggestion. */
@@ -371,18 +413,24 @@ export const sessionSummaryOf = (grades: readonly PositionGrade[]): SessionSumma
   const verdicts = suggestions.flatMap((grade) => (grade.kind === "line" ? [grade.verdict] : []));
   const count = (kind: MoveVerdictKind) => verdicts.filter((verdict) => verdict === kind).length;
   const known = grades.flatMap((grade) => (grade.bestLoss === null ? [] : [grade.bestLoss]));
+  const sum = (of: (grade: PositionGrade) => number) => grades.reduce((total, grade) => total + of(grade), 0);
+  const wanted = sum((grade) => grade.target);
+  const found = sum((grade) => grade.found);
+  const inPlace = sum((grade) => grade.inPlace);
   const bestFound = grades.filter((grade) => grade.bestFound).length;
-  const topFound = grades.filter((grade) => grade.topFound > 0).length;
-  const rate = (hits: number) => (grades.length === 0 ? null : hits / grades.length);
   return {
     positions: grades.length,
     answered: grades.filter((grade) => !grade.passed).length,
     passed: grades.filter((grade) => grade.passed).length,
+    wanted,
+    found,
+    inPlace,
+    foundRate: wanted === 0 ? null : found / wanted,
+    inPlaceRate: wanted === 0 ? null : inPlace / wanted,
+    perfect: grades.filter((grade) => grade.target > 0 && grade.inPlace === grade.target).length,
     bestFound,
-    topFound,
-    bestRate: rate(bestFound),
-    topRate: rate(topFound),
-    averageBestLoss: known.length === 0 ? null : Math.round(known.reduce((sum, loss) => sum + loss, 0) / known.length),
+    bestRate: grades.length === 0 ? null : bestFound / grades.length,
+    averageBestLoss: known.length === 0 ? null : Math.round(known.reduce((total, loss) => total + loss, 0) / known.length),
     inaccuracies: count("inaccuracy"),
     mistakes: count("mistake"),
     blunders: count("blunder"),
