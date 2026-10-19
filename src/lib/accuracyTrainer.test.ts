@@ -6,7 +6,6 @@ import {
   moveSquaresOf,
   needsEngine,
   sanLineOf,
-  sanOfMove,
   sessionPositionsOf,
   sessionSummaryOf,
   trainingPositionsOf,
@@ -210,19 +209,6 @@ describe("sessionSummaryOf", () => {
   });
 });
 
-describe("sanOfMove", () => {
-  it("names a legal drop in SAN, a promotion by its piece, and nothing for an illegal one", () => {
-    const start = parsePgnTree("*").startFen;
-    expect(sanOfMove(start, "g1", "f3")).toBe("Nf3");
-    expect(sanOfMove(start, "e2", "e5")).toBeUndefined();
-    const promoting = "8/P6k/8/8/8/8/8/K7 w - - 0 1";
-    expect(sanOfMove(promoting, "a7", "a8", "q")).toBe("a8=Q");
-    expect(sanOfMove(promoting, "a7", "a8", "n")).toBe("a8=N");
-    expect(sanOfMove(promoting, "a7", "a8")).toBeUndefined();
-    expect(sanOfMove("not a fen", "a7", "a8")).toBeUndefined();
-  });
-});
-
 describe("moveSquaresOf", () => {
   it("finds a SAN move's squares, marks or none, and nothing for an illegal one", () => {
     const start = parsePgnTree("*").startFen;
@@ -233,7 +219,7 @@ describe("moveSquaresOf", () => {
   });
 });
 
-describe("the engine's part (CTA-238, Find Best Move v2)", () => {
+describe("the engine's part (CTA-238, Find Best Move)", () => {
   it("names each position's SAN path from the start", () => {
     expect(positions.map((position) => position.path)).toEqual([[], ["e4"], ["e4", "e5"]]);
   });

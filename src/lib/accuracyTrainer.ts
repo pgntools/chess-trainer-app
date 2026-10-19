@@ -1,4 +1,4 @@
-import { Chess, type Square } from "chess.js";
+import { Chess } from "chess.js";
 
 import {
   DEFAULT_COMPUTER_ANALYSIS_OPTIONS,
@@ -86,7 +86,7 @@ export type TrainingPosition = {
 };
 
 /** The computer analysis's thresholds — what a verdict is measured against. */
-export const ACCURACY_THRESHOLDS: VerdictThresholds = DEFAULT_COMPUTER_ANALYSIS_OPTIONS.thresholds;
+const ACCURACY_THRESHOLDS: VerdictThresholds = DEFAULT_COMPUTER_ANALYSIS_OPTIONS.thresholds;
 
 const clampCp = (cp: number) => Math.min(LOSS_CLAMP_CP, Math.max(-LOSS_CLAMP_CP, cp));
 
@@ -209,7 +209,7 @@ export const sanLineOf = (fen: string, pv: readonly string[]): string[] => {
 };
 
 /**
- * **A position with an engine's search added** (CTA-238, Find Best Move v2's
+ * **A position with an engine's search added** (CTA-238, Find Best Move's
  * Evaluate Position job): each of the search's lines becomes one of the
  * position's, listed — a move the tree has a line for keeps the tree's, the
  * engine's taking only the moves it lacks — then all ranked again. A line
@@ -248,21 +248,6 @@ export const sessionPositionsOf = (positions: readonly TrainingPosition[], side:
   side === "both" ? [...positions] : positions.filter((position) => position.turn === side);
 
 /* ─── A suggestion ────────────────────────────────────────────────────── */
-
-/**
- * The SAN of a move dropped on the board — `from` to `to`, and the piece a
- * pawn promotes to — or `undefined` for a move that is not legal there.
- * `chess.js` only *reads* the legal moves here; the board core alone plays one.
- */
-export const sanOfMove = (fen: string, from: string, to: string, promotion?: string): string | undefined => {
-  try {
-    const moves = new Chess(fen).moves({ square: from as Square, verbose: true }).filter((move) => move.to === to);
-    const move = promotion === undefined ? moves.find((each) => each.promotion === undefined) : moves.find((each) => each.promotion === promotion);
-    return move?.san;
-  } catch {
-    return undefined;
-  }
-};
 
 /** The squares a SAN move goes from and to at a position — its arrow — or `undefined` for one that is not legal there. */
 export const moveSquaresOf = (fen: string, san: string): { from: string; to: string } | undefined => {

@@ -1,91 +1,173 @@
 import { describe, expect, it } from "vitest";
 
-import { graftTree, sessionBaseTree, sessionCaseTreeOf, withPositionEngineLines } from "./findBestMoveSession";
-import { emptyTree, mainline, nodeAtSanPath, treeToPgn } from "./gameTree";
+import { trainingPositionsOf } from "./accuracyTrainer";
+import {
+  answerPosition,
+  caseTreeOf,
+  chosenMoveOf,
+  isAtPosition,
+  nextUnanswered,
+  openPosition,
+  positionViewOf,
+  sessionBaseTree,
+  startSession,
+  withPositionEngineLines,
+  withPositionJob,
+  withSessionAnnotations,
+} from "./findBestMoveSession";
+import { addMove, deleteFrom, findNode, mainline, nodeAtSanPath, setComments, treeToPgn, type GameTree } from "./gameTree";
 import { parsePgnTree } from "./pgn";
 
 /*
-  Find Best Move v2's session as a Case (CTA-238): the game's mainline, and
-  at each trained position the reader's analysis, the engine's lines and the
-  answer.
+  A Find Best Move session (CTA-238, v3): the Case's tree as the one truth,
+  a position's view of it — every move before it, none after — and the
+  reader's work put back.
 */
 
 const ANALYSED = `[White "Alice"]
 [Black "Bob"]
-[AnalysedPlies "1-3"]
+[AnalysedPlies "1-4"]
 [Annotator "Stockfish 19 [full]"]
 
-{ Computer analysis (full) } 1. e4 { [%eval 0.30,20] } (1. d4 { [%eval 0.25,20] }) 1... e5 $2 { [%eval 0.30,20] } 2. Nf3 *`;
+{ Computer analysis (full) } 1. e4 { [%eval 0.30,20] } (1. d4 { [%eval 0.25,20] }) 1... e5 $2 { [%eval 0.30,20] } (1... c5 { [%eval 0.35,20] }) 2. Nf3 { [%eval 0.30,20] } (2. Bc4 { [%eval 0.20,20] }) 2... Nc6 *`;
 
 const base = sessionBaseTree(parsePgnTree(ANALYSED));
+const sans = (tree: GameTree) => mainline(tree).map((node) => node.san);
+
+/** A move played on the board under `parentId`, as the core plays it. */
+const play = (tree: GameTree, parentId: string | null, san: string): { tree: GameTree; nodeId: string } => {
+  const fenBefore = parentId === null ? tree.startFen : (findNode(tree, parentId)?.fen ?? tree.startFen);
+  const replay = parsePgnTree(`[FEN "${fenBefore}"]\n[SetUp "1"]\n\n${fenBefore.split(" ")[1] === "b" ? "1... " : ""}${san} *`).moves[0];
+  return addMove(tree, parentId, { san: replay.san, from: replay.from, to: replay.to, fen: replay.fen });
+};
 
 describe("sessionBaseTree", () => {
   it("keeps the game's mainline and tags — none of its comments, NAGs, side lines or the analysis's tags", () => {
-    expect(mainline(base).map((node) => node.san)).toEqual(["e4", "e5", "Nf3"]);
+    expect(sans(base)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
     expect(base.headers).toMatchObject({ White: "Alice", Black: "Bob" });
     expect(base.headers.AnalysedPlies).toBeUndefined();
     expect(base.headers.Annotator).toBeUndefined();
-    const pgn = treeToPgn(base);
-    expect(pgn).not.toContain("{");
-    expect(pgn).not.toContain("d4");
-    expect(pgn).not.toContain("$2");
+    expect(treeToPgn(base)).not.toMatch(/[{$(]/);
   });
 });
 
-describe("graftTree", () => {
-  it("adds a tree from a position under its node — moves, comments, glyphs; a move already there followed", () => {
-    const afterE4 = mainline(base)[0];
-    const analysis = parsePgnTree(`[FEN "${afterE4.fen}"]\n[SetUp "1"]\n\n{ Black to play } 1... e5 $1 { The classical reply } (1... c5) 2. Nf3 (2. Bc4) *`);
-    const grafted = graftTree(base, afterE4.id, analysis);
-    // e5 followed (the mainline's), its glyph and comment joined; c5 a side line; Bc4 under Nf3's parent.
-    expect(treeToPgn(grafted)).toBe(
-      treeToPgn(parsePgnTree('[White "Alice"]\n[Black "Bob"]\n\n1. e4 { Black to play } 1... e5 $1 { The classical reply } (1... c5) 2. Nf3 (2. Bc4) *')),
-    );
-    // Nothing new: the same tree back.
-    expect(graftTree(base, afterE4.id, emptyTree(afterE4.fen))).toBe(base);
+describe("positionViewOf", () => {
+  it("shows every move before the position and hides its continuation", () => {
+    const view = positionViewOf(base, ["e4", "e5"])!;
+    expect(sans(view.board)).toEqual(["e4", "e5"]);
+    expect(view.nodeId).toBe(nodeAtSanPath(base, ["e4", "e5"]));
+    expect(view.hidden.map((node) => node.san)).toEqual(["Nf3"]);
   });
-});
 
-describe("withPositionEngineLines", () => {
-  it("hangs an engine's lines at the position its SAN path names, each first move with its eval", () => {
-    const afterE4 = mainline(base)[0];
-    const tree = withPositionEngineLines(base, ["e4"], {
-      fen: afterE4.fen,
-      lines: [
-        { score: { kind: "cp", value: 30 }, depth: 24, pv: ["e7e5", "g1f3"] },
-        { score: { kind: "cp", value: 35 }, depth: 24, pv: ["c7c5"] },
-      ],
+  it("hides the whole game at the start position", () => {
+    const view = positionViewOf(base, [])!;
+    expect(view.board.moves).toEqual([]);
+    expect(view.nodeId).toBeNull();
+    expect(view.hidden.map((node) => node.san)).toEqual(["e4"]);
+  });
+
+  it("hides the lines hung at the position too, and names no position the tree lacks", () => {
+    const tree = withPositionEngineLines(base, ["e4", "e5"], {
+      fen: findNode(base, nodeAtSanPath(base, ["e4", "e5"]))!.fen,
+      lines: [{ score: { kind: "cp", value: 20 }, depth: 20, pv: ["f1c4"] }],
     });
-    const pgn = treeToPgn(tree);
-    expect(pgn).toContain("e5 { [%eval 0.30,24] }");
-    expect(pgn).toContain("(1... c5 { [%eval 0.35,24] })");
-  });
-
-  it("leaves a tree that does not hold the path as it is", () => {
-    expect(withPositionEngineLines(base, ["d4"], { fen: base.startFen, lines: [{ score: { kind: "cp", value: 0 }, depth: 1, pv: ["d7d5"] }] })).toBe(base);
+    expect(positionViewOf(tree, ["e4", "e5"])!.hidden.map((node) => node.san)).toEqual(["Nf3", "Bc4"]);
+    expect(positionViewOf(base, ["d4"])).toBeUndefined();
   });
 });
 
-describe("sessionCaseTreeOf", () => {
-  it("writes each position's analysis, engine lines and answer into the base", () => {
-    const [e4, e5] = mainline(base);
-    const tree = sessionCaseTreeOf(base, [
-      { path: [], analysis: parsePgnTree("1. d4 { Mine } *"), answer: "Find Best Move: d4 — Good (5 cp)" },
-      {
-        path: ["e4", "e5"],
-        engine: { fen: e5.fen, lines: [{ score: { kind: "cp", value: 30 }, depth: 24, pv: ["g1f3"] }, { score: { kind: "cp", value: 20 }, depth: 24, pv: ["f1c4"] }] },
-        answer: "Find Best Move: passed",
-      },
-    ]);
-    const pgn = treeToPgn(tree);
-    // The start position's answer is the game's opening comment.
-    expect(tree.comments).toEqual(["Find Best Move: d4 — Good (5 cp)"]);
-    expect(pgn).toContain("(1. d4 { Mine })");
-    expect(pgn).toContain("e5 { Find Best Move: passed }");
-    expect(pgn).toContain("2. Nf3 { [%eval 0.30,24] }");
-    expect(pgn).toContain("(2. Bc4 { [%eval 0.20,24] })");
-    // The game's moves are where they were.
-    expect(mainline(tree).map((node) => node.san)).toEqual(["e4", "e5", "Nf3"]);
-    expect(nodeAtSanPath(tree, ["e4"])).toBe(e4.id);
+describe("caseTreeOf", () => {
+  const view = positionViewOf(base, ["e4", "e5"])!;
+  const session = { tree: base, view };
+
+  it("puts the continuation back, the game's move first, the reader's lines merged in", () => {
+    // The reader plays 2. Bc4 then 2. Nf3 with a reply the game did not play.
+    const bc4 = play(view.board, view.nodeId, "Bc4");
+    const nf3 = play(bc4.tree, view.nodeId, "Nf3");
+    const nf6 = play(nf3.tree, nf3.nodeId, "Nf6");
+    const tree = caseTreeOf(session, nf6.tree);
+    // The game's moves are the mainline still; Bc4 a side line; Nf6 a side line under the game's Nf3.
+    expect(sans(tree)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
+    expect(treeToPgn(tree)).toContain("2. Nf3 (2. Bc4) 2... Nc6 (2... Nf6)");
+  });
+
+  it("keeps the reader's edits before the position", () => {
+    const e4 = nodeAtSanPath(view.board, ["e4"])!;
+    const tree = caseTreeOf(session, setComments(view.board, e4, "comments", ["Best by test"]));
+    expect(treeToPgn(tree)).toContain("1. e4 { Best by test } 1... e5 2. Nf3");
+  });
+
+  it("keeps nothing of a board that lost the position — the rest of the game would go with it", () => {
+    const e4 = nodeAtSanPath(view.board, ["e4"])!;
+    expect(caseTreeOf(session, deleteFrom(view.board, e4))).toBe(base);
+  });
+
+  it("is the tree again for a board left as it opened", () => {
+    expect(treeToPgn(caseTreeOf(session, view.board))).toBe(treeToPgn(base));
+  });
+});
+
+describe("chosenMoveOf / isAtPosition", () => {
+  const view = positionViewOf(base, ["e4", "e5"])!;
+  const bc4 = play(view.board, view.nodeId, "Bc4");
+  const nf6 = play(bc4.tree, bc4.nodeId, "Nf6");
+
+  it("is the line's first move from the position, however deep the board stands", () => {
+    expect(chosenMoveOf(view, nf6.tree, nf6.nodeId)).toBe("Bc4");
+    expect(chosenMoveOf(view, nf6.tree, bc4.nodeId)).toBe("Bc4");
+    expect(isAtPosition(view, nf6.tree, nf6.nodeId)).toBe(true);
+  });
+
+  it("is none at the position, or before it", () => {
+    expect(chosenMoveOf(view, nf6.tree, view.nodeId)).toBeUndefined();
+    expect(isAtPosition(view, nf6.tree, view.nodeId)).toBe(true);
+    const e4 = nodeAtSanPath(nf6.tree, ["e4"]);
+    expect(chosenMoveOf(view, nf6.tree, e4)).toBeUndefined();
+    expect(isAtPosition(view, nf6.tree, e4)).toBe(false);
+  });
+
+  it("reads from the start position too", () => {
+    const start = positionViewOf(base, [])!;
+    const d4 = play(start.board, null, "d4");
+    expect(chosenMoveOf(start, d4.tree, d4.nodeId)).toBe("d4");
+    expect(chosenMoveOf(start, d4.tree, null)).toBeUndefined();
+  });
+});
+
+describe("withSessionAnnotations", () => {
+  it("writes each position's engine lines and answer, once however often it is written", () => {
+    const fen = findNode(base, nodeAtSanPath(base, ["e4", "e5"]))!.fen;
+    const annotations = [
+      { path: [], answer: "Find Best Move: d4 — Good (5 cp)" },
+      { path: ["e4", "e5"], engine: { fen, lines: [{ score: { kind: "cp" as const, value: 20 }, depth: 24, pv: ["f1c4"] }] } },
+    ];
+    const once = withSessionAnnotations(base, annotations);
+    expect(once.comments).toEqual(["Find Best Move: d4 — Good (5 cp)"]);
+    expect(treeToPgn(once)).toContain("(2. Bc4 { [%eval 0.20,24] })");
+    expect(treeToPgn(withSessionAnnotations(once, annotations))).toBe(treeToPgn(once));
+  });
+});
+
+describe("the session's transitions", () => {
+  const positions = trainingPositionsOf(parsePgnTree(ANALYSED)).filter((position) => position.turn === "w");
+  const caseRef = { projectId: "p", caseId: "c" };
+
+  it("starts on its first position's view", () => {
+    const session = startSession({ caseRef, positions, tree: base })!;
+    expect(session).toMatchObject({ index: 0, answers: [null, null], jobs: [null, null] });
+    expect(session.view.nodeId).toBeNull();
+    expect(startSession({ caseRef, positions: [], tree: base })).toBeUndefined();
+  });
+
+  it("answers, queues a job, finds the next position and opens it on the tree as it stands", () => {
+    let session = startSession({ caseRef, positions, tree: base })!;
+    session = withPositionJob(answerPosition(session, ["e4"]), 0, "job-1");
+    expect(session.answers).toEqual([["e4"], null]);
+    expect(session.jobs).toEqual(["job-1", null]);
+    expect(nextUnanswered(session)).toBe(1);
+    const opened = openPosition(session, 1, base);
+    expect(opened.index).toBe(1);
+    expect(sans(opened.view.board)).toEqual(["e4", "e5"]);
+    expect(nextUnanswered(answerPosition(opened, []))).toBeUndefined();
   });
 });
