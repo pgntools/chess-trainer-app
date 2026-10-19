@@ -4,10 +4,13 @@ import {
   gradePosition,
   gradeSuggestion,
   moveSquaresOf,
+  needsEngine,
+  sanLineOf,
   sanOfMove,
   sessionPositionsOf,
   sessionSummaryOf,
   trainingPositionsOf,
+  withEngineResult,
   type TrainingPosition,
 } from "./accuracyTrainer";
 import { parsePgnTree } from "./pgn";
@@ -227,5 +230,67 @@ describe("moveSquaresOf", () => {
     expect(moveSquaresOf(start, "e4+")).toEqual({ from: "e2", to: "e4" });
     expect(moveSquaresOf(start, "Ke2")).toBeUndefined();
     expect(moveSquaresOf("not a fen", "e4")).toBeUndefined();
+  });
+});
+
+describe("the engine's part (CTA-238, Find Best Move v2)", () => {
+  it("names each position's SAN path from the start", () => {
+    expect(positions.map((position) => position.path)).toEqual([[], ["e4"], ["e4", "e5"]]);
+  });
+
+  it("keeps every analysed position when asked, with whatever lines the tree has", () => {
+    const plain = trainingPositionsOf(parsePgnTree("1. e4 e5 2. Nf3 { [%eval 0.30] } *"), { unevaluated: true });
+    expect(plain.map((position) => [position.ply, position.lines.length, position.topCount])).toEqual([
+      [1, 0, 0],
+      [2, 0, 0],
+      // The game's move with an eval is a line — not one of the engine's top lines.
+      [3, 1, 0],
+    ]);
+    expect(plain[2].lines[0]).toMatchObject({ san: "Nf3", played: true, listed: false });
+    // Without the option, nothing.
+    expect(trainingPositionsOf(parsePgnTree("1. e4 e5 2. Nf3 *"))).toEqual([]);
+  });
+
+  it("reads a UCI line as SAN, cut at the first move that does not play", () => {
+    const start = parsePgnTree("*").startFen;
+    expect(sanLineOf(start, ["e2e4", "e7e5", "g1f3"])).toEqual(["e4", "e5", "Nf3"]);
+    expect(sanLineOf(start, ["e2e4", "e2e4"])).toEqual(["e4"]);
+  });
+
+  it("adds an engine's lines to a position — the tree's kept for a move it has — and ranks them again", () => {
+    // 2. Qh5's position: Nf3 +0.30, Bc4 +0.20 listed, Qh5 −1.50 below them.
+    const merged = withEngineResult(at(3), {
+      fen: at(3).fen,
+      lines: [
+        { score: { kind: "cp", value: 40 }, depth: 24, pv: ["b1c3", "g8f6"] },
+        { score: { kind: "cp", value: 25 }, depth: 24, pv: ["g1f3"] },
+        { score: { kind: "cp", value: -150 }, depth: 24, pv: ["d1h5"] },
+      ],
+    });
+    expect(merged.lines.map((line) => [line.san, line.rank, line.loss, line.listed, line.played])).toEqual([
+      ["Nc3", 1, 0, true, false],
+      ["Nf3", 2, 10, true, false],
+      ["Bc4", 3, 20, true, false],
+      ["Qh5", 4, 90, false, true],
+    ]);
+    expect(merged.topCount).toBe(3);
+    expect(merged.lines[0].sans).toEqual(["Nc3", "Nf6"]);
+  });
+
+  it("lists the game's move once the engine scores it among its lines, and ignores another position's search", () => {
+    const plain = trainingPositionsOf(parsePgnTree("1. e4 { [%eval 0.30] } *"), { unevaluated: true })[0];
+    const merged = withEngineResult(plain, { fen: plain.fen, lines: [{ score: { kind: "cp", value: 35 }, depth: 20, pv: ["d2d4"] }, { score: { kind: "cp", value: 20 }, depth: 20, pv: ["g1f3"] }] });
+    expect(merged.lines.map((line) => [line.san, line.listed])).toEqual([
+      ["d4", true],
+      ["e4", true],
+      ["Nf3", true],
+    ]);
+    expect(withEngineResult(plain, { fen: at(3).fen, lines: [{ score: { kind: "cp", value: 0 }, depth: 1, pv: ["g1f3"] }] })).toBe(plain);
+  });
+
+  it("asks the engine where the tree has fewer top lines than needed", () => {
+    expect(needsEngine(at(1), 3)).toBe(false);
+    expect(needsEngine(at(1), 4)).toBe(true);
+    expect(needsEngine(at(3), 3)).toBe(true);
   });
 });

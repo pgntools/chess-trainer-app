@@ -2,6 +2,7 @@ import type { JobKind } from "@pgntools/jobs-runtime";
 
 import type { EngineSessionDeps } from "../engineSession";
 import { computerAnalysisKind } from "./computerAnalysis/kind";
+import { evaluatePositionKind } from "./evaluatePosition/kind";
 import { repertoireEvaluationKind } from "./repertoireEvaluation/kind";
 
 /**
@@ -31,12 +32,17 @@ export type JobKindDeps = {
 export const jobKinds = (deps: JobKindDeps = {}): readonly JobKind<any, any, any>[] => [
   computerAnalysisKind({ engine: deps.engine }),
   repertoireEvaluationKind({ engine: deps.engine }),
+  // CTA-238: one position searched — queued by the Accuracy Trainer's Find Best Move v2 alone, which is
+  // dev-only: so is the kind, a spread the production build drops (no chunk of it, no name).
+  ...(import.meta.env.DEV ? [evaluatePositionKind({ engine: deps.engine })] : []),
 ];
 
 /** Each kind's words — `jobs.kinds.<key>.name`, `.description`, `.errors.<code>`. */
 export const JOB_KIND_LOCALE_KEYS: Readonly<Record<string, string>> = {
   "analysis.computer-analysis": "computerAnalysis",
   "repertoire.evaluation": "repertoireEvaluation",
+  // Dev-only, as its kind (CTA-238).
+  ...(import.meta.env.DEV ? { "analysis.evaluate-position": "evaluatePosition" } : {}),
 };
 
 /**

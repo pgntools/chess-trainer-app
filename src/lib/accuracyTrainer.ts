@@ -8,6 +8,7 @@ import {
   turnOf,
   whiteCp,
   type MoveVerdictKind,
+  type PositionResult,
   type VerdictThresholds,
 } from "./computerAnalysis";
 import { analysisScopeOf } from "./computerAnalysisTree";
@@ -68,6 +69,8 @@ export type TrainingLine = {
 export type TrainingPosition = {
   /** The node the position follows; `null` is the start. */
   nodeId: string | null;
+  /** The same as SAN from the start (`sanPathTo`) — how another tree of the game finds it (CTA-238, v2's Case). */
+  path: readonly string[];
   fen: string;
   turn: Turn;
   /** The move to find, 1-based ply from the tree's start. */
@@ -105,16 +108,28 @@ const lineSans = (node: VariationNode): string[] => {
   return sans;
 };
 
+/** What {@link trainingPositionsOf} keeps. */
+export type TrainingPositionsOptions = {
+  /**
+   * Keep a position with no evaluated side line too (CTA-238, Find Best Move
+   * v2 with the engine on — the engine finds its lines): every analysed
+   * mainline position, its lines whatever the tree has (the game's move,
+   * where it carries an eval, unlisted), its `topCount` 0.
+   */
+  unevaluated?: boolean;
+};
+
 /**
  * **The positions a tree can train**, in game order, both sides — each with
  * its evaluated lines. Empty for a tree with no engine lines: not a full
- * analysis, nothing to ask.
+ * analysis, nothing to ask — unless `unevaluated` keeps every analysed position.
  */
-export const trainingPositionsOf = (tree: GameTree): TrainingPosition[] => {
+export const trainingPositionsOf = (tree: GameTree, { unevaluated = false }: TrainingPositionsOptions = {}): TrainingPosition[] => {
   const scope = analysisScopeOf(tree);
   const positions: TrainingPosition[] = [];
   let siblings: readonly VariationNode[] = tree.moves;
   let before: { nodeId: string | null; fen: string } = { nodeId: null, fen: tree.startFen };
+  const path: string[] = [];
 
   for (const move of mainline(tree)) {
     const turn = turnOf(before.fen);
@@ -135,36 +150,98 @@ export const trainingPositionsOf = (tree: GameTree): TrainingPosition[] => {
         engine.push({ san: sibling.san, score, moverCp: whiteCp(score, turn) * sign, listed: true, played: false, sans: lineSans(sibling) });
       }
 
-      if (engine.length > 0) {
+      if (engine.length > 0 || unevaluated) {
         const playedScore = scoreOfNode(move);
         const unranked = [...engine];
         if (playedScore !== undefined) {
           // The game move's eval is the next position's search: its own side to move signs a mate 0.
           const moverCp = whiteCp(playedScore, turnOf(move.fen)) * sign;
           const worstListed = Math.min(...engine.map((line) => line.moverCp));
-          unranked.push({ san: move.san, score: playedScore, moverCp, listed: moverCp >= worstListed, played: true, sans: lineSans(move) });
+          unranked.push({ san: move.san, score: playedScore, moverCp, listed: engine.length > 0 && moverCp >= worstListed, played: true, sans: lineSans(move) });
         }
-        // Best first; a stable sort keeps the engine's order between equals, and the game's move after them.
-        const sorted = unranked.sort((a, b) => b.moverCp - a.moverCp);
-        const bestCp = clampCp(sorted[0].moverCp);
         positions.push({
           nodeId: before.nodeId,
+          path: [...path],
           fen: before.fen,
           turn,
           ply: move.ply,
           moveNumber: moveNumberOf(tree.startFen, move.ply),
           playedSan: move.san,
-          lines: sorted.map((line, index) => ({ ...line, rank: index + 1, loss: Math.max(0, bestCp - clampCp(line.moverCp)) })),
-          topCount: sorted.filter((line) => line.listed).length,
+          ...rankedLines(unranked),
         });
       }
     }
 
     siblings = move.children;
     before = { nodeId: move.id, fen: move.fen };
+    path.push(move.san);
   }
   return positions;
 };
+
+/** Lines ranked best first — a stable sort keeps the engine's order between equals — with their losses and the top N. */
+const rankedLines = (unranked: Omit<TrainingLine, "rank" | "loss">[]): Pick<TrainingPosition, "lines" | "topCount"> => {
+  const sorted = [...unranked].sort((a, b) => b.moverCp - a.moverCp);
+  const bestCp = sorted[0] === undefined ? 0 : clampCp(sorted[0].moverCp);
+  return {
+    lines: sorted.map((line, index) => ({ ...line, rank: index + 1, loss: Math.max(0, bestCp - clampCp(line.moverCp)) })),
+    topCount: sorted.filter((line) => line.listed).length,
+  };
+};
+
+/** A UCI line from `fen` in SAN, cut at the first move that does not play. */
+export const sanLineOf = (fen: string, pv: readonly string[]): string[] => {
+  const sans: string[] = [];
+  let chess: Chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return sans;
+  }
+  for (const uci of pv) {
+    try {
+      sans.push(chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined }).san);
+    } catch {
+      break;
+    }
+  }
+  return sans;
+};
+
+/**
+ * **A position with an engine's search added** (CTA-238, Find Best Move v2's
+ * Evaluate Position job): each of the search's lines becomes one of the
+ * position's, listed — a move the tree has a line for keeps the tree's, the
+ * engine's taking only the moves it lacks — then all ranked again. A line
+ * whose first move does not play is left out. `result` for another position
+ * (its FEN's first four fields differ) changes nothing.
+ */
+export const withEngineResult = (position: TrainingPosition, result: PositionResult): TrainingPosition => {
+  const key = (fen: string) => fen.trim().split(/\s+/).slice(0, 4).join(" ");
+  if (key(result.fen) !== key(position.fen)) return position;
+  const sign = position.turn === "w" ? 1 : -1;
+  const known = new Set(position.lines.map((line) => bareSan(line.san)));
+  const added: Omit<TrainingLine, "rank" | "loss">[] = [];
+  for (const line of result.lines) {
+    const sans = sanLineOf(position.fen, line.pv);
+    const first = sans[0];
+    if (first === undefined || known.has(bareSan(first))) continue;
+    known.add(bareSan(first));
+    added.push({ san: first, score: line.score, moverCp: whiteCp(line.score, position.turn) * sign, listed: true, played: bareSan(first) === bareSan(position.playedSan), sans });
+  }
+  if (added.length === 0) return position;
+  const kept = position.lines.map(({ san, score, moverCp, listed, played, sans }) => ({ san, score, moverCp, listed, played, sans }));
+  // With the engine's lines a game move below the tree's lines may be listed now: the engine's are the top N.
+  const all = [...kept, ...added];
+  const worstListed = Math.min(...all.filter((line) => line.listed && !line.played).map((line) => line.moverCp));
+  return {
+    ...position,
+    ...rankedLines(all.map((line) => (line.played && !line.listed ? { ...line, listed: line.moverCp >= worstListed } : line))),
+  };
+};
+
+/** Whether a position has fewer of the engine's top lines than `needed` — the engine is asked for it (CTA-238). */
+export const needsEngine = (position: TrainingPosition, needed: number): boolean => position.topCount < needed;
 
 /** The positions a session over `side` asks, in game order. */
 export const sessionPositionsOf = (positions: readonly TrainingPosition[], side: TrainingSide): TrainingPosition[] =>
