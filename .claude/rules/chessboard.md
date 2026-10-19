@@ -860,6 +860,7 @@ the detail.
 | **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: a new Case in Analysis) | Moves · Export (no Map since CTA-212; Back, the game's title and caption, the tags (Info, where a game opens), the next-move arrows, the move marks, the eval bar and previous / next at its foot its left panel's `LibraryGameDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-209) | as the Case board |
 | **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to Analysis as a Case | Book · Moves · Map · Load · Export | explorer, as the Case board |
 | **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (CTA-186, shipped in CTA-192) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Export (the engine's on / off a header switch, its eval bar and Write evaluations its left panel's Case view's Settings tab, CTA-199 — no `BoardEngineControls`; how it draws, Display, there too) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
+| **Accuracy Trainer** `/engine/accuracy` (CTA-238, experimental, dev-only) | the core alone, its drops read by the screen's wrappers and never played | none — no engine runs | — | nothing is kept | Train · Summary | none — one position at a time ([`accuracy-trainer.md`](./accuracy-trainer.md)) |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map (the session's settings — the eval bar too —, the games and Jobs its left panel's `RepertoireDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-206) | the full explorer; editing and comments in the player only |
 
 **No analysis board has an Engine tab** (CTA-181): the search settings are the
@@ -920,7 +921,7 @@ a second panel, or a locale block repeating `moveList.*` / `variations.*` /
 - **Mirror under RTL.** A panel token that must stay LTR takes the `dir`
   attribute, not a CSS declaration (the RTL stylis plugin flips it).
 - **Share an `options.id`** — `analysis-case`, `play-with-engine`, `masked-play`,
-  `openings`, `library-game`, `repertoire-board`, `repertoire-game`, and the
+  `openings`, `library-game`, `repertoire-board`, `repertoire-game`, `accuracy-trainer`, and the
   front page's `front-page-game-…` / `front-page-repertoire-…` (CTA-126).
 - **Change a shared piece incompatibly.** Under `views/shared/`,
   `views/explorer/`, `views/board/core/` or `src/lib/`, a new behaviour is an

@@ -40,6 +40,8 @@ export type NavTreeNode = {
   keepFolder?: boolean;
   /** A screen not yet published — a Blog draft in `yarn dev` (CTA-135); the row is marked. */
   draft?: boolean;
+  /** An experimental screen (CTA-238); the row is marked. */
+  experimental?: boolean;
 };
 
 /**
@@ -64,6 +66,7 @@ type ScreenLike = {
   label?: LocalizedText;
   icon: SvgIconComponent;
   draft?: boolean;
+  experimental?: boolean;
 };
 
 /** Carry across whichever of the two naming fields the input has. */
@@ -98,6 +101,7 @@ export const buildNavTree = <Id extends string>(
         icon: item.icon,
         to: item.to,
         ...(item.draft ? { draft: true } : {}),
+        ...(item.experimental ? { experimental: true } : {}),
       })),
     ],
   }));

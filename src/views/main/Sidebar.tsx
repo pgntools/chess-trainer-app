@@ -89,6 +89,7 @@ function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
             }}
           />
           {node.draft === true && <LabelChip label={t("blog.draft")} tone="warning" testId={`nav-draft-${node.id}`} />}
+          {node.experimental === true && <LabelChip label={t("nav.experimental")} tone="info" testId={`nav-experimental-${node.id}`} />}
         </ListItemButton>
       </ListItem>
     );

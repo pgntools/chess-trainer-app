@@ -75,11 +75,15 @@ describe("the shipped nav tree", () => {
     }
   });
 
-  it("files the Lobby and Masked Pieces in the Engine folder (CTA-79, CTA-82)", () => {
+  it("files the Lobby and Masked Pieces in the Engine folder (CTA-79, CTA-82) — and, dev-only, the Accuracy Trainer after them (CTA-238)", () => {
     expect(navItemsInFolder("engine").map((item) => item.to)).toEqual([
       "/engine/games",
       "/engine/masked",
+      // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
+      "/engine/accuracy",
     ]);
+    expect(navItemsInFolder("engine")[2]).toMatchObject({ labelKey: "nav.accuracyTrainer", experimental: true });
+    expect(folderPath("/engine/accuracy")).toEqual(["engine"]);
     expect(navItemsInFolder("engine")[0].labelKey).toBe("nav.lobby");
     // Play with Engine has no entry: the Lobby's Start button reaches it, and
     // its route is no screen of the tree, so it opens no chain of its own.

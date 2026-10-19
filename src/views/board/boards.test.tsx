@@ -50,6 +50,7 @@ import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
+import AccuracyTrainer from "../engine/accuracy/AccuracyTrainer";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
 
@@ -179,6 +180,22 @@ beforeEach(async () => {
   localStorage.clear();
   FakeEngine.reset();
   await i18n.changeLanguage("en");
+});
+
+describe("the Accuracy Trainer (CTA-238, dev-only), from the same core — with no engine", () => {
+  it("renders the shared board square and panel skeleton, and builds no engine", () => {
+    const { unmount } = renderBoard(AccuracyTrainer);
+    expect(screen.getByTestId("accuracy-trainer-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("accuracy-trainer-board")).toBeInTheDocument();
+    expect(boardOptions().id).toBe("accuracy-trainer");
+    expect(screen.getByTestId("accuracy-trainer-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("board-controls")).toBeInTheDocument();
+    // No engine: no status row, no lines, no engine control — and none built.
+    expect(screen.queryByTestId("accuracy-trainer-panel-status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("accuracy-trainer-setting-engine")).not.toBeInTheDocument();
+    expect(FakeEngine.instances).toHaveLength(0);
+    unmount();
+  });
 });
 
 describe("every v2 board, from the same core", () => {

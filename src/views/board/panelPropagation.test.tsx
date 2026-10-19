@@ -69,6 +69,7 @@ import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
+import AccuracyTrainer from "../engine/accuracy/AccuracyTrainer";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -110,6 +111,15 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
     { name: "Analysis V2 case", panelId: "analysis-case-panel", Screen: AnalysisCase },
   ];
 
+/**
+ * The boards with no move list of their own — the experimental Accuracy
+ * Trainer (CTA-238, dev-only) holds one position at a time, so it has no
+ * Moves tab, but its panel is the one skeleton all the same.
+ */
+const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
+  { name: "Accuracy Trainer", panelId: "accuracy-trainer-panel", Screen: AccuracyTrainer },
+];
+
 const renderBoard = (Screen: () => ReactNode) =>
   render(
     <AppThemeWithLang>
@@ -130,7 +140,7 @@ beforeEach(async () => {
 });
 
 describe("the one panel skeleton", () => {
-  it.each(BOARDS)(
+  it.each([...BOARDS, ...POSITION_BOARDS])(
     "$name renders it, and no panel of its own",
     ({ panelId, Screen }) => {
       const { unmount } = renderBoard(Screen);

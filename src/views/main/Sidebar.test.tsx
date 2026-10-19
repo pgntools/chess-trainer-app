@@ -39,9 +39,9 @@ const ADD_COLLECTION = "/library/new";
  * same resolver the sidebar uses, so a node named by data (`label`) is named
  * the way the app renders it.
  */
-/** A row's accessible name — a draft's chip (CTA-135, `yarn dev` and tests only) read after it. */
-const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"]; draft?: boolean }) =>
-  `${navLabel(node, (key) => i18n.t(key), "en")}${node.draft === true ? " Draft" : ""}`;
+/** A row's accessible name — a draft's chip (CTA-135, `yarn dev` and tests only) or an experiment's (CTA-238) read after it. */
+const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"]; draft?: boolean; experimental?: boolean }) =>
+  `${navLabel(node, (key) => i18n.t(key), "en")}${node.draft === true ? " Draft" : ""}${node.experimental === true ? " Experimental" : ""}`;
 
 /** A folder's rendered name, at any depth — so a test can name its row. */
 const folderNameOf = (
@@ -690,5 +690,16 @@ describe("a row named by data (CTA-135)", () => {
   it("marks nothing in English", () => {
     renderAt("/", tree);
     expect(screen.getByText("Only in English: [%cal]")).not.toHaveAttribute("lang");
+  });
+});
+
+describe("an experimental row (CTA-238)", () => {
+  it("carries a chip saying so, read after its name", async () => {
+    renderAt("/engine/accuracy");
+    expect(screen.getByRole("link", { name: "Accuracy Trainer Experimental" })).toHaveAttribute("href", "/engine/accuracy");
+    expect(screen.getByTestId("nav-experimental-/engine/accuracy")).toHaveTextContent("Experimental");
+    // Its neighbours carry none.
+    expect(screen.queryByTestId("nav-experimental-/engine/masked")).not.toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });
