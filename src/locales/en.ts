@@ -432,6 +432,20 @@ const en = {
     toggle: "Engine analysis",
     menu: "Board engine options",
   },
+  /**
+   * **One engine at a time** (CTA-237, the board core's `useEngineGate`): a
+   * board's engine asked for while an engine job runs — the
+   * `EngineJobRunningDialog` block — and the snackbar when a job starting
+   * switches the board engines off.
+   */
+  engineGate: {
+    title: "An engine job is running",
+    message: "“{{title}}” is running its engine. Only one engine runs at a time, so the board's engine is still off.",
+    hint: "Pause the job and the board's engine starts — resume the job from Jobs later, from where it stopped. Or wait for it to finish and turn the engine on then.",
+    pause: "Pause the job",
+    wait: "Wait for it to finish",
+    switchedOff: "The board's engine is off: “{{title}}” is running its engine.",
+  },
   /** "Engine options changed" (CTA-181): a record opened whose search settings differ from the ones in effect. */
   engineChanged: {
     title: "Engine options changed",

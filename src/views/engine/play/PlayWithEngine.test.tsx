@@ -20,13 +20,16 @@ import {
 import { playedGameOf, type PlayedGameEngine } from "../../../lib/playedGames";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
+import { boardOptions, engineJobsStub, FakeEngine } from "../../board/boardTestHarness";
+import EngineGateHost from "../../board/core/EngineGateHost";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
 vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
   (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
 );
 
+// The engine gate's jobs (CTA-237): none running unless a test says so.
+vi.mock("../../board/core/engineGateJobs", async () => (await import("../../board/boardTestHarness")).engineGateJobsMock());
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
   return reactChessboardMock();
@@ -72,6 +75,7 @@ const mount = (entry = "/engine/play") =>
           </Routes>
           <Where />
           <RightPanelOutlet />
+          <EngineGateHost />
         </RightPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
@@ -880,5 +884,52 @@ describe("Play with Engine — a resumed game's engine settings (CTA-181)", () =
     mount("/engine/play?saved=r1");
     await waitFor(() => expect(boardOptions().position).not.toBe(START));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Play with Engine — one engine at a time (CTA-237)", () => {
+  const RUNNING = { id: "job-1", lane: "engine", status: "running", title: "Evaluate repertoire — Najdorf" };
+  const engineButton = () => screen.getByTestId("play-with-engine-setting-engine");
+  const searched = () => FakeEngine.instances.flatMap((engine) => engine.searches);
+
+  afterEach(() => engineJobsStub.reset());
+
+  it("asks on arrival while an engine job runs, and neither searches nor moves until the reader answers — Pause the job", async () => {
+    const user = userEvent.setup();
+    engineJobsStub.set([RUNNING]);
+    mount();
+    const dialog = await screen.findByRole("dialog", { name: "An engine job is running" });
+    expect(dialog).toHaveTextContent("“Evaluate repertoire — Najdorf” is running its engine.");
+    expect(drag("e2", "e4")).toBe(true);
+    expect(searched()).toEqual([]);
+
+    await user.click(within(dialog).getByRole("button", { name: "Pause the job" }));
+    expect(engineJobsStub.pauses).toEqual(["job-1"]);
+    expect(isPlaying()).toBe(true);
+    expect(searched()).toEqual([]);
+    act(() => engineJobsStub.set([{ ...RUNNING, status: "paused" }]));
+    // The job stopped: the engine answers the reader's move.
+    await waitFor(() => expect(FakeEngine.latest().lastSearch).toBe(AFTER_E4));
+    engineSearches("e7e5");
+    expect(boardOptions().position).toBe(AFTER_E4_E5);
+  });
+
+  it("leaves its engine off on Wait for it to finish", async () => {
+    const user = userEvent.setup();
+    engineJobsStub.set([RUNNING]);
+    mount();
+    await user.click(await screen.findByRole("button", { name: "Wait for it to finish" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(engineButton()).toHaveAttribute("aria-pressed", "false");
+    expect(searched()).toEqual([]);
+    expect(engineJobsStub.pauses).toEqual([]);
+  });
+
+  it("switches its engine off, said in a snackbar, when an engine job starts", async () => {
+    mount();
+    await waitFor(() => expect(FakeEngine.latest().lastSearch).toBe(START));
+    act(() => engineJobsStub.set([RUNNING]));
+    expect(engineButton()).toHaveAttribute("aria-pressed", "false");
+    expect(await screen.findByTestId("engine-gate-switched-off")).toHaveTextContent("“Evaluate repertoire — Najdorf” is running");
   });
 });

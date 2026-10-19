@@ -5,6 +5,7 @@ import { annotatorOf, recordEvaluation } from "../../../lib/engineEvals";
 import { findNode, pathTo, type GameTree } from "../../../lib/gameTree";
 import { extensionIdsOf, nodeIdsOf } from "../../../lib/repertoireTrainer";
 import { useBoardCore } from "./useBoardCore";
+import { useEngineGate } from "./useEngineGate";
 import { useEngineModule, type FinishedSearch } from "./useEngineModule";
 import { useEngineChoice } from "../../shared/useEngineChoice";
 import { usePlayToggle } from "./usePlayToggle";
@@ -84,7 +85,8 @@ export const useAnalysisSession = ({
   const { settings: search } = useEngineSearchSettings();
   const [writeEvals, setWriteEvals] = useState(initialSettings?.writeEvals ?? false);
   const settings = useMemo(() => analysisSettingsOf(search, writeEvals), [search, writeEvals]);
-  const [engineOn, setEngineOn] = useState(false);
+  // Its switch goes through the gate (CTA-237): one engine at a time, a job's or one board's, in any tab.
+  const { engineOn, setEngineOn, engineRuns } = useEngineGate();
   const [showEvalBar, setShowEvalBar] = useState(true);
   /*
     Play (CTA-73): the engine plays its best move for the opponent's side,
@@ -122,7 +124,7 @@ export const useAnalysisSession = ({
   // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
   const { engineId } = useEngineChoice();
   const engine = useEngineModule({
-    enabled: engineOn,
+    enabled: engineRuns,
     engine: engineId,
     fen: core.fen,
     depth: settings.depth,

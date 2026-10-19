@@ -14,6 +14,7 @@ import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { DevelopmentNotice } from './DevelopmentNotice';
 import { JobRuntimeStarter, JobsIndicator } from '../jobs/JobsShell';
+import EngineGateHost from '../board/core/EngineGateHost';
 import { EngineMenu } from './EngineMenu';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
@@ -882,6 +883,8 @@ const DefaultLayout = ()=>
                             <DevelopmentNotice />
                             {/* The page's job runtime (CTA-221): started once, outliving every route. */}
                             <JobRuntimeStarter />
+                            {/* One engine at a time (CTA-237): a board's question while a job's engine runs, and its switch-offs. */}
+                            <EngineGateHost />
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

@@ -250,9 +250,14 @@ left as they are** — no migration, no deletion — and read as follows:
    `runtime.removeUnfinishedOf`, through `subjectDeletion.ts`); finished jobs
    stay, their outputs on their own, a deleted subject read as "deleted".
    (Jobs V2 deleted even a Case's finished jobs; that change is deliberate.)
-5. **Jobs are not exported** (`import-export.md`): a job is work in flight on
+5. **One engine at a time, a job's or a board's** (CTA-237): while an engine
+   job runs, in any tab, no board engine searches — a board asks before its
+   engine goes on (Pause the job / Wait for it to finish), and a job starting
+   switches every board engine off. The gate is the board core's
+   (`useEngineGate`, `chessboard.md` §9.2.7); the runtime is untouched.
+6. **Jobs are not exported** (`import-export.md`): a job is work in flight on
    this device, its outputs are the reader's data and are exported as such.
-6. **Blocks never import the runtime**; the screens map its records onto the
+7. **Blocks never import the runtime**; the screens map its records onto the
    blocks' view models (`jobViews.ts`).
 
 ---
