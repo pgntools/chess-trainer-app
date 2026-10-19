@@ -584,7 +584,17 @@ const en = {
     details: {
       label: "{{name}} — the exercise's own view",
       toggle: "The exercise's settings",
-      tabs: { label: "The exercise's own view", moves: "Your moves", settings: "Settings" },
+      tabs: { label: "The exercise's own view", moves: "Your moves", results: "Results", settings: "Settings" },
+      /** The Results tab: every position answered or passed. */
+      resultsList: "The positions answered or passed",
+      resultsNone: "No position answered or passed yet.",
+      resultGame: "Game:",
+      resultPassed: "Passed",
+      resultLater: "Answer it",
+      resultWaiting: "Waiting for the engine",
+      resultNoLines: "No line to compare",
+      resultOpen: "Open {{move}} — {{score}}",
+      resultAnswer: "Answer {{move}} now — passed",
       /** The Moves tab: the reader's moves at the position on screen. */
       movesList: "Your moves, best first",
       movesNone: "No move yet — play one from the position on the board.",

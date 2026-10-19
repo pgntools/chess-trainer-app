@@ -457,4 +457,38 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");
     expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. Bc4");
   });
+
+  it("lists every position answered or passed on Results — a click back to its result, or to answer a passed one", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White");
+    // 1. e4's position: e4 — the 1st of the top 3. 2. Qh5's: passed — the last, so on to the summary.
+    drag("e2", "e4");
+    await user.click(screen.getByRole("button", { name: "Check (1)" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+
+    await user.click(screen.getByRole("tab", { name: "Results" }));
+    const list = () => within(screen.getByRole("list", { name: "The positions answered or passed" }));
+    expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Open 1. White — 1/3 · 1 in place",
+      "Answer 2. White now — passed",
+    ]);
+
+    // The passed one: the board on it, to answer.
+    await user.click(list().getByRole("button", { name: "Answer 2. White now — passed" }));
+    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    expect(boardOptions().position).toBe(AFTER_E5);
+    expect(drag("g1", "f3")).toBe(true);
+    expect(screen.getByRole("button", { name: "Check (1)" })).toBeEnabled();
+    // Passed no more: it is the one on screen, being answered.
+    expect(list().getAllByRole("button")).toHaveLength(1);
+
+    // The answered one: its result.
+    await user.click(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" }));
+    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 2");
+    expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
+    expect(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" })).toHaveAttribute("aria-current", "true");
+  });
 });

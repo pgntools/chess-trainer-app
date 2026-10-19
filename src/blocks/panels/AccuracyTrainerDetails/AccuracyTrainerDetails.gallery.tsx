@@ -4,7 +4,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES } from "./fixtures";
+import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
 
 type Settings = { arrows: boolean; engine: boolean; moves: number };
 
@@ -35,6 +35,7 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
           {...(withCase
             ? {
                 caseLink: CASE_LINK,
+                results: { rows: RESULTS, onOpen: () => {} },
                 moves:
                   shown === "passed"
                     ? { kind: "passed" as const, label: LABEL, onAnswerAgain: () => {} }
@@ -77,6 +78,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Moves — checked, waiting for the engine",
       render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-waiting", { arrows: true, engine: true, moves: 3 }, true, "moves", "waiting"),
+    },
+    {
+      name: "Results — every position answered or passed, each a way back to it",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-results", { arrows: true, engine: false, moves: 2 }, true, "results"),
     },
     {
       name: "Moves — before a session",

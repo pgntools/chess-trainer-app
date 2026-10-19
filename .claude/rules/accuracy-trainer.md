@@ -238,7 +238,12 @@ moves to find, N.
   closing the top N, the reader's moves none of the lines has after it, and
   the headline (`gradeHeadlineOf`, `GradedLines`'); checked and waiting for
   the engine, the moves and a word; an earlier position skipped, not answered
-  yet. And **Settings** — *Moves to
+  yet. **Results**: every position answered or passed, in game order, one row
+  each — the move, the game's move, the score (found / in place, *Perfect*),
+  *waiting for the engine*, or *Passed · Answer it* — the one the board
+  stands at current; a click goes back to it: an answered one opened on its
+  result (Result), a passed one to answer it now (`answerAgain`, Moves) —
+  straight there, nothing played out. And **Settings** — *Moves to
   find* (locked while a session runs), *Show next-move arrows*, *Use the
   engine*. (Named *Your moves*, not *Moves*: the right panel's Moves is the
   move list.)

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AccuracyReportRow, AccuracyTrainerMoves } from "../../../blocks/panels";
+import type { AccuracyReportRow, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
 import type { SideValue } from "../../../design-system/components/forms";
 import {
   gradePosition,
@@ -360,9 +360,11 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
    * checked, waiting for its search or graded — every line, the reader's moves
    * marked; an earlier one skipped, not answered yet.
    */
+  // The trained position the board stands at.
+  const shownAt = session === null ? undefined : (positionAtPath(session.positions, sanPathTo(core.tree, core.nodeId)) ?? session.index);
   const shownMoves = ((): AccuracyTrainerMoves | undefined => {
-    if (session === null) return undefined;
-    const at = positionAtPath(session.positions, sanPathTo(core.tree, core.nodeId)) ?? session.index;
+    if (session === null || shownAt === undefined) return undefined;
+    const at = shownAt;
     const shown = positions[at];
     if (shown === undefined) return undefined;
     const label = t("accuracyTrainer.details.positionLabel", { at: at + 1, count: session.positions.length, move: labelOf(shown) });
@@ -375,6 +377,28 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     const grade = grades[at];
     return grade === null || grade === undefined ? { kind: "waiting", label, list: given } : { kind: "graded", label, position: shown, grade };
   })();
+
+  /** **Results** — every position answered or passed, in game order: graded, waiting for the engine, or passed. */
+  const results: AccuracyTrainerResult[] =
+    session === null
+      ? []
+      : session.positions.flatMap((each, at): AccuracyTrainerResult[] => {
+          const given = session.answers[at];
+          if (given === null || given === undefined) return [];
+          const grade = grades[at];
+          const state = given.length === 0 ? "passed" : grade === null || grade === undefined ? "waiting" : "graded";
+          return [{ index: at, label: labelOf(each), playedSan: each.playedSan, state, ...(state === "graded" && grade !== null && grade !== undefined ? { grade } : {}), current: at === shownAt }];
+        });
+
+  /** Back to a position from Results — passed, to answer it now; answered, its result. Straight there, no moves played out. */
+  const openResult = (at: number): "answer" | "result" => {
+    if (session?.answers[at]?.length === 0) {
+      answerAgain(at);
+      return "answer";
+    }
+    open(at);
+    return "result";
+  };
 
   const reportRows = useMemo<AccuracyReportRow[]>(
     () =>
@@ -410,6 +434,9 @@ export const useFindBestMoveSession = ({ stepDelayMs = STEP_DELAY_MS }: { stepDe
     candidates: session === null ? [] : (answered ?? candidatesOf(session.view, core.tree)),
     /** What the left panel's Your moves shows — the position the board stands at. */
     shownMoves,
+    /** What the left panel's Results lists, and the way back to one. */
+    results,
+    openResult,
     /** How many best moves the session asks for at each position. */
     wanted,
     /** Whether the reader may move a piece: while answering, on the position or inside a line from it; once answered, anywhere. */

@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES } from "./fixtures";
+import { CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -20,6 +20,7 @@ function Live({
   shown = "answering",
   startTab = "settings",
   onAnswerAgain = () => {},
+  onOpen = () => {},
 }: {
   title?: string;
   initial?: boolean;
@@ -27,6 +28,7 @@ function Live({
   shown?: "answering" | "waiting" | "graded" | "passed";
   startTab?: AccuracyTrainerDetailsTab;
   onAnswerAgain?: () => void;
+  onOpen?: (index: number) => void;
 }) {
   const [tab, setTab] = useState<AccuracyTrainerDetailsTab>(startTab);
   const [list, setList] = useState<readonly string[]>(MOVES);
@@ -48,6 +50,7 @@ function Live({
       {...(withCase
         ? {
             caseLink: CASE_LINK,
+            results: { rows: RESULTS, onOpen },
             moves:
               shown === "passed"
                 ? { kind: "passed" as const, label: LABEL, onAnswerAgain: answerAgain }
@@ -168,6 +171,33 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(screen.queryByRole("list", { name: "The engine's lines, best first, your moves marked" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Answer it now" }));
     expect(onAnswerAgain).toHaveBeenCalled();
+  });
+
+  it("lists on Results every position answered or passed — its score, or passed — each a button back to it, the one on screen current", async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    render(<Live withCase startTab="results" onOpen={onOpen} />);
+    const rows = within(screen.getByRole("list", { name: "The positions answered or passed" })).getAllByRole("button");
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Open 1. White — 2/2 · 2 in place",
+      "Answer 1. Black now — passed",
+      "Open 2. White — 2/2 · 0 in place",
+      "Open 3. White — Waiting for the engine",
+    ]);
+    expect(rows[0]).toHaveTextContent("Perfect");
+    expect(rows[2]).toHaveAttribute("aria-current", "true");
+    await user.click(screen.getByRole("button", { name: "Answer 1. Black now — passed" }));
+    expect(onOpen).toHaveBeenLastCalledWith(1);
+    await user.click(rows[0]);
+    expect(onOpen).toHaveBeenLastCalledWith(0);
+    await expectNoAxeViolations();
+  });
+
+  it("says when no position is answered or passed yet", async () => {
+    const user = userEvent.setup();
+    render(<Live />);
+    await user.click(screen.getByRole("tab", { name: "Results" }));
+    expect(screen.getByTestId("details-results-empty")).toHaveTextContent("Start a session");
   });
 
   it("passes axe on a graded position", async () => {

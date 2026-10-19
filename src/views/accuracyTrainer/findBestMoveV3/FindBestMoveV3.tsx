@@ -38,7 +38,8 @@ const ID = "find-best-move-v3";
  * with editing on: side lines, comments, glyphs, the map), the right panel
  * (the setup, then Moves · Map · Result · Summary, the footer's moves so far
  * with Pass / Check, or Next) and the left one (`AccuracyTrainerDetails`: the
- * game, its Case, Moves — the reader's moves, reordered and deleted — and Settings). At each position the board shows every move
+ * game, its Case, Your moves — the position the board stands at —, Results —
+ * every position answered or passed, a way back to each — and Settings). At each position the board shows every move
  * before it and none after; the reader's lines from it are their moves, in
  * their order, and **Check** grades them against the top N. A **pass** is put
  * off for later and goes on at once: its lines stay hidden, and *Answer it
@@ -305,6 +306,11 @@ function FindBestMoveV3({ stepDelayMs }: FindBestMoveV3Props = {}) {
             : {
                 caseLink: { component: RouterLink, to: casePath(session.caseRef.projectId, session.caseRef.caseId) },
                 ...(run.shownMoves === undefined ? {} : { moves: run.shownMoves }),
+                results: {
+                  rows: run.results,
+                  // A passed one to answer on the board, Moves; an answered one's result, Result.
+                  onOpen: (index: number) => setTab(run.openResult(index) === "answer" ? "moves" : "result"),
+                },
               })}
           testId={`${ID}-details`}
         />

@@ -18,7 +18,30 @@ import { formatScore } from "../../../lib/engineAnalysis";
 import { gradeHeadlineOf } from "../GradedLines";
 
 /** The panel's tabs. */
-export type AccuracyTrainerDetailsTab = "moves" | "settings";
+export type AccuracyTrainerDetailsTab = "moves" | "results" | "settings";
+
+/** **One position answered or passed**, as Results lists it. */
+export type AccuracyTrainerResult = {
+  /** Its place in the session — what `onOpen` is called with. */
+  index: number;
+  /** The move to find, named ("12. White"). */
+  label: string;
+  /** The game's move there. */
+  playedSan: string;
+  /** Answered and graded, checked and waiting for the engine, or passed. */
+  state: "graded" | "waiting" | "passed";
+  /** Its grade, graded. */
+  grade?: PositionGrade;
+  /** The position the board stands at. */
+  current: boolean;
+};
+
+/** The session's answered and passed positions, and the way back to one. */
+export type AccuracyTrainerResults = {
+  rows: readonly AccuracyTrainerResult[];
+  /** Back to a position — answered, its result; passed, to answer it. */
+  onOpen: (index: number) => void;
+};
 
 /**
  * **The position the board stands at, as Your moves shows it** — the trained
@@ -69,6 +92,8 @@ export type AccuracyTrainerDetailsProps = {
   caseLink?: LinkTarget;
   /** The position the board stands at — absent before a session starts. */
   moves?: AccuracyTrainerMoves;
+  /** Every position answered or passed so far — absent before a session starts. */
+  results?: AccuracyTrainerResults;
   /**
    * The root; its parts `-title`, `-case` (the Case's link), `-tabs` (each tab
    * `<testId>-tab-<id>`), `-moves-tab` (its position `-moves-label`; being
@@ -76,6 +101,7 @@ export type AccuracyTrainerDetailsProps = {
    * `-remove`, none `-moves-empty`; waiting `-moves-waiting`; graded the
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
    * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
+   * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
    * `-settings` (`-moves`, `-arrows`,
    * `-engine`).
    */
@@ -96,6 +122,9 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * reader's moves marked** in it (their rank, *In place*, the verdict), a
  * divider closing the top N, and the reader's moves outside the lines after
  * it; passed — put off for later — its lines hidden, and **Answer it now** —
+ * **Results**: every position answered or passed, in game order, each a
+ * button back to it (its score — found / in place, *Perfect* —, waiting for
+ * the engine, or passed: to answer it), the one the board stands at current —
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position), *Show next-move arrows* (the
@@ -119,6 +148,7 @@ function AccuracyTrainerDetails({
   onEngineChange,
   caseLink,
   moves,
+  results,
   testId,
 }: AccuracyTrainerDetailsProps) {
   const { t } = useTranslation();
@@ -149,6 +179,7 @@ function AccuracyTrainerDetails({
         <PanelTabs
           tabs={[
             { id: "moves", label: t("accuracyTrainer.details.tabs.moves") },
+            { id: "results", label: t("accuracyTrainer.details.tabs.results") },
             { id: "settings", label: t("accuracyTrainer.details.tabs.settings") },
           ]}
           value={tab}
@@ -203,6 +234,17 @@ function AccuracyTrainerDetails({
             )}
           </Box>
         )}
+        {tab === "results" && (
+          <Box {...tabPanelProps(testId, "results")} data-testid={`${testId}-results-tab`} sx={{ p: 1 }}>
+            {results === undefined || results.rows.length === 0 ? (
+              <Typography variant="body2" data-testid={`${testId}-results-empty`} sx={{ color: "text.secondary" }}>
+                {t(results === undefined ? "accuracyTrainer.details.movesNoSession" : "accuracyTrainer.details.resultsNone")}
+              </Typography>
+            ) : (
+              <ResultList results={results} testId={testId} />
+            )}
+          </Box>
+        )}
         {tab === "settings" && (
           <Box
             {...tabPanelProps(testId, "settings")}
@@ -241,6 +283,57 @@ function AccuracyTrainerDetails({
           </Box>
         )}
       </Box>
+    </Box>
+  );
+}
+
+/** Every position answered or passed, each a button back to it. */
+function ResultList({ results, testId }: { results: AccuracyTrainerResults; testId: string }) {
+  const { t } = useTranslation();
+  const scoreOf = (row: AccuracyTrainerResult): string => {
+    if (row.state === "passed") return t("accuracyTrainer.details.resultPassed");
+    if (row.state === "waiting" || row.grade === undefined) return t("accuracyTrainer.details.resultWaiting");
+    if (row.grade.target === 0) return t("accuracyTrainer.details.resultNoLines");
+    return t("accuracyTrainer.report.foundOf", { found: row.grade.found, count: row.grade.target, inPlace: row.grade.inPlace });
+  };
+  return (
+    <Box component="ol" aria-label={t("accuracyTrainer.details.resultsList")} sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 0.5 }}>
+      {results.rows.map((row) => {
+        const perfect = row.grade !== undefined && row.grade.target > 0 && row.grade.inPlace === row.grade.target;
+        const score = scoreOf(row);
+        return (
+          <Box component="li" key={row.index}>
+            <Button
+              fullWidth
+              variant={row.current ? "outlined" : "text"}
+              onClick={() => results.onOpen(row.index)}
+              aria-current={row.current ? "true" : undefined}
+              aria-label={t(row.state === "passed" ? "accuracyTrainer.details.resultAnswer" : "accuracyTrainer.details.resultOpen", { move: row.label, score })}
+              data-testid={`${testId}-result-${row.index}`}
+              sx={{ justifyContent: "space-between", gap: 1, textTransform: "none", textAlign: "start", color: "text.primary" }}
+            >
+              <Box component="span" sx={{ display: "grid", minWidth: 0 }}>
+                <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
+                  {row.label}
+                </Typography>
+                <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
+                  {t("accuracyTrainer.details.resultGame")}{" "}
+                  <Box component="span" dir="ltr">
+                    {row.playedSan}
+                  </Box>
+                </Typography>
+              </Box>
+              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
+                <Typography component="span" variant="body2" dir="ltr" sx={{ color: row.state === "graded" ? "text.primary" : "text.secondary" }}>
+                  {score}
+                </Typography>
+                {perfect && <LabelChip label={t("accuracyTrainer.report.perfectMark")} tone="success" />}
+                {row.state === "passed" && <LabelChip label={t("accuracyTrainer.details.resultLater")} tone="warning" />}
+              </Box>
+            </Button>
+          </Box>
+        );
+      })}
     </Box>
   );
 }

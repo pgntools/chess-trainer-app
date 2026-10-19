@@ -1,5 +1,6 @@
 import { gradePosition, trainingPositionsOf, type PositionGrade, type TrainingPosition } from "../../../lib/accuracyTrainer";
 import { parsePgnTree } from "../../../lib/pgn";
+import type { AccuracyTrainerResult } from "./AccuracyTrainerDetails";
 
 /*
   An Accuracy Trainer exercise's panel (CTA-238): the headings it shows.
@@ -33,3 +34,14 @@ export const GRADED: PositionGrade = gradePosition(GRADED_POSITION, ["Bc4", "Nf3
 
 /** The position's label, as the screen names it. */
 export const LABEL = "Position 2 of 3 · 2. White";
+
+/** Both best moves, in order. */
+const PERFECT: PositionGrade = gradePosition(GRADED_POSITION, ["Nf3", "Bc4"], { wanted: 2 });
+
+/** Four positions of a session: perfect, passed, found two the wrong way round (on screen), waiting for the engine. */
+export const RESULTS: readonly AccuracyTrainerResult[] = [
+  { index: 0, label: "1. White", playedSan: "e4", state: "graded", grade: PERFECT, current: false },
+  { index: 1, label: "1. Black", playedSan: "e5", state: "passed", current: false },
+  { index: 2, label: "2. White", playedSan: "Qh5", state: "graded", grade: GRADED, current: true },
+  { index: 3, label: "3. White", playedSan: "Bc4", state: "waiting", current: false },
+];
