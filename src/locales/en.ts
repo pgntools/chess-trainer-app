@@ -569,6 +569,14 @@ const en = {
       summary: "Summary",
       newSession: "New session",
     },
+    /** An exercise's own panel beside its board (`AccuracyTrainerDetails`). */
+    details: {
+      label: "{{name}} — the exercise's own view",
+      toggle: "The exercise's settings",
+      tabs: { label: "The exercise's own view", settings: "Settings" },
+      arrows: "Show next-move arrows",
+      arrowsHelp: "The continuations of your analysis at the position on screen, as arrows on the board.",
+    },
     /** Find Best Move v2: an analysis board at each position, then one move chosen. */
     v2: {
       tabs: { moves: "Moves", map: "Map", result: "Result" },

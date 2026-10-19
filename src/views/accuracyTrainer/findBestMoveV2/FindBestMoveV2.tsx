@@ -5,9 +5,18 @@ import Typography from "@mui/material/Typography";
 import type { ChessboardOptions } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
-import { AccuracySessionReport, GradedLines, type AccuracyReportRow } from "../../../blocks/panels";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
+
+import {
+  AccuracySessionReport,
+  AccuracyTrainerDetails,
+  GradedLines,
+  type AccuracyReportRow,
+  type AccuracyTrainerDetailsTab,
+} from "../../../blocks/panels";
 import type { SideValue } from "../../../design-system/components/forms";
 import { LabelChip } from "../../../design-system/components/tables";
+import { IconAction } from "../../../design-system/components/toolbars";
 import { useChessTokens } from "../../../design-system/theme";
 import {
   bareSan,
@@ -23,7 +32,9 @@ import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
+import { BoardLeftPanel } from "../../main/boardLeftPanel";
 import { usePageTitle } from "../../main/pageTitle";
+import { useShellCompact } from "../../main/shellCompact";
 import AccuracySetup, { type AccuracySource } from "../AccuracySetup";
 
 /**
@@ -60,6 +71,11 @@ const facing = (position: TrainingPosition): "white" | "black" => (position.turn
  * graded as v1 grades one suggestion (`gradePosition`), the engine's lines
  * revealed in the Result tab; Next goes on. Their analysis at each position
  * lives as long as the session; nothing is kept. No engine runs.
+ *
+ * **Its own panel beside the board** (`AccuracyTrainerDetails` in
+ * `BoardLeftPanel`, `keepShell` — as a Case's or a Library game's; a drawer
+ * under the shell's breakpoint, opened from the header): the game's name,
+ * then **Settings** — *Show next-move arrows* (on), for the session.
  */
 function FindBestMoveV2() {
   const { t } = useTranslation();
@@ -70,6 +86,10 @@ function FindBestMoveV2() {
   const [side, setSide] = useState<SideValue>("all");
   const [session, setSession] = useState<Session | null>(null);
   const [tab, setTab] = useState<Tab>("moves");
+  const [detailsTab, setDetailsTab] = useState<AccuracyTrainerDetailsTab>("settings");
+  const [showArrows, setShowArrows] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const compact = useShellCompact();
 
   usePageTitle(source?.name);
 
@@ -79,7 +99,7 @@ function FindBestMoveV2() {
     onEditTree: core.replaceTree,
     playChances: false,
     annotations: true,
-    arrows: { show: true },
+    arrows: { show: showArrows },
     map: { linked: true },
   });
 
@@ -233,6 +253,18 @@ function FindBestMoveV2() {
 
   const header = (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flexWrap: "wrap" }}>
+      {compact && (
+        // Under the breakpoint the exercise's own panel is a drawer; wide, the board's own column.
+        <IconAction
+          label={t("accuracyTrainer.details.toggle")}
+          onClick={() => setDrawerOpen(true)}
+          popupOpen={drawerOpen}
+          popupKind="dialog"
+          testId={`${ID}-details-toggle`}
+        >
+          <TuneRoundedIcon fontSize="small" />
+        </IconAction>
+      )}
       <Box title={t("accuracyTrainer.experimentalHint")}>
         <LabelChip label={t("accuracyTrainer.experimental")} tone="info" testId={`${ID}-experimental`} />
       </Box>
@@ -295,23 +327,43 @@ function FindBestMoveV2() {
     </>
   );
 
+  const title = source?.name ?? t("pages.findBestMoveV2");
+
   return (
-    <BoardShell
-      id={ID}
-      core={core}
-      showEvalBar={false}
-      allowDragging={session !== null}
-      boardOptions={boardOptions}
-      overlay={explorer.overlay}
-      panel={{
-        testId: `${ID}-panel`,
-        header,
-        tabs,
-        activeTab,
-        onTabChange: (id) => setTab(id as Tab),
-        footer,
-      }}
-    />
+    <>
+      <BoardLeftPanel
+        collapsed={false}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        drawerLabel={t("accuracyTrainer.details.label", { name: title })}
+        keepShell
+      >
+        <AccuracyTrainerDetails
+          title={title}
+          tab={detailsTab}
+          onTabChange={setDetailsTab}
+          showArrows={showArrows}
+          onShowArrowsChange={setShowArrows}
+          testId={`${ID}-details`}
+        />
+      </BoardLeftPanel>
+      <BoardShell
+        id={ID}
+        core={core}
+        showEvalBar={false}
+        allowDragging={session !== null}
+        boardOptions={boardOptions}
+        overlay={explorer.overlay}
+        panel={{
+          testId: `${ID}-panel`,
+          header,
+          tabs,
+          activeTab,
+          onTabChange: (id) => setTab(id as Tab),
+          footer,
+        }}
+      />
+    </>
   );
 }
 

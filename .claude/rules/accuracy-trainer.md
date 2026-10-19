@@ -5,6 +5,7 @@ paths:
   - "src/blocks/lists/SuggestionList/**"
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
+  - "src/blocks/panels/AccuracyTrainerDetails/**"
 ---
 
 # Accuracy Trainer (CTA-238, experimental, dev-only)
@@ -54,6 +55,7 @@ extended later; this file is its whole reference.
 | `src/views/accuracyTrainer/findBestMoveV2/FindBestMoveV2.tsx`, `Main.tsx` | **v2** (§6) and its wrapper (`find-best-move-v2-wrapper`). |
 | `src/blocks/lists/SuggestionList/` | The reader's moves at one position, each removable (read only once graded). |
 | `src/blocks/panels/GradedLines/` | A graded position: the headline and the engine's lines with the suggestions' verdicts. |
+| `src/blocks/panels/AccuracyTrainerDetails/` | v2's own panel beside the board: the game's name, then Settings (the next-move arrows). |
 | `src/blocks/panels/AccuracySessionReport/` | The summary: the measures and every position, each a button back to it. |
 | Tests | `src/lib/accuracyTrainer.test.ts`, `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.test.tsx`, `findBestMoveV2/FindBestMoveV2.test.tsx`, the three blocks' own, both versions' rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
 
@@ -182,6 +184,14 @@ the board.
   single tab before a session. The footer: the comment block, the next-moves
   bar (Moves), the instructions while answering, then New session and Pass /
   Choose, or Next / Summary.
+- **Its own panel beside the board** (`AccuracyTrainerDetails`, a block, in
+  `BoardLeftPanel` with `keepShell` — the main menu's place, the header and
+  its Engine menu kept, as a Case's or a Library game's; under the shell's
+  breakpoint a drawer, opened from the header's *The exercise's settings*):
+  the game loaded as its heading (the exercise's name before), then tabs —
+  **Settings**: *Show next-move arrows* (on), the explorer's `arrows.show`,
+  held for the session. A setting more is a prop of the block and a switch
+  on its Settings tab; a tab more is a member of `AccuracyTrainerDetailsTab`.
 - **The reader's analysis is kept per position for the session** (`trees`):
   leaving a position (Choose, Pass, Next, a summary row) keeps the board's
   tree; coming back loads it (`loadTree`, the board facing the side to move).

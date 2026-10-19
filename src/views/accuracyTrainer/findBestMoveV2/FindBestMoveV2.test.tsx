@@ -7,6 +7,7 @@ import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
 vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
@@ -43,10 +44,13 @@ const mount = () =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/accuracy-trainer/find-best-move-v2"]}>
-        <RightPanelProvider>
-          <FindBestMoveV2 />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <BoardLeftPanelOutlet compact={false} />
+            <FindBestMoveV2 />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -170,5 +174,28 @@ describe("Find Best Move v2 (CTA-238)", () => {
     await startWhite(user);
     await user.click(screen.getByRole("button", { name: "Pass" }));
     expect(screen.getByTestId("find-best-move-v2-graded-headline")).toHaveTextContent("You passed.");
+  });
+
+  it("has its own panel beside the board: the game's name, and Settings' next-move arrows switch", async () => {
+    const user = userEvent.setup();
+    mount();
+    // Nothing loaded: the exercise's name.
+    expect(screen.getByRole("heading", { level: 2, name: "Find Best Move v2" })).toBeInTheDocument();
+    await startWhite(user);
+    expect(screen.getByRole("heading", { level: 2, name: "Alice – Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+
+    // A move played, then back to the position: its next-move arrow is drawn.
+    drag("e2", "e4");
+    await user.click(screen.getByTestId("board-control-first"));
+    expect(boardOptions().arrows).toEqual([expect.objectContaining({ startSquare: "e2", endSquare: "e4" })]);
+
+    const arrows = screen.getByRole("switch", { name: "Show next-move arrows" });
+    expect(arrows).toBeChecked();
+    await user.click(arrows);
+    expect(boardOptions().arrows).toEqual([]);
+    await user.click(arrows);
+    expect(boardOptions().arrows).toHaveLength(1);
+    await expectNoAxeViolations();
   });
 });
