@@ -34,7 +34,8 @@ describe("AccuracySessionReport (CTA-238)", () => {
     const rows = within(screen.getByRole("table", { name: "Every position" })).getAllByRole("row").slice(1);
     expect(rows.map((row) => [...row.querySelectorAll("td")].map((cell) => cell.textContent))).toEqual([
       ["1.", "e4", "e4, d4", "e4, d4", "2/2 · 2 in place", "0", "Perfect"],
-      ["1…", "e5", "e5, c5", "Passed", "–", "–", ""],
+      // A pass is put off for later: its best moves hidden.
+      ["1…", "e5", "–", "Passed", "–", "–", ""],
       ["2.", "Qh5", "Nf3, Bc4", "Qh5, h3", "0/2 · 0 in place", "180", "Mistake"],
       ["2…", "Nc6", "g6", "Not answered yet", "–", "–", ""],
     ]);

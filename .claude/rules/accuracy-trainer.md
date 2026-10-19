@@ -45,7 +45,7 @@ each position.)
 | Path | What lives there |
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `targetOf` (the N a position asks for), `gradeSuggestion` / `gradePosition` (the reader's moves in their order against the top N), `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
-| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
+| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its N fixed, `wanted`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`, `leavePosition`, `reopenPassed`); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`); a position's view (`positionViewOf`, `candidatesOf` — the reader's moves in their order, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
 | `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header and footer, the left panel. |
@@ -141,6 +141,13 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   the position** (a *Delete from here* before it would take the rest of the
   game with it): that board's tree is not kept, the tree the position opened
   on is.
+- **The reader's own lines at each position** (`work`): kept on their own
+  when the position is left (`leavePosition`, the board's moves from it) and
+  put back on the board when it opens again (`openPosition`). The Case holds
+  them too, merged — with the game's own moves where they meet (the reader
+  played the game's move), so there they cannot be told apart, and the view
+  hides everything under the position: the game's continuation and the
+  engine's lines stay hidden, the reader's lines come back.
 - **Autosaved** (`useAutosave` → `saveCaseState`) on every change, its merges
   the done jobs' ids (§4). **Opening** another position (`openPosition`)
   takes the Case's tree as it stands now.
@@ -148,6 +155,16 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   comment is never rewritten: "Find Best Move: 1. e4 (#1, Best), 2. Nf3 (#3,
   Good), 3. h3 (not among the lines) — 2 of the top 3, 1 in place", "Find
   Best Move: passed" (`accuracyTrainer.session.answer.*`).
+
+- **A pass is "later"** — put off, not given up: its lines stay hidden (the
+  Result says so, with no line; Your moves shows it passed; the summary's
+  best moves for it "–"; no answer arrow), and **Answer it now** — on Result,
+  or on Your moves when the board is back at it — opens it again as the
+  position on screen (`reopenPassed` over the Case's tree as it stands, the
+  one on screen left first), the pass and its comment taken back
+  (`withoutPositionComment`). After Check, Next goes on to the next position
+  still to answer — the one the reader left, their lines there back. An
+  answer with moves is final.
 
 ## 4. The engine — the Evaluate Position job
 

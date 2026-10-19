@@ -21,13 +21,16 @@ import {
   candidatesOf,
   caseTreeOf,
   isAtPosition,
+  leavePosition,
   nextUnanswered,
   openPosition,
   positionAtPath,
+  reopenPassed,
   reorderedCandidates,
   startSession,
   withPositionJob,
   withoutCandidate,
+  withoutPositionComment,
   withSessionAnnotations,
   type FindBestMoveSession,
   type PositionAnnotation,
@@ -236,10 +239,24 @@ export const useFindBestMoveSession = () => {
     core.reset();
   };
 
-  /** Open a position of the session, on the Case's tree as it stands. */
+  /** Open a position of the session, on the Case's tree as it stands — the one on screen left first, its lines kept. */
   const open = (index: number) => {
     if (session === null || caseTree === undefined) return;
-    show(openPosition(session, index, caseTree));
+    show(openPosition(leavePosition(session, core.tree), index, caseTree));
+  };
+
+  /**
+   * **Answer a passed position now** — a pass is "later": the position opened
+   * again as the one on screen, on the Case's tree as it stands (the work
+   * elsewhere kept), its pass and the pass's comment taken back. Next goes on
+   * to the next position still to answer — the one the reader left.
+   */
+  const answerAgain = (at: number) => {
+    const position = session?.positions[at];
+    const given = session?.answers[at];
+    if (session === null || caseTree === undefined || position === undefined || given === null || given === undefined || given.length > 0) return;
+    const left = leavePosition(session, core.tree);
+    show(reopenPassed(left, at, withoutPositionComment(caseTree, position.path, t("accuracyTrainer.session.answer.passed"))));
   };
 
   /** Answer the position on screen — the reader's moves in their order, or a pass. Moves its lines are too few for ask the engine. */
@@ -302,6 +319,7 @@ export const useFindBestMoveSession = () => {
       return { kind: "answering", label, list: candidatesOf(session.view, core.tree), onMove: moveCandidate, onRemove: removeCandidate };
     }
     if (given === null) return { kind: "unanswered", label };
+    if (given.length === 0) return { kind: "passed", label, onAnswerAgain: () => answerAgain(at) };
     const grade = grades[at];
     return grade === null || grade === undefined ? { kind: "waiting", label, list: given } : { kind: "graded", label, position: shown, grade };
   })();
@@ -352,6 +370,8 @@ export const useFindBestMoveSession = () => {
     start,
     reset,
     open,
+    /** A passed position opened to be answered now. */
+    answerAgain,
     check: () => {
       if (session !== null) answer(candidatesOf(session.view, core.tree));
     },

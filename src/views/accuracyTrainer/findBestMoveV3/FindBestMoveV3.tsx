@@ -40,7 +40,9 @@ const ID = "find-best-move-v3";
  * with Pass / Check, or Next) and the left one (`AccuracyTrainerDetails`: the
  * game, its Case, Moves — the reader's moves, reordered and deleted — and Settings). At each position the board shows every move
  * before it and none after; the reader's lines from it are their moves, in
- * their order, and **Check** grades them against the top N.
+ * their order, and **Check** grades them against the top N. A **pass** is put
+ * off for later: its lines stay hidden, and *Answer it now* — here, or on Your
+ * moves when the board is back at it — opens it again.
  */
 function FindBestMoveV3() {
   const { t } = useTranslation();
@@ -69,7 +71,8 @@ function FindBestMoveV3() {
 
   // Once graded, on the position itself: the top N in green, the reader's moves outside them in red, over the reader's own arrows.
   const arrows = useMemo(() => {
-    if (position === undefined || grade === null || session === null || core.nodeId !== session.view.nodeId) return explorer.arrows;
+    // A pass is put off for later: no answer is drawn.
+    if (position === undefined || grade === null || grade.passed || session === null || core.nodeId !== session.view.nodeId) return explorer.arrows;
     const arrowOf = (san: string, color: string) => {
       const squares = moveSquaresOf(position.fen, san);
       return squares === undefined ? [] : [{ startSquare: squares.from, endSquare: squares.to, color }];
@@ -141,7 +144,27 @@ function FindBestMoveV3() {
                     {t("accuracyTrainer.session.engine.unavailable")}
                   </StatusText>
                 )}
-                {grade !== null && <GradedLines position={position} grade={grade} testId={`${ID}-graded`} />}
+                {grade !== null && grade.passed && (
+                  <>
+                    <StatusText tone="neutral" emphasis testId={`${ID}-passed`}>
+                      {t("accuracyTrainer.session.passed")}
+                    </StatusText>
+                    <Box>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          run.answerAgain(session.index);
+                          setTab("moves");
+                        }}
+                        data-testid={`${ID}-answer-again`}
+                      >
+                        {t("accuracyTrainer.details.answerAgain")}
+                      </Button>
+                    </Box>
+                  </>
+                )}
+                {grade !== null && !grade.passed && <GradedLines position={position} grade={grade} testId={`${ID}-graded`} />}
               </Box>
             ),
           },

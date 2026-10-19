@@ -592,6 +592,9 @@ const en = {
       movesHint: "Each is a line you played from the position. Moving one moves its line; deleting one deletes it.",
       movesWaiting: "Checked — waiting for the engine's lines to grade them.",
       movesUnanswered: "Not answered yet — open it from the summary to answer it.",
+      /** A pass is "later": its lines stay hidden until it is answered. */
+      movesPassed: "Passed — put off for later. Its lines stay hidden until you answer it.",
+      answerAgain: "Answer it now",
       /** Which trained position Your moves shows — the one the board stands at. */
       positionLabel: "Position {{at}} of {{count}} · {{move}}",
       /** A graded position: every line, the reader's moves marked. */
@@ -619,6 +622,8 @@ const en = {
       candidates: "Your moves:",
       noCandidates: "none yet — play one from the position.",
       check: "Check ({{count}})",
+      /** A pass on Result: put off for later, its lines hidden. */
+      passed: "You passed — put off for later. Its lines stay hidden; answer it now, or later from Your moves when the board is back at it.",
       /** The session's Case (CTA-238): made at Start, in one project of its own. */
       projectName: "Find Best Move",
       caseName: "{{name}} — Find Best Move",

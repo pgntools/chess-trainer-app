@@ -63,7 +63,7 @@ const resultOf = (grade: PositionGrade): { key: string; tone: LabelChipTone } | 
  * the average loss of the reader's best move (where it is known), and every
  * move's inaccuracies, mistakes, blunders and moves not among the lines —
  * then **every position** in game order: its move, the game's move, the
- * engine's top N, the reader's moves in their order, found / in place, the
+ * engine's top N (hidden for a pass — put off for later), the reader's moves in their order, found / in place, the
  * best one's loss and a result (Perfect, Best, the worst verdict, Good,
  * Outside, or Passed). Each position's move is a button back to it.
  *
@@ -115,7 +115,14 @@ function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessio
         ),
       },
       { id: "game", header: t("accuracyTrainer.report.game"), dir: "ltr", render: (row) => row.playedSan },
-      { id: "best", header: t("accuracyTrainer.report.best"), dir: "ltr", wrap: true, render: (row) => (row.best.length === 0 ? "–" : row.best.join(", ")) },
+      {
+        id: "best",
+        header: t("accuracyTrainer.report.best"),
+        dir: "ltr",
+        wrap: true,
+        // A pass is put off for later: its best moves stay hidden until it is answered.
+        render: (row) => (row.best.length === 0 || row.grade?.passed === true ? "–" : row.best.join(", ")),
+      },
       {
         id: "yours",
         header: t("accuracyTrainer.report.yours"),

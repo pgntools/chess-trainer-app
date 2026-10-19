@@ -204,6 +204,14 @@ export type FindBestMoveSession = {
   answers: readonly (readonly string[] | null)[];
   /** Each position's Evaluate Position job, `null` none. */
   jobs: readonly (string | null)[];
+  /**
+   * **Each position's lines of the reader's own** — the board's moves from it
+   * when it was left, as a tree from its position (`null` none yet): put back
+   * on the board when it opens again. The Case's tree holds them too, merged
+   * — with the game's moves where they meet, so they cannot be told apart
+   * there, and a position's view hides everything under it.
+   */
+  work: readonly (GameTree | null)[];
   /** The Case's tree as it stood when the position on screen was opened. */
   tree: GameTree;
   /** The position on screen's view of it. */
@@ -224,11 +232,29 @@ export const caseTreeOf = (session: Pick<FindBestMoveSession, "tree" | "view">, 
   return graftMoves(withChildren(board, nodeId, hidden), nodeId, readers);
 };
 
-/** **A position opened** on the Case's tree as it stands — the session unchanged where its path is not there. */
+/**
+ * **The position on screen left** — its lines of the reader's own, the board's
+ * moves from it, kept (`work`) to be put back when it opens again.
+ */
+export const leavePosition = (session: FindBestMoveSession, board: GameTree): FindBestMoveSession => {
+  const moves = session.view.nodeId === null ? board.moves : (findNode(board, session.view.nodeId)?.children ?? []);
+  const position = session.positions[session.index];
+  if (position === undefined) return session;
+  const work = moves.length === 0 ? null : { ...emptyTree(position.fen), moves: [...moves] };
+  return { ...session, work: session.work.map((each, at) => (at === session.index ? work : each)) };
+};
+
+/**
+ * **A position opened** on the Case's tree as it stands — its view, the
+ * reader's own lines there put back on the board (`work`) — the session
+ * unchanged where its path is not there.
+ */
 export const openPosition = (session: FindBestMoveSession, index: number, tree: GameTree): FindBestMoveSession => {
   const position = session.positions[index];
   const view = position === undefined ? undefined : positionViewOf(tree, position.path);
-  return view === undefined ? session : { ...session, index, tree, view };
+  if (view === undefined) return session;
+  const work = session.work[index];
+  return { ...session, index, tree, view: work === null || work === undefined ? view : { ...view, board: graftMoves(view.board, view.nodeId, work.moves) } };
 };
 
 /**
@@ -244,7 +270,38 @@ export const startSession = ({
   const first = positions[0];
   const view = first === undefined ? undefined : positionViewOf(tree, first.path);
   if (view === undefined) return undefined;
-  return { caseRef, positions, wanted, index: 0, answers: positions.map(() => null), jobs: positions.map(() => null), tree, view };
+  return {
+    caseRef,
+    positions,
+    wanted,
+    index: 0,
+    answers: positions.map(() => null),
+    jobs: positions.map(() => null),
+    work: positions.map(() => null),
+    tree,
+    view,
+  };
+};
+
+/**
+ * **A passed position answered again** — "later" — opened as the position on
+ * screen on the Case's tree as it stands, its pass taken back so it is
+ * answered afresh. Only a pass: the session unchanged for a position answered
+ * with moves, not answered, or whose path the tree lacks.
+ */
+export const reopenPassed = (session: FindBestMoveSession, index: number, tree: GameTree): FindBestMoveSession => {
+  const given = session.answers[index];
+  if (given === null || given === undefined || given.length > 0) return session;
+  const opened = openPosition(session, index, tree);
+  return opened === session ? session : { ...opened, answers: opened.answers.map((each, at) => (at === index ? null : each)) };
+};
+
+/** A comment taken off a position (its SAN path) — the answer it said, once the position is answered again. */
+export const withoutPositionComment = (tree: GameTree, path: readonly string[], text: string): GameTree => {
+  const at = nodeAtPath(tree, path);
+  if (at === undefined) return tree;
+  const current = commentsAt(tree, at.id, "comments");
+  return current.includes(text) ? setComments(tree, at.id, "comments", current.filter((each) => each !== text)) : tree;
 };
 
 /** The position on screen answered — the reader's moves in their order, or none (a pass). */

@@ -6,16 +6,19 @@ import {
   candidatesOf,
   caseTreeOf,
   isAtPosition,
+  leavePosition,
   nextUnanswered,
   openPosition,
   positionAtPath,
   positionViewOf,
+  reopenPassed,
   reorderedCandidates,
   sessionBaseTree,
   startSession,
   withPositionEngineLines,
   withPositionJob,
   withoutCandidate,
+  withoutPositionComment,
   withSessionAnnotations,
 } from "./findBestMoveSession";
 import { addMove, deleteFrom, findNode, mainline, nodeAtSanPath, setComments, treeToPgn, type GameTree } from "./gameTree";
@@ -213,7 +216,7 @@ describe("the session's transitions", () => {
 
   it("starts on its first position's view", () => {
     const session = startSession({ caseRef, positions, wanted: 3, tree: base })!;
-    expect(session).toMatchObject({ index: 0, wanted: 3, answers: [null, null], jobs: [null, null] });
+    expect(session).toMatchObject({ index: 0, wanted: 3, answers: [null, null], jobs: [null, null], work: [null, null] });
     expect(session.view.nodeId).toBeNull();
     expect(startSession({ caseRef, positions: [], wanted: 3, tree: base })).toBeUndefined();
   });
@@ -228,5 +231,59 @@ describe("the session's transitions", () => {
     expect(opened.index).toBe(1);
     expect(sans(opened.view.board)).toEqual(["e4", "e5"]);
     expect(nextUnanswered(answerPosition(opened, []))).toBeUndefined();
+  });
+});
+
+describe("leavePosition / openPosition — the reader's own lines", () => {
+  const positions = trainingPositionsOf(parsePgnTree(ANALYSED)).filter((position) => position.turn === "w");
+  const caseRef = { projectId: "p", caseId: "c" };
+
+  it("keeps the reader's lines at a position when it is left, and puts them back — not the game's continuation — when it opens again", () => {
+    // At 2. Qh5's position the reader plays 2. Nf3 (the game's move) Nf6, and 2. Bc4.
+    let session = openPosition(startSession({ caseRef, positions, wanted: 3, tree: base })!, 1, base);
+    const nf3 = play(session.view.board, session.view.nodeId, "Nf3");
+    const nf6 = play(nf3.tree, nf3.nodeId, "Nf6");
+    const bc4 = play(nf6.tree, session.view.nodeId, "Bc4");
+    const tree = caseTreeOf(session, bc4.tree);
+    // The Case: the reader's Nf6 merged under the game's Nf3, beside the game's Nc6.
+    expect(treeToPgn(tree)).toContain("2. Nf3 (2. Bc4) 2... Nc6 (2... Nf6)");
+
+    session = openPosition(leavePosition(session, bc4.tree), 0, tree);
+    const again = openPosition(session, 1, tree);
+    const board = again.view.board;
+    // Back on the board: the reader's lines, and none of the game's Nc6.
+    expect(treeToPgn(board)).toContain("2. Nf3 (2. Bc4) 2... Nf6");
+    expect(treeToPgn(board)).not.toContain("Nc6");
+  });
+
+  it("keeps nothing for a position left with no line", () => {
+    const session = startSession({ caseRef, positions, wanted: 3, tree: base })!;
+    expect(leavePosition(session, session.view.board).work).toEqual([null, null]);
+  });
+});
+
+describe("reopenPassed / withoutPositionComment", () => {
+  const positions = trainingPositionsOf(parsePgnTree(ANALYSED)).filter((position) => position.turn === "w");
+  const caseRef = { projectId: "p", caseId: "c" };
+
+  it("opens a passed position again, its pass taken back — and leaves an answered one as it is", () => {
+    let session = answerPosition(startSession({ caseRef, positions, wanted: 3, tree: base })!, []);
+    session = answerPosition(openPosition(session, 1, base), ["Nf3"]);
+    const again = reopenPassed(session, 0, base);
+    expect(again.index).toBe(0);
+    expect(again.answers).toEqual([null, ["Nf3"]]);
+    expect(again.view.nodeId).toBeNull();
+    // The answered one, and one never answered, stay.
+    expect(reopenPassed(session, 1, base)).toBe(session);
+    expect(reopenPassed(startSession({ caseRef, positions, wanted: 3, tree: base })!, 0, base).answers).toEqual([null, null]);
+  });
+
+  it("takes an answer's comment off its position, and nothing else", () => {
+    const annotated = withSessionAnnotations(base, [{ path: ["e4", "e5"], answer: "Find Best Move: passed" }]);
+    const node = nodeAtSanPath(annotated, ["e4", "e5"]);
+    const withMine = setComments(annotated, node, "comments", ["Mine", "Find Best Move: passed"]);
+    const without = withoutPositionComment(withMine, ["e4", "e5"], "Find Best Move: passed");
+    expect(findNode(without, node)?.comments).toEqual(["Mine"]);
+    expect(withoutPositionComment(without, ["e4", "e5"], "Find Best Move: passed")).toBe(without);
   });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -19,15 +19,18 @@ function Live({
   withCase = false,
   shown = "answering",
   startTab = "settings",
+  onAnswerAgain = () => {},
 }: {
   title?: string;
   initial?: boolean;
   withCase?: boolean;
-  shown?: "answering" | "waiting" | "graded";
+  shown?: "answering" | "waiting" | "graded" | "passed";
   startTab?: AccuracyTrainerDetailsTab;
+  onAnswerAgain?: () => void;
 }) {
   const [tab, setTab] = useState<AccuracyTrainerDetailsTab>(startTab);
   const [list, setList] = useState<readonly string[]>(MOVES);
+  const answerAgain = onAnswerAgain;
   const [showArrows, setShowArrows] = useState(initial);
   const [engine, setEngine] = useState(false);
   const [moves, setMoves] = useState(3);
@@ -46,7 +49,9 @@ function Live({
         ? {
             caseLink: CASE_LINK,
             moves:
-              shown === "graded"
+              shown === "passed"
+                ? { kind: "passed" as const, label: LABEL, onAnswerAgain: answerAgain }
+                : shown === "graded"
                 ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED }
                 : shown === "waiting"
                   ? { kind: "waiting" as const, label: LABEL, list }
@@ -153,6 +158,16 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     render(<Live startTab="settings" />);
     await user.click(screen.getByRole("tab", { name: "Your moves" }));
     expect(screen.getByTestId("details-moves-empty")).toHaveTextContent("Start a session to find its moves.");
+  });
+
+  it("shows a pass as put off for later — no line shown — and answers it now", async () => {
+    const user = userEvent.setup();
+    const onAnswerAgain = vi.fn();
+    render(<Live withCase shown="passed" startTab="moves" onAnswerAgain={onAnswerAgain} />);
+    expect(screen.getByTestId("details-moves-passed")).toHaveTextContent("Its lines stay hidden until you answer it.");
+    expect(screen.queryByRole("list", { name: "The engine's lines, best first, your moves marked" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Answer it now" }));
+    expect(onAnswerAgain).toHaveBeenCalled();
   });
 
   it("passes axe on a graded position", async () => {

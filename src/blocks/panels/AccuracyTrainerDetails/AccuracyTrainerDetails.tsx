@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
@@ -38,6 +39,8 @@ export type AccuracyTrainerMoves = { label: string } & (
   | { kind: "waiting"; list: readonly string[] }
   /** An earlier position not answered yet — the reader skipped on from the summary. */
   | { kind: "unanswered" }
+  /** Passed — put off for later: its lines stay hidden, and it may be answered now. */
+  | { kind: "passed"; onAnswerAgain: () => void }
   | { kind: "graded"; position: TrainingPosition; grade: PositionGrade }
 );
 
@@ -72,7 +75,8 @@ export type AccuracyTrainerDetailsProps = {
    * answered a move `-move-<index>`, its actions `-move-<index>-up`, `-down`,
    * `-remove`, none `-moves-empty`; waiting `-moves-waiting`; graded the
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
-   * outside them `-outside-<order>`), `-settings` (`-moves`, `-arrows`,
+   * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
+   * `-settings` (`-moves`, `-arrows`,
    * `-engine`).
    */
   testId: string;
@@ -91,7 +95,8 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * it); checked and graded, **every one of the engine's lines with the
  * reader's moves marked** in it (their rank, *In place*, the verdict), a
  * divider closing the top N, and the reader's moves outside the lines after
- * it — and **Settings**:
+ * it; passed — put off for later — its lines hidden, and **Answer it now** —
+ * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position), *Show next-move arrows* (the
  * reader's analysis's continuations, on by default) and *Use the engine*
@@ -177,6 +182,18 @@ function AccuracyTrainerDetails({
                   </>
                 )}
                 {moves.kind === "graded" && <GradedMoves position={moves.position} grade={moves.grade} testId={testId} />}
+                {moves.kind === "passed" && (
+                  <>
+                    <Typography variant="body2" data-testid={`${testId}-moves-passed`} sx={{ color: "text.secondary" }}>
+                      {t("accuracyTrainer.details.movesPassed")}
+                    </Typography>
+                    <Box>
+                      <Button variant="outlined" size="small" onClick={moves.onAnswerAgain} data-testid={`${testId}-answer-again`}>
+                        {t("accuracyTrainer.details.answerAgain")}
+                      </Button>
+                    </Box>
+                  </>
+                )}
                 {moves.kind === "unanswered" && (
                   <Typography variant="body2" data-testid={`${testId}-moves-unanswered`} sx={{ color: "text.secondary" }}>
                     {t("accuracyTrainer.details.movesUnanswered")}

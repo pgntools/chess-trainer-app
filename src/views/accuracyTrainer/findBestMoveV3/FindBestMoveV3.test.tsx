@@ -247,7 +247,9 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 1 · 1… Black");
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(screen.getByRole("button", { name: "Pass" }));
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You passed.");
+    // A pass is put off for later: no line shown.
+    expect(screen.getByTestId("find-best-move-v3-passed")).toHaveTextContent("put off for later");
+    expect(screen.queryByTestId("find-best-move-v3-graded")).not.toBeInTheDocument();
   });
 
   it("switches the next-move arrows from its panel's Settings", async () => {
@@ -375,5 +377,44 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByTestId("move-ply-2"));
     expect(label()).toHaveTextContent("Position 2 of 2");
     expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toBeInTheDocument();
+  });
+
+  it("answers a passed position later: back to it, Answer it now, moves, Check — then on to the position left, its work kept", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White");
+    // Put off for later.
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // On 2. Qh5's position, a move of the reader's; then back to the start — the passed one.
+    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");
+    drag("f1", "c4");
+    await user.click(screen.getByTestId("board-control-first"));
+    expect(screen.getByTestId("find-best-move-v3-details-moves-label")).toHaveTextContent("Position 1 of 2");
+    expect(screen.getByTestId("find-best-move-v3-details-moves-passed")).toBeInTheDocument();
+    // Its lines stay hidden.
+    expect(screen.queryByRole("list", { name: "The engine's lines, best first, your moves marked" })).not.toBeInTheDocument();
+    await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain("{ Find Best Move: passed }"));
+
+    // Answer it now: the position on screen again, nothing of the game after it.
+    await user.click(screen.getByRole("button", { name: "Answer it now" }));
+    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 2 · 1. White");
+    expect(boardOptions().position).toBe(START);
+    expect(screen.queryByTestId("move-ply-1")).not.toBeInTheDocument();
+    drag("e2", "e4");
+    await user.click(screen.getByRole("button", { name: "Check (1)" }));
+    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
+    // The pass's comment gone, the new answer in its place.
+    await waitFor(async () => {
+      const pgn = (await sessionCase())?.pgn ?? "";
+      expect(pgn).not.toContain("passed");
+      expect(pgn).toContain("{ Find Best Move: 1. e4 (#1, Best) — 1 of the top 3, 1 in place }");
+    });
+
+    // Next: back to the position left, the reader's Bc4 there still.
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");
+    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. Bc4");
   });
 });
