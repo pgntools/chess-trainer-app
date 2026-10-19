@@ -36,12 +36,13 @@ type Session = {
 
 type Tab = "train" | "summary";
 
-const ID = "accuracy-trainer";
+const ID = "find-best-move-v1";
 
 /**
- * **The Accuracy Trainer** (CTA-238) — experimental, and **dev-only**: its
- * route and sidebar entry exist under `import.meta.env.DEV` alone
- * (`routes.tsx`'s `devRoutes`, `navItems.ts`). The reference is
+ * **Find Best Move v1** — the Accuracy Trainer's first exercise (CTA-238),
+ * experimental and **dev-only**: its route, its sidebar folder and its entry
+ * exist under `import.meta.env.DEV` alone (`routes.tsx`'s `devRoutes`,
+ * `navFolders.ts`, `navItems.ts`). The reference is
  * `.claude/rules/accuracy-trainer.md`.
  *
  * A fully analysed game is loaded (`AccuracySetup`), a side picked, and the
@@ -61,7 +62,7 @@ const ID = "accuracy-trainer";
  * core's picker, its answer read the same way. **No engine runs here**: the
  * evaluations are the tree's. Nothing is kept — leaving ends the session.
  */
-function AccuracyTrainer() {
+function FindBestMoveV1() {
   const { t } = useTranslation();
   const { drawing } = useChessTokens();
   const core = useBoardCore();
@@ -283,4 +284,4 @@ function AccuracyTrainer() {
   );
 }
 
-export default AccuracyTrainer;
+export default FindBestMoveV1;

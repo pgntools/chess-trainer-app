@@ -80,13 +80,13 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
       {
-        // The Accuracy Trainer (CTA-238, experimental): a fully analysed
-        // game's positions, the reader's moves graded against the engine's
-        // lines in the tree. A board route, in the Engine folder — dev-only
-        // until it is ready to ship.
-        path: "/engine/accuracy",
-        element: devScreen(() => import("./views/engine/accuracy/Main")),
-        handle: { title: "pages.accuracyTrainer" },
+        // The Accuracy Trainer's Find Best Move v1 (CTA-238, experimental): a
+        // fully analysed game's positions, the reader's moves graded against
+        // the engine's lines in the tree. A board route, in the Accuracy
+        // Trainer folder — dev-only until it is ready to ship.
+        path: "/accuracy-trainer/find-best-move-v1",
+        element: devScreen(() => import("./views/accuracyTrainer/findBestMoveV1/Main")),
+        handle: { title: "pages.findBestMoveV1" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the

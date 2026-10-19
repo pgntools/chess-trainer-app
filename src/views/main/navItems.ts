@@ -70,14 +70,14 @@ export const navItems = (): readonly NavItem[] => [
     icon: VisibilityOffRoundedIcon,
     folder: "engine",
   },
-  // The Accuracy Trainer (CTA-238) — experimental, dev-only, after Masked Pieces.
+  // The Accuracy Trainer's exercises (CTA-238) — in its own folder, experimental, dev-only.
   ...(import.meta.env.DEV
     ? [
         {
-          to: "/engine/accuracy",
-          labelKey: "nav.accuracyTrainer",
+          to: "/accuracy-trainer/find-best-move-v1",
+          labelKey: "nav.findBestMoveV1",
           icon: TrackChangesRoundedIcon,
-          folder: "engine" as const,
+          folder: "accuracy-trainer",
           experimental: true,
         },
       ]

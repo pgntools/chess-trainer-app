@@ -43,8 +43,8 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
-    /** The Accuracy Trainer (`/engine/accuracy`, CTA-238) — experimental and dev-only, after Masked Pieces in the Engine folder. */
-    accuracyTrainer: "Accuracy Trainer",
+    /** The Accuracy Trainer's Find Best Move v1 (`/accuracy-trainer/find-best-move-v1`, CTA-238) — experimental and dev-only. */
+    findBestMoveV1: "Find Best Move v1",
     /** The chip on an experimental screen's row (CTA-238). */
     experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
@@ -99,6 +99,8 @@ const en = {
       analysisV2: "Analysis",
       /** The Jobs module (CTA-221). */
       jobs: "Jobs",
+      /** The Accuracy Trainer (CTA-238) — its experiments, dev-only. */
+      accuracyTrainer: "Accuracy Trainer",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -210,8 +212,8 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
-    /** CTA-238, dev-only. */
-    accuracyTrainer: "Accuracy Trainer",
+    /** The Accuracy Trainer's first exercise (CTA-238), dev-only. */
+    findBestMoveV1: "Find Best Move v1",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -252,7 +254,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
-    accuracyTrainer: "Suggest the best moves at every position of a fully analysed game, and see how they measure against the engine's lines.",
+    findBestMoveV1: "Suggest the best moves at every position of a fully analysed game, and see how they measure against the engine's lines.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",

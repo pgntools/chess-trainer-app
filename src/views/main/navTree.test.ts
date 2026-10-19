@@ -75,15 +75,11 @@ describe("the shipped nav tree", () => {
     }
   });
 
-  it("files the Lobby and Masked Pieces in the Engine folder (CTA-79, CTA-82) — and, dev-only, the Accuracy Trainer after them (CTA-238)", () => {
+  it("files the Lobby and Masked Pieces in the Engine folder (CTA-79, CTA-82)", () => {
     expect(navItemsInFolder("engine").map((item) => item.to)).toEqual([
       "/engine/games",
       "/engine/masked",
-      // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
-      "/engine/accuracy",
     ]);
-    expect(navItemsInFolder("engine")[2]).toMatchObject({ labelKey: "nav.accuracyTrainer", experimental: true });
-    expect(folderPath("/engine/accuracy")).toEqual(["engine"]);
     expect(navItemsInFolder("engine")[0].labelKey).toBe("nav.lobby");
     // Play with Engine has no entry: the Lobby's Start button reaches it, and
     // its route is no screen of the tree, so it opens no chain of its own.
@@ -544,5 +540,22 @@ describe("foldSingleEntryFolders folds a folder marked as one destination", () =
 
     // The inner folder carries the flag, but the fold does not reach it.
     expect(foldSingleEntryFolders([nested])[0]).toEqual(nested);
+  });
+});
+
+describe("the Accuracy Trainer folder (CTA-238)", () => {
+  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v1 — marked experimental", () => {
+    // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
+    const ids = navFolders().map((folder) => folder.id);
+    expect(ids.indexOf("accuracy-trainer")).toBe(ids.indexOf("engine") + 1);
+    expect(navFolders().find((folder) => folder.id === "accuracy-trainer")?.labelKey).toBe("nav.folders.accuracyTrainer");
+    expect(navItemsInFolder("accuracy-trainer")).toEqual([
+      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v1", labelKey: "nav.findBestMoveV1", experimental: true }),
+    ]);
+    // One screen, still a folder: the top level never folds into its screen.
+    const folder = navTree().find((node) => node.id === "accuracy-trainer");
+    expect(folder?.kind).toBe("folder");
+    expect(folder?.children?.map((child) => child.to)).toEqual(["/accuracy-trainer/find-best-move-v1"]);
+    expect(folderPath("/accuracy-trainer/find-best-move-v1")).toEqual(["accuracy-trainer"]);
   });
 });

@@ -1,13 +1,21 @@
 ---
 paths:
-  - "src/views/engine/accuracy/**"
+  - "src/views/accuracyTrainer/**"
   - "src/lib/accuracyTrainer*"
   - "src/blocks/lists/SuggestionList/**"
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
 ---
 
-# Accuracy Trainer — `/engine/accuracy` (CTA-238, experimental, dev-only)
+# Accuracy Trainer (CTA-238, experimental, dev-only)
+
+A sidebar folder of its own, **Accuracy Trainer**, for exercises that grade
+the reader's moves against a computer analysis. Today it holds one:
+**Find Best Move v1** — `/accuracy-trainer/find-best-move-v1`. A later
+exercise (or a v2) is a screen of its own beside it, under
+`src/views/accuracyTrainer/<exercise>/`, reusing `lib/accuracyTrainer.ts`.
+
+## Find Best Move v1
 
 The reader loads a **fully analysed game**, picks a side, and at each of that
 side's analysed positions suggests the moves they think best — none, one or
@@ -17,13 +25,14 @@ a summary. **No engine runs on this screen.** The base of a feature to be
 extended later; this file is its whole reference.
 
 > **Dev-only.** The route is in `routes.tsx`'s `devRoutes` (a `React.lazy`
-> import under `import.meta.env.DEV`) and the nav entry a spread in
-> `navItems.ts` under the same flag, so a production build has neither, nor a
+> import under `import.meta.env.DEV`), and the folder and the nav entry
+> spreads in `navFolders.ts` / `navItems.ts` under the same flag, so a production build has neither, nor a
 > chunk of it ([`chessboard.md`](./chessboard.md) §9.5). For the same reason it
 > has **no line in `e2e/a11y/routes.ts`** (the browser pass runs against the
 > production build) and no `pageDescriptions` use in the pre-render. Shipping
-> it is: move the route into `appRoutes`, drop the nav spread, add the a11y
-> route, and grep `dist/` for `accuracy`.
+> it is: move the route into `appRoutes`, drop the folder's and the nav entry's
+> spreads, add the a11y route, and grep `dist/` for `accuracy` and
+> `find-best-move`.
 
 ---
 
@@ -32,19 +41,21 @@ extended later; this file is its whole reference.
 | Path | What lives there |
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The pure layer**: `trainingPositionsOf` (the positions a tree can train, each with its evaluated lines), `sessionPositionsOf` (one side's, or both), `gradeSuggestion` / `gradePosition` (a suggestion, a position), `sessionSummaryOf` (the report's measures), `sanOfMove` (a drop read as SAN — `chess.js` reads, never plays), `moveSquaresOf` (a SAN's arrow), `bareSan`, `ACCURACY_THRESHOLDS`. Unit-tested in `accuracyTrainer.test.ts`. |
-| `src/views/engine/accuracy/AccuracyTrainer.tsx` | **The screen**: the session state, the board composed from the core, the panel's tabs (Train · Summary), header and footer. |
-| `src/views/engine/accuracy/AccuracySetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one), or an Analysis Case (`CasePickerDialog` — the Projects and Cases stores subscribed to only while it is open), the side (`SideToggle`, *Both* its `all`), Start. |
-| `src/views/engine/accuracy/Main.tsx` | Layout-only wrapper (`accuracy-trainer-wrapper`). |
+| `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.tsx` | **The screen**: the session state, the board composed from the core, the panel's tabs (Train · Summary), header and footer. |
+| `src/views/accuracyTrainer/findBestMoveV1/AccuracySetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one), or an Analysis Case (`CasePickerDialog` — the Projects and Cases stores subscribed to only while it is open), the side (`SideToggle`, *Both* its `all`), Start. |
+| `src/views/accuracyTrainer/findBestMoveV1/Main.tsx` | Layout-only wrapper (`find-best-move-v1-wrapper`). |
 | `src/blocks/lists/SuggestionList/` | The reader's moves at one position, each removable (read only once graded). |
 | `src/blocks/panels/GradedLines/` | A graded position: the headline and the engine's lines with the suggestions' verdicts. |
 | `src/blocks/panels/AccuracySessionReport/` | The summary: the measures and every position, each a button back to it. |
-| Tests | `src/lib/accuracyTrainer.test.ts`, `src/views/engine/accuracy/AccuracyTrainer.test.tsx`, the three blocks' own, the Accuracy Trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
+| Tests | `src/lib/accuracyTrainer.test.ts`, `src/views/accuracyTrainer/findBestMoveV1/FindBestMoveV1.test.tsx`, the three blocks' own, Find Best Move v1's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
 
-Routes and nav: `/engine/accuracy`, `pages.accuracyTrainer` (and
-`pageDescriptions.accuracyTrainer`); the **Engine** folder after Masked
-Pieces, `nav.accuracyTrainer`, marked `experimental` — `NavItem.experimental`
+Routes and nav: `/accuracy-trainer/find-best-move-v1`, `pages.findBestMoveV1`
+(and `pageDescriptions.findBestMoveV1`); the dev-only top-level folder
+`accuracy-trainer` (`nav.folders.accuracyTrainer`, a `DEV` spread in
+`navFolders.ts`, right after the Engine — a top-level folder with one screen
+stays a folder), its screen `nav.findBestMoveV1`, marked `experimental` — `NavItem.experimental`
 carried by `navTree.ts` and drawn by `Sidebar.tsx` as a chip (`nav.experimental`),
-the screen's header carrying the same chip. `options.id` `accuracy-trainer`.
+the screen's header carrying the same chip. `options.id` `find-best-move-v1`.
 Locale keys: `accuracyTrainer.*`, in both catalogs.
 
 ---

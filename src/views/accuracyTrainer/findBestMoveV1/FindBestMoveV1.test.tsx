@@ -22,7 +22,7 @@ vi.mock("react-chessboard", async () => {
   return reactChessboardMock();
 });
 
-import AccuracyTrainer from "./AccuracyTrainer";
+import FindBestMoveV1 from "./FindBestMoveV1";
 
 /*
   The Accuracy Trainer (CTA-238, experimental, dev-only): a fully analysed
@@ -45,9 +45,9 @@ const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const mount = () =>
   render(
     <AppThemeWithLang>
-      <MemoryRouter initialEntries={["/engine/accuracy"]}>
+      <MemoryRouter initialEntries={["/accuracy-trainer/find-best-move-v1"]}>
         <RightPanelProvider>
-          <AccuracyTrainer />
+          <FindBestMoveV1 />
           <RightPanelOutlet />
         </RightPanelProvider>
       </MemoryRouter>
@@ -82,7 +82,7 @@ beforeEach(async () => {
 describe("the Accuracy Trainer (CTA-238)", () => {
   it("is marked experimental, and starts on its setup: nothing loaded, Start off, no summary yet", async () => {
     mount();
-    expect(screen.getByTestId("accuracy-trainer-experimental")).toHaveTextContent("Experimental");
+    expect(screen.getByTestId("find-best-move-v1-experimental")).toHaveTextContent("Experimental");
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
     expect(screen.getByRole("tab", { name: "Summary" })).toBeDisabled();
     await expectNoAxeViolations();
@@ -106,7 +106,7 @@ describe("the Accuracy Trainer (CTA-238)", () => {
     await user.click(screen.getByRole("button", { name: "Start" }));
 
     // The first of White's two positions: the start, facing White.
-    expect(screen.getByTestId("accuracy-trainer-progress")).toHaveTextContent("Position 1 of 2 · 1. White");
+    expect(screen.getByTestId("find-best-move-v1-progress")).toHaveTextContent("Position 1 of 2 · 1. White");
     expect(boardOptions().position).toBe(START);
     expect(boardOptions().boardOrientation).toBe("white");
     expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
@@ -127,30 +127,30 @@ describe("the Accuracy Trainer (CTA-238)", () => {
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
     // Graded: the engine's lines revealed, the board no longer takes moves.
-    expect(screen.getByTestId("accuracy-trainer-graded-headline")).toHaveTextContent("You found the best move.");
-    expect(screen.getByTestId("accuracy-trainer-graded-verdict-e4")).toHaveTextContent("Best");
-    expect(screen.getByTestId("accuracy-trainer-graded-verdict-Nc3")).toHaveTextContent("Outside the top 3");
+    expect(screen.getByTestId("find-best-move-v1-graded-headline")).toHaveTextContent("You found the best move.");
+    expect(screen.getByTestId("find-best-move-v1-graded-verdict-e4")).toHaveTextContent("Best");
+    expect(screen.getByTestId("find-best-move-v1-graded-verdict-Nc3")).toHaveTextContent("Outside the top 3");
     expect(boardOptions().allowDragging).toBe(false);
     await expectNoAxeViolations();
 
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByTestId("accuracy-trainer-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    expect(screen.getByTestId("find-best-move-v1-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
     await user.click(screen.getByRole("button", { name: "Pass" }));
-    expect(screen.getByTestId("accuracy-trainer-graded-headline")).toHaveTextContent("You passed.");
+    expect(screen.getByTestId("find-best-move-v1-graded-headline")).toHaveTextContent("You passed.");
 
     // The last position: on to the summary.
     await user.click(screen.getByRole("button", { name: "Summary" }));
     expect(screen.getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("accuracy-trainer-report-measures-answered")).toHaveTextContent("1");
-    expect(screen.getByTestId("accuracy-trainer-report-measures-passed")).toHaveTextContent("1");
-    expect(screen.getByTestId("accuracy-trainer-report-measures-bestRate")).toHaveTextContent("50% (1 of 2)");
-    expect(screen.getByTestId("accuracy-trainer-report-measures-outside")).toHaveTextContent("1");
+    expect(screen.getByTestId("find-best-move-v1-report-measures-answered")).toHaveTextContent("1");
+    expect(screen.getByTestId("find-best-move-v1-report-measures-passed")).toHaveTextContent("1");
+    expect(screen.getByTestId("find-best-move-v1-report-measures-bestRate")).toHaveTextContent("50% (1 of 2)");
+    expect(screen.getByTestId("find-best-move-v1-report-measures-outside")).toHaveTextContent("1");
     await expectNoAxeViolations();
 
     // Back to a position from the table: graded, as answered.
     await user.click(screen.getByRole("button", { name: "Open 1. e4" }));
-    expect(screen.getByTestId("accuracy-trainer-progress")).toHaveTextContent("Position 1 of 2");
-    expect(screen.getByTestId("accuracy-trainer-graded-verdict-e4")).toHaveTextContent("Best");
+    expect(screen.getByTestId("find-best-move-v1-progress")).toHaveTextContent("Position 1 of 2");
+    expect(screen.getByTestId("find-best-move-v1-graded-verdict-e4")).toHaveTextContent("Best");
 
     // No engine ran.
     expect(FakeEngine.instances).toHaveLength(0);
@@ -167,11 +167,11 @@ describe("the Accuracy Trainer (CTA-238)", () => {
     await loadPasted(user, ANALYSED);
     await user.click(screen.getByRole("button", { name: "Black" }));
     await user.click(screen.getByRole("button", { name: "Start" }));
-    expect(screen.getByTestId("accuracy-trainer-progress")).toHaveTextContent("Position 1 of 1 · 1… Black");
+    expect(screen.getByTestId("find-best-move-v1-progress")).toHaveTextContent("Position 1 of 1 · 1… Black");
     expect(boardOptions().boardOrientation).toBe("black");
     drag("c7", "c5");
     await user.click(screen.getByRole("button", { name: "Submit" }));
-    expect(screen.getByTestId("accuracy-trainer-graded-headline")).toHaveTextContent("You found 1 of the top 2.");
+    expect(screen.getByTestId("find-best-move-v1-graded-headline")).toHaveTextContent("You found 1 of the top 2.");
   });
 
   it("takes a promotion through the picker, as its SAN", async () => {

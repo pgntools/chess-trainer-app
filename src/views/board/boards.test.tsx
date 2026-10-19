@@ -50,7 +50,7 @@ import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
-import AccuracyTrainer from "../engine/accuracy/AccuracyTrainer";
+import FindBestMoveV1 from "../accuracyTrainer/findBestMoveV1/FindBestMoveV1";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
 
@@ -182,17 +182,17 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("the Accuracy Trainer (CTA-238, dev-only), from the same core — with no engine", () => {
+describe("the Accuracy Trainer's Find Best Move v1 (CTA-238, dev-only), from the same core — with no engine", () => {
   it("renders the shared board square and panel skeleton, and builds no engine", () => {
-    const { unmount } = renderBoard(AccuracyTrainer);
-    expect(screen.getByTestId("accuracy-trainer-screen")).toBeInTheDocument();
-    expect(screen.getByTestId("accuracy-trainer-board")).toBeInTheDocument();
-    expect(boardOptions().id).toBe("accuracy-trainer");
-    expect(screen.getByTestId("accuracy-trainer-panel")).toBeInTheDocument();
+    const { unmount } = renderBoard(FindBestMoveV1);
+    expect(screen.getByTestId("find-best-move-v1-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("find-best-move-v1-board")).toBeInTheDocument();
+    expect(boardOptions().id).toBe("find-best-move-v1");
+    expect(screen.getByTestId("find-best-move-v1-panel")).toBeInTheDocument();
     expect(screen.getByTestId("board-controls")).toBeInTheDocument();
     // No engine: no status row, no lines, no engine control — and none built.
-    expect(screen.queryByTestId("accuracy-trainer-panel-status")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("accuracy-trainer-setting-engine")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("find-best-move-v1-panel-status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("find-best-move-v1-setting-engine")).not.toBeInTheDocument();
     expect(FakeEngine.instances).toHaveLength(0);
     unmount();
   });

@@ -69,7 +69,7 @@ import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
-import AccuracyTrainer from "../engine/accuracy/AccuracyTrainer";
+import FindBestMoveV1 from "../accuracyTrainer/findBestMoveV1/FindBestMoveV1";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -117,7 +117,7 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
  * Moves tab, but its panel is the one skeleton all the same.
  */
 const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
-  { name: "Accuracy Trainer", panelId: "accuracy-trainer-panel", Screen: AccuracyTrainer },
+  { name: "Accuracy Trainer — Find Best Move v1", panelId: "find-best-move-v1-panel", Screen: FindBestMoveV1 },
 ];
 
 const renderBoard = (Screen: () => ReactNode) =>
