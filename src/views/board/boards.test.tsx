@@ -27,6 +27,8 @@ vi.mock("../../lib/engines/builtin", async (importOriginal) =>
   (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
 );
 
+// The engine gate's jobs (CTA-237): none running unless a test says so.
+vi.mock("./core/engineGateJobs", async () => (await import("./boardTestHarness")).engineGateJobsMock());
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");
   return reactChessboardMock();

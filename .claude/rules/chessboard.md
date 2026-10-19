@@ -785,6 +785,40 @@ is disabled until the reader switches it on; Play with Engine starts it on. The 
 button and status line are the `PlayToggleButton` / `EngineThinking` blocks
 (`src/blocks/panels/`).
 
+#### 9.2.7 `useEngineGate` — one engine at a time (CTA-237)
+
+```ts
+const { engineOn, setEngineOn, engineRuns } = useEngineGate({ initialOn?: boolean });
+```
+
+**Every engine board's switch goes through it** — `useAnalysisSession`,
+`usePlayGame` (`initialOn: true`), the repertoire player — in place of a
+`useState`, and the engine module takes `enabled: engineRuns`. One engine
+runs in the whole app, in every tab: an engine job's or one board's (a job
+and a board engine together, each on a full preset, took a laptop down).
+
+- **An engine job running, in any tab** (`lib/engineGate.ts` over the jobs
+  runtime's records, read through `engineGateJobs.ts`): turning the engine on
+  asks first — the `EngineJobRunningDialog` block, naming the job: **Pause
+  the job** (`runtime.pause`; the board's engine runs once the job has
+  stopped — a job asked to pause runs out its step) or **Wait for it to
+  finish** (off; turning it on again asks again). A board starting on waits
+  for the jobs to be read (at most `JOBS_READ_GRACE_MS`) and asks on
+  arrival — nothing is searched or played before the answer.
+- **A job starting** (New job, Resume, a queued one picked up) while a
+  board's engine is on: off, and a snackbar names the job.
+- **One board engine** (`lib/boardEngineClaim.ts`, a `BroadcastChannel`): a
+  board's engine going on switches off every other board's, here or in
+  another tab.
+
+`engineOn` reads on while the dialog asks (Play is not paused by the
+question); `engineRuns` is what searches. The dialog and the snackbar are
+drawn once for the page by `EngineGateHost`, which `Layout.tsx` mounts; a
+board's test mounts it beside the screen, and stubs the jobs with the
+harness's `engineGateJobsMock` / `engineJobsStub` (none running unless a
+test sets one — a board starting on needs it, the runtime's first read being
+asynchronous).
+
 ### 9.3 The shell and the panel
 
 #### 9.3.1 `BoardShell` — the board square

@@ -42,6 +42,7 @@ import {
 } from "../../lib/savedRepertoireStore";
 import BoardShell from "../board/core/BoardShell";
 import { useBoardCore } from "../board/core/useBoardCore";
+import { useEngineGate } from "../board/core/useEngineGate";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
@@ -373,16 +374,17 @@ function RepertoirePlayer({
   const [tab, setTab] = useState(game === undefined ? "moves" : "score");
 
   /*
-    The engine, off by default. No `onBestMove`: it never moves a piece.
+    The engine, off by default. No `onBestMove`: it never moves a piece. Its
+    switch goes through the gate (CTA-237): one engine at a time, in any tab.
   */
-  const [engineOn, setEngineOn] = useState(false);
+  const { engineOn, setEngineOn, engineRuns } = useEngineGate();
   // The search settings are the reader's global ones — the top bar's Engine menu (CTA-181).
   const { settings } = useEngineSearchSettings();
   const [showEvalBar, setShowEvalBar] = useState(true);
   // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
   const { engineId } = useEngineChoice();
   const engine = useEngineModule({
-    enabled: engineOn,
+    enabled: engineRuns,
     engine: engineId,
     fen: core.fen,
     depth: settings.depth,

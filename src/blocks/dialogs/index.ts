@@ -9,6 +9,8 @@ export * from "./CollectionImportDialog";
 // CTA-232: Library collections merged — the merge's form, then its result (Open collection, Download PGN).
 export * from "./CollectionMergeDialog";
 export * from "./DevelopmentNoticeDialog";
+// CTA-237: a board's engine asked for while an engine job runs — Pause the job, or Wait for it to finish.
+export * from "./EngineJobRunningDialog";
 export * from "./EngineOptionsChangedDialog";
 export * from "./FolderDeleteDialog";
 export * from "./FolderMoveDialog";

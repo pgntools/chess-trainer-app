@@ -35,6 +35,7 @@ import {
 } from "../../../lib/playedGames";
 import { useAutosave } from "../../board/core/useAutosave";
 import { turnOf, useBoardCore } from "../../board/core/useBoardCore";
+import { useEngineGate } from "../../board/core/useEngineGate";
 import { useEngineModule } from "../../board/core/useEngineModule";
 import { usePlayToggle } from "../../board/core/usePlayToggle";
 import { boardEngineStateOf, usePublishBoardEngineState } from "../../main/boardEngineState";
@@ -219,7 +220,12 @@ export const usePlayGame = (
   const [optionChanges] = useState(() =>
     resume === undefined ? [] : searchSettingsChanges(resume.settings, readEngineSearchSettings()),
   );
-  const [engineOn, setEngineOn] = useState(true);
+  /*
+    On from the start — through the gate (CTA-237): while an engine job runs, in
+    any tab, the game asks first, and its engine neither searches nor moves until
+    the reader answers.
+  */
+  const { engineOn, setEngineOn, engineRuns } = useEngineGate({ initialOn: true });
   const [showEvalBar, setShowEvalBar] = useState(start.showEvalBar);
   /*
     What the pinned engine lines start as (CTA-90): the Lobby's Variations
@@ -254,7 +260,7 @@ export const usePlayGame = (
   // A Skill Level only for an engine strengthened by it alone: on an Elo engine it is the preset's (CTA-181).
   const bySkill = willRun.capabilities.strength === "skill";
   const engine = useEngineModule({
-    enabled: engineOn,
+    enabled: engineRuns,
     engine: engineId,
     // The position ON SCREEN: everything the panel shows describes it.
     fen: core.fen,

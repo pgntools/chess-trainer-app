@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { strToU8, zipSync } from "fflate";
@@ -25,13 +25,16 @@ import { loadUploadedCollections, loadUploadedGames, resetLibraryCollectionStore
 import { parsePgnTree } from "../../lib/pgn";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../board/boardTestHarness";
+import { boardOptions, engineJobsStub, FakeEngine } from "../board/boardTestHarness";
+import EngineGateHost from "../board/core/EngineGateHost";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 vi.mock("../../lib/engines/builtin", async (importOriginal) =>
   (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
 );
+// The engine gate's jobs (CTA-237): none running unless a test says so.
+vi.mock("../board/core/engineGateJobs", async () => (await import("../board/boardTestHarness")).engineGateJobsMock());
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
@@ -88,6 +91,7 @@ const mount = (entry: string, { compact = false } = {}) =>
             <Where />
             <BoardLeftPanelOutlet compact={compact} />
             <RightPanelOutlet />
+            <EngineGateHost />
           </BoardLeftPanelProvider>
         </RightPanelProvider>
       </MemoryRouter>
@@ -1346,5 +1350,60 @@ describe("a Case's board (CTA-186)", () => {
     expect(await screen.findByTestId("analysis-case-missing")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to Club" })).toHaveAttribute("href", `/analysis/projects/${project.id}`);
     await expectNoAxeViolations(baseElement);
+  });
+});
+
+describe("a Case's board — one engine at a time (CTA-237)", () => {
+  const RUNNING = { id: "job-1", lane: "engine", status: "running", title: "Computer analysis — Club" };
+  const engineSwitch = () => screen.getByTestId("analysis-case-setting-engine");
+
+  afterEach(() => engineJobsStub.reset());
+
+  it("asks before its engine goes on while an engine job runs — Wait leaves it off, Pause the job starts it once the job stops", async () => {
+    FakeEngine.reset();
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id)]);
+    engineJobsStub.set([RUNNING]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
+    await screen.findByTestId("board");
+    const searched = () => FakeEngine.instances.flatMap((engine) => engine.searches);
+
+    await user.click(engineSwitch());
+    let dialog = await screen.findByRole("dialog", { name: "An engine job is running" });
+    expect(dialog).toHaveTextContent("“Computer analysis — Club” is running its engine.");
+    expect(searched()).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Wait for it to finish" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(engineSwitch()).not.toBeChecked();
+    expect(searched()).toEqual([]);
+
+    await user.click(engineSwitch());
+    dialog = await screen.findByRole("dialog", { name: "An engine job is running" });
+    await user.click(within(dialog).getByRole("button", { name: "Pause the job" }));
+    expect(engineJobsStub.pauses).toEqual(["job-1"]);
+    expect(engineSwitch()).toBeChecked();
+    // Asked to pause, the job runs out its step: the board's engine waits for it.
+    act(() => engineJobsStub.set([{ ...RUNNING, control: "pause" }]));
+    expect(searched()).toEqual([]);
+    act(() => engineJobsStub.set([{ ...RUNNING, status: "paused" }]));
+    await waitFor(() => expect(FakeEngine.latest().lastSearch).toBe(START));
+  });
+
+  it("switches its engine off, said in a snackbar, when an engine job starts", async () => {
+    FakeEngine.reset();
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id)]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
+    await screen.findByTestId("board");
+    await user.click(engineSwitch());
+    await waitFor(() => expect(FakeEngine.latest().lastSearch).toBe(START));
+
+    act(() => engineJobsStub.set([RUNNING]));
+    expect(engineSwitch()).not.toBeChecked();
+    expect(await screen.findByTestId("engine-gate-switched-off")).toHaveTextContent(
+      "The board's engine is off: “Computer analysis — Club” is running its engine.",
+    );
   });
 });
