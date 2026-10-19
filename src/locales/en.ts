@@ -547,6 +547,8 @@ const en = {
       load: "Load",
       pickCase: "Pick a case…",
       noLines: "This game carries no engine lines, so there is nothing to ask. Run a computer analysis on it (Full) and load its output.",
+      /** Find Best Move v2, its engine off. */
+      noLinesEngine: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
       loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
       /** With the engine on (Find Best Move v2): every analysed position, the engine finding lines the game lacks. */
       loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",

@@ -274,4 +274,24 @@ describe("Find Best Move v2 (CTA-238)", () => {
       expect(pgn).toContain("[%eval 0.20,20]");
     });
   });
+
+  it("takes a plain game loaded before the engine is turned on — the refusal follows the switch", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("textbox", { name: "Or paste its PGN" }));
+    await user.paste('[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
+    await user.click(screen.getByRole("button", { name: "Load" }));
+    // The engine off: refused, the way out said.
+    expect(screen.getByText(/Turn on Use the engine in the panel's Settings/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+
+    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    expect(screen.queryByText(/carries no engine lines/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train");
+    expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
+
+    // And back off: refused again.
+    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+  });
 });

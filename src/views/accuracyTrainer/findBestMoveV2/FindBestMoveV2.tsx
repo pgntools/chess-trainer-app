@@ -405,6 +405,7 @@ function FindBestMoveV2() {
                   source={source}
                   onSource={setSource}
                   unevaluated={useEngine}
+                  engineOffered
                   side={side}
                   onSide={setSide}
                   onStart={() => void start()}

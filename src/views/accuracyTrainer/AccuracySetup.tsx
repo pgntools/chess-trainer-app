@@ -29,6 +29,12 @@ type AccuracySetupProps = {
    * engine on). Absent, a full analysis alone, as v1 takes.
    */
   unevaluated?: boolean;
+  /**
+   * The screen has an engine to turn on (Find Best Move v2): a game with no
+   * engine lines says so as the way out. Absent, it says to run a computer
+   * analysis alone.
+   */
+  engineOffered?: boolean;
   side: SideValue;
   onSide: (side: SideValue) => void;
   onStart: () => void;
@@ -54,7 +60,7 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
  * - **The side** — White, Black or both (`SideToggle`, its *all* button
  *   "Both"); **Start** is off while that side has no position.
  */
-function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, onStart }: AccuracySetupProps) {
+function AccuracySetup({ source, onSource, unevaluated = false, engineOffered = false, side, onSide, onStart }: AccuracySetupProps) {
   const { t } = useTranslation();
   const untitled = t("accuracyTrainer.setup.untitled");
   const [pasted, setPasted] = useState("");
@@ -67,13 +73,12 @@ function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, on
   const projects = useSyncExternalStore(picking ? subscribeAnalysisProjects : unsubscribed, analysisProjectsSnapshot, analysisProjectsSnapshot);
   const cases = useSyncExternalStore(picking ? subscribeAnalysisCases : unsubscribed, analysisCasesSnapshot, analysisCasesSnapshot);
 
-  /** One game onto the trainer — or refused, when it has no engine lines. */
+  /**
+   * One game onto the trainer. It is kept even with nothing to train — no
+   * engine lines while the engine is off: whether it trains is read from it
+   * as it stands (below), so turning the engine on afterwards takes it.
+   */
   const take = (tree: GameTree, name: string) => {
-    if (trainingPositionsOf(tree, { unevaluated }).length === 0) {
-      onSource(null);
-      setProblem(t("accuracyTrainer.setup.noLines"));
-      return;
-    }
     setProblem(null);
     onSource({ name, tree });
   };
@@ -98,6 +103,9 @@ function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, on
   const white = positions.filter((position) => position.turn === "w").length;
   const black = positions.length - white;
   const forSide = side === "white" ? white : side === "black" ? black : white + black;
+  // A game loaded with nothing to train: refused in words, until the engine is turned on (v2).
+  const refused = source !== null && positions.length === 0;
+  const shownProblem = problem ?? (refused ? t(engineOffered ? "accuracyTrainer.setup.noLinesEngine" : "accuracyTrainer.setup.noLines") : null);
 
   return (
     <Box data-testid="accuracy-setup" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}>
@@ -127,7 +135,7 @@ function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, on
         onSubmit={() => bringIn(pasted)}
         submitVariant="outlined"
         fileVariant="outlined"
-        problem={problem === null ? null : { message: problem }}
+        problem={shownProblem === null ? null : { message: shownProblem }}
         games={games}
         selectedGame={selectedGame}
         onSelectGame={(index) => {
@@ -149,7 +157,7 @@ function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, on
           {t("accuracyTrainer.setup.pickCase")}
         </Button>
       </Box>
-      {source !== null && (
+      {source !== null && !refused && (
         <StatusText tone="success" testId="accuracy-setup-loaded">
           {t(unevaluated ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count: positions.length, white, black })}
         </StatusText>
@@ -168,7 +176,7 @@ function AccuracySetup({ source, onSource, unevaluated = false, side, onSide, on
           ariaLabel={t("accuracyTrainer.setup.side")}
           testId="accuracy-setup-side"
         />
-        {source !== null && forSide === 0 && (
+        {source !== null && !refused && forSide === 0 && (
           <StatusText tone="warning" testId="accuracy-setup-none">
             {t("accuracyTrainer.setup.noneForSide")}
           </StatusText>
