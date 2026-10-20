@@ -97,6 +97,7 @@ const parts = useVariationsExplorer({
   evalsByFen?: ReadonlyMap<string, Score>,
   extensionIds?: ReadonlySet<string>,
   onEditTree?: (next: GameTree) => void,  // the one switch for every edit — `core.replaceTree`
+  editableAt?: (nodeId: string | null) => boolean,  // CTA-244: where the edits are offered (the menus, the comment block, drawing) — absent, every node
   playChances?: boolean,                  // the menu's *Play chances…* (default on); off where no trainer plays by them
   annotations?: boolean,                  // the comment block — and the PGN's [%cal]/[%csl] shapes (CTA-143)
   moveMarks?: boolean,                    // the move on screen's mark on the board (CTA-168) — default on
@@ -183,7 +184,7 @@ repertoire games pass nothing; a game never writes.
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |
-| **Find Best Move v3** (CTA-238, dev-only) | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `arrows: { show }` (its left panel's switch), `map: { linked: true }` — over its session Case's tree, the position's continuation set aside | Moves and Map tabs; footer: `annotations`, `nextMoves` (Moves tab), then its moves and Check / Pass bar ([`accuracy-trainer.md`](./accuracy-trainer.md) §5) |
+| **Find Best Move v4** (CTA-238, CTA-244, dev-only) | `onEditTree: core.replaceTree` with **`editableAt`** (CTA-244 — strictly under the position: the reader's own lines alone), `playChances: false`, `annotations: true`, `arrows: { show }` (its left panel's switch), `map: { linked: true }` — over the board's projection of the session's record (every move before the position, its own lines alone under it) | Moves and Map tabs; footer: `annotations`, `nextMoves` (Moves tab), then its moves and New move · Pass · Results · Next ([`accuracy-trainer.md`](./accuracy-trainer.md) §8) |
 
 The Openings explorer joins the view's `arrows` with the book's into one set
 (`views/openings/openingArrows.ts`). Every screen spreads `boardOptions`

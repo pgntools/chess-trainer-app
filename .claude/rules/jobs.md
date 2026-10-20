@@ -161,7 +161,7 @@ of it still read (§3.1). Its lane goes if nothing else uses it.
 | --- | --- | --- | --- | --- | --- |
 | `analysis.computer-analysis` | engine | a Case | no — interrupted, Resume asked | an engine server gone: 3 attempts from 30 s; anything else fails at once | per ticked variant a Game Case (`<jobId>:<variant>`) linked from the source, or the one variant merged into the source Case (by the job's id in its `merges`) |
 | `repertoire.evaluation` | engine | a repertoire | no | as above | the report (data, `repertoire.evaluation.report@1`); ticked, a repertoire "<name> — evaluated" (`r<jobId>e`) and the annotated PGN as a file |
-| `analysis.evaluate-position` (CTA-238, **dev-only**, §3.2) | engine | none offered (`appliesTo` empty) — its subject a Case | **yes** — one search, re-queued after a lost lease (`autoResume`) | as above | the search's result (data, `analysis.evaluate-position.result@1`), then its lines written into the Case at the position (`mergeIntoAnalysisCase`, the job's id among its `merges`) |
+| `analysis.evaluate-session-position` (CTA-238, its input a session's key since CTA-244, **dev-only**, §3.2) | engine | none offered (`appliesTo` empty) — its subject a Case | **yes** — one search, re-queued after a lost lease (`autoResume`) | as above | the search's result (data, `analysis.evaluate-position.result@1`), then the session's record taking it (`editSessionCase` — `engineSearched`, an event: no merge id) |
 
 - **The computer analysis** is Jobs V2's behaviour (its input, its
   positions-and-checkpoint state, its error codes `source`, `engine`,
@@ -215,34 +215,47 @@ left as they are** — no migration, no deletion — and read as follows:
 - **The deletion rule** still holds: deleting a collection removes its
   unfinished merge jobs (`library-collection` stays in the entity registry).
 
-### 3.2 Evaluate Position — `analysis.evaluate-position` (CTA-238, dev-only)
+### 3.2 Evaluate Position — `analysis.evaluate-session-position` (CTA-238; CTA-244, dev-only)
 
 **One position searched once**, for the Accuracy Trainer's Find Best Move
-v2 ([`accuracy-trainer.md`](./accuracy-trainer.md) §7), which alone queues
+v4 ([`accuracy-trainer.md`](./accuracy-trainer.md) §6, §8), which alone queues
 it — no New-job dialog offers it (`appliesTo: []`) and it has no form. Like
 its screen it is **dev-only**: its line in `jobKinds`, its
 `JOB_KIND_LOCALE_KEYS` entry and its views are spreads under
 `import.meta.env.DEV`, so a production build has no code of it (its words
 stay in the catalogs, as the dev screens' do).
 
-- **Input**: the session's Case (`caseId`, its one subject — deleted, its
-  unfinished jobs go), the position (`fen`, its SAN `path` in the Case, the
-  move's `label`), the engine, its preset (id, name, values sent) and the
-  search — the **top bar's Engine menu's** depth, move time, Threads and
-  Hash, MultiPV the session's *Moves to find* (`core.ts`, read leniently).
+- **Input**, `version: 2` (`EVALUATE_POSITION_INPUT_VERSION`): the session's
+  Case (`caseId`, its one subject — deleted, its unfinished jobs go), the
+  session's **position key** (`key` — the ply of its move in the session's
+  recorded game; v3's SAN `path` into the movetext is gone), the position's
+  `fen`, the move's `label`, the engine, its preset (id, name, values sent)
+  and the search — the **top bar's Engine menu's** depth, move time, Threads
+  and Hash, MultiPV the session's *Moves to find* (`core.ts`, read leniently;
+  another version refused).
 - **One step**: the search to the depth asked, no early stop; the state its
   result and the engine. `resumable: false` (nothing to resume from),
   `autoResume: true` — cheap, so a lost lease re-queues it. Errors
-  `engine`, `storage`, `target` (the Case gone).
-- **Outputs**: `result` (data) — the trainer reads it from the job's record
-  (`useEvaluatePositionJobs`) and grades with it; then `case` — its lines
-  hung at the position in the Case as stored now (`withPositionEngineLines`,
-  `lib/findBestMoveSession.ts`) under the job's id, so the trainer's autosave
-  (which carries the done jobs' ids) never writes the Case from before them.
-  Applied twice, written once.
+  `engine`, `storage`, `target` (the Case gone, or no longer a session).
+- **Outputs**: `result` (data) — the trainer's engine unit
+  (`useSessionEngine`) reads it from the job's record and echoes it; then
+  `case` — **the session's record takes it**: `editSessionCase(caseId,
+  [engineSearched(key, jobId, result)])`, the session's one writer
+  (`lib/findBestMove/store.ts`), the lines merged into the position's in the
+  Case's tags and the movetext re-derived. An event applied to the record as
+  stored — it commutes with the trainer's writes, needs no merge id, and lands
+  with the trainer closed. Applied twice, written once.
+- **v3's jobs** (`analysis.evaluate-position`, CTA-238 to CTA-243 — their
+  input a SAN path) are **a retired kind's** (§3.1): its id in
+  `RETIRED_JOB_KIND_LOCALE_KEYS` (dev-gated, as the kind was;
+  `jobs.retiredKinds.evaluatePositionV3`), so a stored one is kept, never
+  run, and offers Delete alone. The new kind's id is what makes them so — the
+  runtime would run an unparseable input of a registered kind and fail it.
 - **Not in Resume's comparison** (§4.1): one search, re-planned anyway.
-- Tests: `kinds/evaluatePosition/core.test.ts`, `kind.test.ts` (the run,
-  the crash between every pair of writes, the deletion rule, a Case gone).
+- Tests: `kinds/evaluatePosition/core.test.ts` (a v3 input refused),
+  `kind.test.ts` (the run into the record, the crash between every pair of
+  writes, the deletion rule, a Case gone or no session, a retired v3 job kept
+  and never run).
 
 ---
 

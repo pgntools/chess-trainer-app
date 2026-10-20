@@ -133,7 +133,7 @@ evaluations (CTA-167, below).
 | `%csl` | `[%csl Gd4,Re5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn as circles, as `%cal` |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
 | `%games` | `[%games 12]` | Games | **yes** — the Case board's *Games* arrow widths (§3) |
-| `%fbm` | `[%fbm game:e4 state:answered answer:d4,e4 lines:…]` | none — taken out of the prose, never chipped (CTA-239) | **yes** — a Find Best Move session's state at a position, written and read by the trainer alone (`lib/findBestMoveSessionPgn.ts`; its fields and the session's `FindBestMove…` tags: [`accuracy-trainer.md`](./accuracy-trainer.md) §7) |
+| `%fbm` | `[%fbm game:e4 state:answered answer:d4,e4 lines:…]` | none — taken out of the prose, never chipped (CTA-239) | no — **a v3 Find Best Move session's, unread** since CTA-244: v4 keeps its whole state in the `FindBestMove…` tags, its movetext a projection holding no command ([`accuracy-trainer.md`](./accuracy-trainer.md) §5). Kept in `UNREAD_COMMANDS`, so a v3 session Case opened in Analysis shows no chip |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
