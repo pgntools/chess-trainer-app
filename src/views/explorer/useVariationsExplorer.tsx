@@ -186,11 +186,13 @@ export function useVariationsExplorer({
   const { t } = useTranslation();
   const { tree, nodeId, goToNode } = source;
 
-  const [hovered, setHovered] = useState<VariationNode | null>(null);
+  const [hoveredNode, setHovered] = useState<VariationNode | null>(null);
   const continuations = useMemo(
     () => (nodeId === null ? tree.moves : (findNode(tree, nodeId)?.children ?? [])),
     [tree, nodeId],
   );
+  // The bar's chips are the continuations: a hover on one that is gone — the board moved on under a still pointer, no mouseleave coming — is none.
+  const hovered = hoveredNode === null ? null : (continuations.find((node) => node.id === hoveredNode.id) ?? null);
   // The chances the overlay's arrows are sized by and the bar's percentages
   // print by — only where the branch on screen carries an explicit `prc`
   // mark; with none anywhere the green/blue pair stands. Read off the

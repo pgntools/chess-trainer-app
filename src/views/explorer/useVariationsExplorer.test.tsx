@@ -489,6 +489,21 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
   });
 
+  it("forgets a hover once the board has moved on — no arrow for a chip that is gone", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    const view = (nodeId: string) => (
+      <AppThemeWithLang>
+        <Weighted nodeId={nodeId} arrows={{ show: false, widthSource: "games", palette: "lichess" }} />
+      </AppThemeWithLang>
+    );
+    const { rerender } = render(view(at(tagged, "e4", "e5")));
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
+    expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+    // The chip clicked, the board on the next node: the pointer never left, and the arrow is not drawn there.
+    rerender(view(at(tagged, "e4", "e5", "f4")));
+    expect(parts.arrows).toEqual([]);
+  });
+
   it("colours eval arrows by quality: the best group mainline and widest, the worse thinner by loss (CTA-180)", () => {
     // 2. Nf3 and 2. Bc4 tie; 2. f4 gives up 80 cp, 2. Qh5 280; 2. Nc3 is untagged.
     const evals = parsePgnTree(

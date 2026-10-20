@@ -104,7 +104,8 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
     };
     const top = position.lines.slice(0, grade.target);
     const missed = grade.suggestions.filter((each) => !each.inTop && !top.some((line) => bareSan(line.san) === bareSan(each.san)));
-    return distinctArrows([...explorer.arrows, ...top.flatMap((line) => arrowOf(line.san, drawing.green)), ...missed.flatMap((each) => arrowOf(each.san, drawing.red))]);
+    // Green last: two moves to the same squares (a pawn's promotions) show the top one.
+    return distinctArrows([...explorer.arrows, ...missed.flatMap((each) => arrowOf(each.san, drawing.red)), ...top.flatMap((line) => arrowOf(line.san, drawing.green))]);
   }, [position, grade, core.nodeId, board.positionNodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 
