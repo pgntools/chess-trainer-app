@@ -1,0 +1,181 @@
+---
+title: "Find Best Move: achievements"
+summary: "Every position you answer in Find Best Move wins a chess piece, Pawn to Queen, in each of five categories. What each one asks, how a piece is earned, and how the material adds up."
+date: 2026-10-21
+tags: [accuracy-trainer, training]
+draft: true
+---
+
+export const example = `[Event "Achievements example"]
+[White "White"]
+[Black "Black"]
+[Result "*"]
+
+1. e4 e5 2. Qh5 { The game's move: it loses 180 centipawns against line 1, a mistake. }
+(2. Nf3 { Line 1, +0.30. } 2... Nc6 3. Bb5 a6 4. Ba4 Nf6)
+(2. Bc4 { Line 2, +0.20, loses 10. })
+(2. Nc3 { Line 3, +0.10, loses 20. })
+(2. d4 { Line 4, −0.10, loses 40. }) *`
+
+[Find Best Move](/accuracy-trainer/find-best-move-v4) asks you to find the **best moves of a position, in the right order**: Stockfish's top three to start with. Results then shows how many you found and how many you put in their place.
+
+**Achievements** look at the same answer from five sides. Each side is a **category**: a goal you can meet well or badly at one position. **Every position you answer wins one chess piece in every category**, Pawn to Queen, for how well you met that goal. Nothing extra to do and no special mode: you answer as you always do, and all five categories read that one answer.
+
+> Find Best Move is part of the Accuracy Trainer, which is **experimental**: it is in development builds only, so the links to it here work only there.
+
+## The short version
+
+- Five categories, each with five pieces. **The best piece whose condition you met is the one you win**: one piece per category, per position.
+- The pieces are worth what they are worth on the board: Pawn 1, Knight 3, Bishop 3, Rook 5, Queen 9. Add up what a session won and you have its **material**.
+- Only your **first X moves** count, where X is the session's *Moves to find*. Ten moves would always "find" the top three, so the moves after the X-th are your own analysis and never win anything.
+- Nothing is lost. A bad answer just wins nothing: there are no negative points.
+
+## The pieces
+
+| Piece | Value | |
+| --- | --- | --- |
+| ♙ Pawn | 1 | The goal is partly met. |
+| ♘ Knight | 3 | |
+| ♗ Bishop | 3 | Ranks above the Knight: the same value, a harder goal. |
+| ♖ Rook | 5 | |
+| ♕ Queen | 9 | The category's great achievement. |
+
+## Words used below
+
+- **X**: the session's *Moves to find* (3 to start with, chosen when the session starts).
+- **The top X**: the engine's first X lines at the position. Where the engine listed fewer lines, there are fewer to find.
+- **Loss**: how many centipawns a move gives away against line 1. The best move loses 0.
+- **The best move**: a move that loses nothing (line 1, or a line just as good).
+- **Inaccuracy, mistake, blunder**: a loss of more than 50, 100 or 300 centipawns, the same thresholds a computer analysis uses.
+- **A move outside the lines**: a move the engine did not list. Its exact loss is unknown, only that it is at least as bad as the worst line listed, so such a move **can win a Pawn at most**, in any category that grades it.
+
+## One position, to follow along
+
+The examples below all use this position. It is White to move after 1. e4 e5, with three moves to find. The engine's lines are Nf3, Bc4, Nc3 and d4. In the game White played 2. Qh5, a mistake.
+
+<InlinePgnGame pgn={example} start="1..." caption="White to move. The top 3: Nf3 (+0.30), Bc4 (loses 10), Nc3 (loses 20). The game went 2. Qh5, which loses 180." />
+
+## The five categories
+
+### Place in order
+
+*Find the top X moves, each in its right place.* It needs at least two moves to find: with one, every tier would be the same move. Your first X moves are graded:
+
+| Piece | You win it when |
+| --- | --- |
+| ♕ Queen | all X are the top X, each in exactly its place |
+| ♖ Rook | all X are the top X, in the wrong order |
+| ♗ Bishop | your first move is the best move |
+| ♘ Knight | the best move is among them, but not first |
+| ♙ Pawn | at least one of them is in the top X |
+
+Where the engine listed fewer than X lines, you can win at most a **Bishop**: finding two of two is not the same as finding three of three.
+
+### Best move
+
+*Is your first move the best one?* Only your first move counts here:
+
+| Piece | You win it when |
+| --- | --- |
+| ♕ Queen | it is the best move, **and the only good one**: line 2 loses at least 150 |
+| ♖ Rook | it is the best move |
+| ♗ Bishop | it loses 20 or less |
+| ♘ Knight | it is no inaccuracy (loses 50 or less) |
+| ♙ Pawn | it is in the top X |
+
+The Queen needs a second line to compare with. Where the engine listed only one, the most you can win is a Rook.
+
+### Clean candidates
+
+*Is every move you gave sound?* This needs **all X moves**: with fewer, one safe move would always look clean. Every one of your first X moves must meet the condition:
+
+| Piece | You win it when every one… |
+| --- | --- |
+| ♕ Queen | is within 20 centipawns of the best |
+| ♖ Rook | is in the top X |
+| ♗ Bishop | is no inaccuracy |
+| ♘ Knight | is no mistake |
+| ♙ Pawn | is no blunder |
+
+### Better than the game
+
+*Would you have played better than the game did?* This category counts only where **the game's move was a mistake or a blunder**. Your first move:
+
+| Piece | You win it when it… |
+| --- | --- |
+| ♕ Queen | is the best move |
+| ♖ Rook | is in the top X |
+| ♗ Bishop | is no inaccuracy |
+| ♘ Knight | is no mistake |
+| ♙ Pawn | loses less than the game's move |
+
+A move that does not lose less than the game's move wins nothing here. That includes choosing the game's move itself.
+
+### See the line
+
+*Do you see what comes after the best move?* This needs the best move among your first X. Then the lines you played on the board from it, following each first reply, are compared with the engine's line from the same move. The more plies match from the start, the better the piece:
+
+| Piece | Plies that match the engine's line |
+| --- | --- |
+| ♕ Queen | 6 |
+| ♖ Rook | 4 (or 5) |
+| ♗ Bishop | 3 |
+| ♘ Knight | 2 |
+| ♙ Pawn | 1 (the move itself) |
+
+You can only win a tier where the engine's line is that long: a line of three plies seen whole is a Bishop, not a Queen.
+
+## Three answers, worked out
+
+Here is the same position answered three ways:
+
+| Your moves | Place in order | Best move | Clean candidates | Better than the game | See the line | Material |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Nf3, Bc4, Nc3**, and on the board Nf3 Nc6 Bb5 a6 | ♕ | ♖ | ♕ | ♕ | ♖ | 37 |
+| **Bc4, Nf3, d4** | ♘ | ♗ | ♗ | ♖ | ♙ | 15 |
+| **d4, Nc3, a3** | ♙ | ♘ | ♙ | ♗ | – | 8 |
+
+- **Nf3, Bc4, Nc3**: the top three in their exact places (Queen). Nf3 is best, but Bc4 is only 10 behind, so it is not the *only* move (Rook, not Queen). All three are within 20 of the best (Queen). Nf3 is far better than the game's Qh5 (Queen). Nf3 Nc6 Bb5 a6 matches the engine's line for four plies (Rook).
+- **Bc4, Nf3, d4**: d4 is not in the top three, but the best move is there, second (Knight). Bc4 loses 10 (Bishop). The worst of the three, d4, loses 40, no inaccuracy (Bishop). Bc4 is in the top three and much better than Qh5 (Rook). Only Nf3 itself was played from the best move (Pawn).
+- **d4, Nc3, a3**: a3 is outside the lines, so Place in order and Clean candidates stop at a Pawn. d4 loses 40, no inaccuracy (Knight in Best move, Bishop in Better than the game). None of the three is the best move, so See the line wins nothing.
+
+## Where you see them
+
+**The Achievements tab**, in the trainer's left panel, beside *Your moves* and *Results*, shows the pieces won by the position the board stands at. The table has a row per category and the five pieces across it. The piece you won is lit up and the others are dimmed. Step back to an earlier position and the tab shows that one's pieces. A position you have not answered yet has none to show.
+
+{/*
+  SCREENSHOT PLACEHOLDER: the left panel's Achievements tab on a graded
+  position — the table of five categories, one piece lit in each row.
+  Replace with:
+    import achievementsTab from "./find-best-move-achievements-tab.png"
+    <ArticleImage src={achievementsTab} alt="The Achievements tab: a row per category, the piece won lit up, the others dimmed" caption="The Achievements tab: one piece per category." width="60%" />
+*/}
+
+**The Summary**, in the right-hand panel at the end of a session (or at any time during it), adds up the whole session: each category's pieces counted and its material, and every category together.
+
+{/*
+  SCREENSHOT PLACEHOLDER: the Summary's achievements table — a row per
+  category and "All categories", a column per piece and the material.
+  Replace with:
+    import summaryTable from "./find-best-move-achievements-summary.png"
+    <ArticleImage src={summaryTable} alt="The session summary's achievements: each piece counted per category, and the material" caption="The Summary: the session's material, per category and in all." width="90%" />
+*/}
+
+## What wins nothing
+
+- **A pass.** A position put off for later wins no piece until you answer it.
+- **A position with nothing to compare.** Where there is no engine line (the engine was not used there), there is nothing to grade against.
+- **A position graded without its engine.** Where the engine's search failed or was cancelled, the answer is graded against the lines there were, but it wins no pieces.
+- **A category whose condition does not hold**: Place in order with one move to find, Clean candidates with fewer than X moves given, Better than the game where the game's move was fine, See the line without the best move.
+
+## Questions
+
+**Why one piece per category, and not every tier I met?** A category measures one goal at one position, so the piece is the *grade* for it. A Queen in Best move says "found the only move". Adding a Rook, a Bishop and a Knight on top would only inflate the number.
+
+**Why does a move outside the lines cost so much?** Its loss is unknown. It might be fine or it might lose the game, and the trainer will not guess in your favour. Play your ideas on the board as analysis after your X moves: those are never graded.
+
+**Why does the Bishop outrank the Knight when both are worth 3?** The value is the material. The rank is how hard the goal is. In Place in order, for example, the Bishop asks for the best move *first*, which is harder than having it somewhere among your moves.
+
+**Are the achievements saved?** They are never stored on their own. They are worked out from the session itself (your moves, the engine's lines and your analysis), so they can never disagree with the grade. Reload a session, download its PGN and load it back, and the same answers win the same pieces.
+
+**Will my material add up across sessions?** Not yet. A lifetime total over every session you play is planned for later.
