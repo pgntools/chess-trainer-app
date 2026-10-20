@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -49,6 +50,7 @@ import {
   projectRowOf,
   projectTreeRows,
 } from "../../lib/analysisProjectRows";
+import { picksDownloadEntries, zipDownloadEntries } from "../../lib/analysisProjectsDownload";
 import {
   caseCountsOf,
   gameCaseOf,
@@ -61,6 +63,7 @@ import {
 import { isZipFile, readCollectionZip } from "../../lib/collectionZip";
 import { collectionImportFileOf, type CollectionImportSource } from "../../lib/libraryCollections";
 import { mapInSlices, parsePgnGameEntries } from "../../lib/pgnGames";
+import { downloadBinaryFile, isoDate } from "../../lib/pgnExport";
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { browserPath, casePath, projectPath } from "./paths";
@@ -209,6 +212,16 @@ function ProjectsBrowser() {
   const picks = useMemo(() => projectPicksOf(model, picked), [model, picked]);
   const deletion = useMemo(() => projectPicksDeletion(model, picks), [model, picks]);
   const pickedCount = deletion.counts.folders + deletion.counts.projects + deletion.counts.cases;
+  /** The picks as one zip (CTA-241): a directory per ticked folder, a .pgn per Project, the Cases ticked alone a .pgn per Project. */
+  const downloadPicked = () => {
+    const entries = picksDownloadEntries({ folders: folders ?? [], projects: projects ?? [], cases: cases ?? [] }, picked, {
+      untitledFolder: t("analysisV2.folder.untitled"),
+      untitledProject: t("analysisV2.project.untitled"),
+    });
+    if (entries.length === 0) return;
+    const saved = downloadBinaryFile(`analysis-${isoDate(new Date())}.zip`, zipDownloadEntries(entries), "application/zip");
+    setProblem(saved ? null : t("analysisV2.downloadProblem"));
+  };
   /*
     Select-all covers the rows the words leave, closed ones' too: the tree
     walked with every folder and Project open, its leaves — each Case, each
@@ -493,7 +506,7 @@ function ProjectsBrowser() {
               >
                 {t("analysisV2.browser.newProject")}
               </Button>
-              {/* The picks' count and what they are for — the delete; select-all is the table header's, over the rows the words leave. */}
+              {/* The picks' count and what they are for — the download and the delete; select-all is the table header's, over the rows the words leave. */}
               {(folders.length > 0 || projects.length > 0) && (
                 <SelectionBar
                   count={pickedCount}
@@ -501,19 +514,29 @@ function ProjectsBrowser() {
                   onClear={() => setPicked(new Set())}
                   clearLabel={t("analysisV2.browser.clearSelected")}
                   actions={
-                    <IconAction
-                      label={t("analysisV2.browser.deleteSelected")}
-                      disabled={pickedCount === 0}
-                      color="error"
-                      onClick={() => {
-                        setDeleteProblem(null);
-                        setAsked(deletion.counts);
-                        setDeletingPicked(true);
-                      }}
-                      testId="analysis-v2-delete-picked"
-                    >
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconAction>
+                    <>
+                      <IconAction
+                        label={t("analysisV2.browser.downloadSelected")}
+                        disabled={pickedCount === 0}
+                        onClick={downloadPicked}
+                        testId="analysis-v2-download-picked"
+                      >
+                        <DownloadRoundedIcon fontSize="small" />
+                      </IconAction>
+                      <IconAction
+                        label={t("analysisV2.browser.deleteSelected")}
+                        disabled={pickedCount === 0}
+                        color="error"
+                        onClick={() => {
+                          setDeleteProblem(null);
+                          setAsked(deletion.counts);
+                          setDeletingPicked(true);
+                        }}
+                        testId="analysis-v2-delete-picked"
+                      >
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconAction>
+                    </>
                   }
                   testId="analysis-v2-picks"
                   rootTestId="analysis-v2-selection"

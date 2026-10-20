@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
@@ -55,9 +55,16 @@ function Harness({
   );
 }
 
+/** Rendered with the Engine section open — it starts folded (CTA-241). */
+const renderOpen = (ui: ReactElement) => {
+  const view = render(ui);
+  fireEvent.click(screen.getByRole("button", { name: "Engine" }));
+  return view;
+};
+
 describe("ComputerAnalysisForm (CTA-174)", () => {
   it("names every control", () => {
-    render(<Harness engineName="Stockfish 19 Lite" />);
+    renderOpen(<Harness engineName="Stockfish 19 Lite" />);
     for (const name of ["Threads", "Hash (MB)", "Depth", "Time per move", "Lines", "Early stop from depth"]) {
       expect(screen.getByRole("slider", { name })).toBeInTheDocument();
     }
@@ -73,31 +80,31 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
 
   describe("Threads, Hash and Lines follow what the engine declared", () => {
     it("pins Threads at 1 on the single-thread build, and says so", () => {
-      render(<Harness engineOptions={SINGLE_THREAD} />);
+      renderOpen(<Harness engineOptions={SINGLE_THREAD} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
       expect(screen.getByText("This engine build fixes Threads at 1.")).toBeInTheDocument();
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
     });
 
     it("offers Threads on the multi-thread build", () => {
-      render(<Harness engineOptions={MULTI_THREAD} />);
+      renderOpen(<Harness engineOptions={MULTI_THREAD} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
     });
 
     it("says what the engine does not have", () => {
-      render(<Harness engineOptions={NO_HASH} />);
+      renderOpen(<Harness engineOptions={NO_HASH} />);
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeDisabled();
       expect(screen.getByText('This engine build has no "Hash" option.')).toBeInTheDocument();
       expect(screen.getByRole("slider", { name: "Lines" })).toBeDisabled();
     });
 
     it("before the handshake, takes a single-thread engine's Threads as pinned at 1 and leaves the rest open", () => {
-      const { unmount } = render(<Harness engineOptions={BEFORE_HANDSHAKE} multiThread={false} />);
+      const { unmount } = renderOpen(<Harness engineOptions={BEFORE_HANDSHAKE} multiThread={false} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
       expect(screen.getByText("This engine build fixes Threads at 1.")).toBeInTheDocument();
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
       unmount();
-      render(<Harness engineOptions={BEFORE_HANDSHAKE} />);
+      renderOpen(<Harness engineOptions={BEFORE_HANDSHAKE} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
     });
   });
@@ -106,21 +113,21 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
     const top = (name: string) => screen.getByRole("slider", { name }).getAttribute("aria-valuemax");
 
     it("offers Threads and Hash up to what the engine declares", () => {
-      render(<Harness initial={HOSTED_OPTIONS} engineOptions={HOSTED_ENGINE} deviceLimits={HOSTED_LIMITS} />);
+      renderOpen(<Harness initial={HOSTED_OPTIONS} engineOptions={HOSTED_ENGINE} deviceLimits={HOSTED_LIMITS} />);
       expect(top("Threads")).toBe("15");
       expect(top("Hash (MB)")).toBe("4096");
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveValue("2048");
     });
 
     it("offers the same range before the handshake, never the device's", () => {
-      render(<Harness initial={HOSTED_OPTIONS} engineOptions={BEFORE_HANDSHAKE} deviceLimits={HOSTED_LIMITS} />);
+      renderOpen(<Harness initial={HOSTED_OPTIONS} engineOptions={BEFORE_HANDSHAKE} deviceLimits={HOSTED_LIMITS} />);
       expect(top("Threads")).toBe("15");
       expect(top("Hash (MB)")).toBe("4096");
     });
 
     it("keeps a Hash past 1024 MB once set", async () => {
       const onOptions = vi.fn();
-      render(
+      renderOpen(
         <Harness initial={HOSTED_OPTIONS} engineOptions={HOSTED_ENGINE} deviceLimits={HOSTED_LIMITS} onOptions={onOptions} />,
       );
       screen.getByRole("slider", { name: "Hash (MB)" }).focus();
@@ -130,10 +137,10 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
     });
 
     it("still holds an in-browser build to this device's limits, and to 1024 MB without them", () => {
-      const { unmount } = render(<Harness engineOptions={SINGLE_THREAD} deviceLimits={{ threads: 3, hashMb: 512 }} />);
+      const { unmount } = renderOpen(<Harness engineOptions={SINGLE_THREAD} deviceLimits={{ threads: 3, hashMb: 512 }} />);
       expect(top("Hash (MB)")).toBe("512");
       unmount();
-      render(<Harness engineOptions={SINGLE_THREAD} />);
+      renderOpen(<Harness engineOptions={SINGLE_THREAD} />);
       expect(top("Hash (MB)")).toBe("1024");
     });
   });
@@ -141,7 +148,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
   it("switches the time limit off and back, the last time set coming back", async () => {
     const user = userEvent.setup();
     const onOptions = vi.fn();
-    render(<Harness onOptions={onOptions} />);
+    renderOpen(<Harness onOptions={onOptions} />);
     const noLimit = screen.getByRole("switch", { name: "No time limit" });
     const time = screen.getByRole("slider", { name: "Time per move" });
     expect(noLimit).not.toBeChecked();
@@ -160,20 +167,20 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
   });
 
   it("opens with no time limit when the options have none", () => {
-    render(<Harness initial={NO_TIME_LIMIT} />);
+    renderOpen(<Harness initial={NO_TIME_LIMIT} />);
     expect(screen.getByRole("switch", { name: "No time limit" })).toBeChecked();
     expect(screen.getByRole("slider", { name: "Time per move" })).toBeDisabled();
   });
 
   it("caps the early stop's depth at the depth", () => {
-    render(<Harness />);
+    renderOpen(<Harness />);
     expect(screen.getByRole("slider", { name: "Early stop from depth" })).toHaveAttribute("aria-valuemax", String(OPTIONS.depth));
   });
 
   it("changes the side and the colour of the first move", async () => {
     const user = userEvent.setup();
     const onOptions = vi.fn();
-    render(<Harness onOptions={onOptions} />);
+    renderOpen(<Harness onOptions={onOptions} />);
     await user.click(screen.getByRole("radio", { name: "Black" }));
     expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ side: "b" }));
     await user.click(screen.getByRole("button", { name: "Black's" }));
@@ -183,7 +190,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
   it("takes the move numbers as typed, an empty last move running to the end, and marks one out of range", async () => {
     const user = userEvent.setup();
     const onOptions = vi.fn();
-    render(<Harness onOptions={onOptions} />);
+    renderOpen(<Harness onOptions={onOptions} />);
     const to = screen.getByRole("spinbutton", { name: "To move" });
     await user.type(to, "30");
     expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ toMove: 30 }));
@@ -203,7 +210,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
 
   it("keeps the thresholds and the variation range under Advanced, collapsed", async () => {
     const user = userEvent.setup();
-    render(<Harness />);
+    renderOpen(<Harness />);
     expect(screen.queryByRole("slider", { name: "Blunder above" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Advanced options" }));
     expect(screen.getByRole("button", { name: "Advanced options" })).toHaveAttribute("aria-expanded", "true");
@@ -216,7 +223,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
   it("ticks the variants, each explained, in their order", async () => {
     const user = userEvent.setup();
     const onOptions = vi.fn();
-    render(<Harness onOptions={onOptions} />);
+    renderOpen(<Harness onOptions={onOptions} />);
     expect(screen.getByRole("checkbox", { name: "Full" })).toHaveAccessibleDescription(
       "Every alternative within the variation range, on every analysed move.",
     );
@@ -229,41 +236,86 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
     it("starts", async () => {
       const user = userEvent.setup();
       const onStart = vi.fn();
-      render(<Harness onStart={onStart} />);
+      renderOpen(<Harness onStart={onStart} />);
       await user.click(screen.getByRole("button", { name: "Start computer analysis" }));
       expect(onStart).toHaveBeenCalledTimes(1);
     });
 
     it("is off with no variant ticked, saying why", () => {
-      render(<Harness initial={NONE_TICKED} />);
+      renderOpen(<Harness initial={NONE_TICKED} />);
       const start = screen.getByRole("button", { name: "Start computer analysis" });
       expect(start).toBeDisabled();
       expect(start).toHaveAccessibleDescription("Tick at least one variant to start.");
     });
 
     it("is off on a board with no moves, or none in range, saying why", () => {
-      const { unmount } = render(<Harness blocked="noMoves" />);
+      const { unmount } = renderOpen(<Harness blocked="noMoves" />);
       expect(screen.getByRole("button", { name: "Start computer analysis" })).toHaveAccessibleDescription(
         "The board has no moves to analyse.",
       );
       unmount();
-      render(<Harness blocked="noRange" />);
+      renderOpen(<Harness blocked="noRange" />);
       expect(screen.getByRole("button", { name: "Start computer analysis" })).toBeDisabled();
       expect(screen.getByText("No move of the game is in the chosen range.")).toBeInTheDocument();
     });
 
     it("is off while queuing, and says a refusal", () => {
-      const { unmount } = render(<Harness busy />);
+      const { unmount } = renderOpen(<Harness busy />);
       expect(screen.getByRole("button", { name: "Start computer analysis" })).toBeDisabled();
       unmount();
-      render(<Harness problem="storage" />);
+      renderOpen(<Harness problem="storage" />);
       expect(screen.getByTestId("ca-problem")).toHaveTextContent("The job could not be kept");
+    });
+  });
+
+  describe("the Engine section folds (CTA-241)", () => {
+    it("starts folded, its header the engine, the depth and the time per move on one line", async () => {
+      const user = userEvent.setup();
+      render(<Harness engineName="Stockfish 19 Lite" />);
+      const toggle = screen.getByRole("button", { name: "Engine" });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(toggle).toHaveAccessibleDescription("Stockfish 19 Lite · depth 18 · 5 s a move");
+      expect(screen.queryByRole("slider", { name: "Depth" })).toBeNull();
+      // The other sections are open as before.
+      expect(screen.getByRole("radiogroup", { name: "Analyse the moves of" })).toBeInTheDocument();
+
+      await user.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("slider", { name: "Depth" })).toBeVisible();
+      await expectNoAxeViolations();
+    });
+
+    it("starts open where the host asks", () => {
+      render(<Harness engineExpanded />);
+      expect(screen.getByRole("button", { name: "Engine" })).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("slider", { name: "Depth" })).toBeInTheDocument();
+    });
+
+    it("follows the choice: the preset by name, a change of depth, no time limit", () => {
+      const engines = describeEngines();
+      renderOpen(
+        <Harness
+          initial={NO_TIME_LIMIT}
+          engineChoice={{
+            engines,
+            engineId: engines[0].descriptor.id,
+            onEngineChange: () => {},
+            presets: [{ id: "deep", name: "Deep" }],
+            presetId: "deep",
+            onPresetChange: () => {},
+          }}
+        />,
+      );
+      expect(screen.getByTestId("ca-engine-summary")).toHaveTextContent(`${engines[0].descriptor.name} · Deep · depth 35 · no time limit`);
+      screen.getByRole("slider", { name: "Depth" }).focus();
+      fireEvent.keyDown(screen.getByRole("slider", { name: "Depth" }), { key: "ArrowLeft" });
+      expect(screen.getByTestId("ca-engine-summary")).toHaveTextContent("depth 34 · no time limit");
     });
   });
 
   it("passes axe, Advanced open too", async () => {
     const user = userEvent.setup();
-    render(<Harness engineName="Stockfish 19 Lite" />);
+    renderOpen(<Harness engineName="Stockfish 19 Lite" />);
     await user.click(screen.getByRole("button", { name: "Advanced options" }));
     await expectNoAxeViolations();
   });
@@ -273,7 +325,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
       const onEngineChange = vi.fn();
       const onPresetChange = vi.fn();
       const engines = describeEngines();
-      render(
+      renderOpen(
         <Harness
           engineChoice={{
             engines,
@@ -298,7 +350,7 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
 
     it("offers one variant as radios for a merge into the Case", async () => {
       const onOptions = vi.fn();
-      render(<Harness singleVariant onOptions={onOptions} />);
+      renderOpen(<Harness singleVariant onOptions={onOptions} />);
       expect(screen.queryByRole("checkbox", { name: /Light/ })).toBeNull();
       await userEvent.click(screen.getByRole("radio", { name: "Full" }));
       expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ outputs: ["full"] }));

@@ -278,8 +278,16 @@ stay in the catalogs, as the dev screens' do).
   (its own state, its own Start); Start queues, the dialog closes, a snackbar's
   **Open job** leads to `/jobs/<id>`. Entry points: a Case's Jobs tab
   (`EntityJobs`, the Case's jobs; its tree as the board holds it, as
-  `context`) and the repertoire player's Jobs tab (*Evaluate with
-  engine…*). The Library's picks' merge and a collection
+  `context` — its button and the dialog's title **Computer analysis**,
+  CTA-241) and the repertoire player's Jobs tab (*Evaluate with
+  engine…*). **The engine forms' Engine section folds** (CTA-241): in
+  `ComputerAnalysisForm` and `RepertoireEvaluationForm` the
+  `SettingsSection` over `EngineSearchFields` (engine, preset, Threads, Hash,
+  depth, time per move, lines) starts folded — its heading a disclosure
+  (`aria-expanded`, `SettingsSection`'s `fold`) and beside it one line,
+  `EngineSearchSummary`: "Stockfish 19 Lite · Default · depth 20 · 5 s a
+  move" (`computerAnalysis.form.summary.*`); `engineExpanded` opens it at
+  first (the galleries' engine demos). The Library's picks' merge and a collection
   page's Jobs tab (CTA-221, CTA-231) went with the merge kind (CTA-232):
   merging is the Library's own action, and a collection page has no Jobs
   tab.

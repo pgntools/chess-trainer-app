@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
@@ -42,9 +42,16 @@ function Harness({
   );
 }
 
+/** Rendered with the Engine section open — it starts folded, as the computer analysis's (CTA-241). */
+const renderOpen = (ui: ReactElement) => {
+  const view = render(ui);
+  fireEvent.click(screen.getByRole("button", { name: "Engine" }));
+  return view;
+};
+
 describe("RepertoireEvaluationForm (CTA-219)", () => {
   it("offers the engine's search, the side and the ply limit, the thresholds and the outputs", () => {
-    render(<Harness />);
+    renderOpen(<Harness />);
     for (const name of ["Threads", "Hash (MB)", "Depth", "Time per move", "Lines", "Ply limit", "Inaccuracy above", "Mistake above", "Blunder above"]) {
       expect(screen.getByRole("slider", { name })).toBeInTheDocument();
     }
@@ -69,7 +76,7 @@ describe("RepertoireEvaluationForm (CTA-219)", () => {
   it("changes the side, the ply limit, the search and the thresholds as patches", async () => {
     const user = userEvent.setup();
     const onSettings = vi.fn();
-    render(<Harness onSettings={onSettings} engineOptions={MULTI_THREAD} />);
+    renderOpen(<Harness onSettings={onSettings} engineOptions={MULTI_THREAD} />);
 
     await user.click(screen.getByRole("button", { name: "Black" }));
     expect(onSettings).toHaveBeenLastCalledWith(expect.objectContaining({ side: "b" }));
@@ -121,7 +128,7 @@ describe("RepertoireEvaluationForm (CTA-219)", () => {
     const onEngineChange = vi.fn();
     const onPresetChange = vi.fn();
     const engines = describeEngines();
-    render(
+    renderOpen(
       <Harness
         engineOptions={BEFORE_HANDSHAKE}
         multiThread={false}
@@ -135,6 +142,23 @@ describe("RepertoireEvaluationForm (CTA-219)", () => {
     expect(screen.getByRole("combobox", { name: "Engine" })).toBeInTheDocument();
   });
 
+  it("folds the Engine section at first, its header the engine, the preset, the depth and the time per move (CTA-241)", async () => {
+    const user = userEvent.setup();
+    const engines = describeEngines();
+    render(
+      <Harness
+        engineChoice={{ engines, engineId: engines[0].descriptor.id, onEngineChange: () => {}, presets: PRESETS, presetId: "deep", onPresetChange: () => {} }}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "Engine" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAccessibleDescription(`${engines[0].descriptor.name} · Deep analysis · depth 18 · 5 s a move`);
+    expect(screen.queryByRole("slider", { name: "Depth" })).toBeNull();
+    expect(screen.getByRole("slider", { name: "Ply limit" })).toBeInTheDocument();
+    await user.click(toggle);
+    expect(screen.getByRole("slider", { name: "Depth" })).toBeVisible();
+  });
+
   it("passes axe", async () => {
     render(<Harness initial={BLACK_EVERYTHING} />);
     await expectNoAxeViolations();
@@ -144,6 +168,7 @@ describe("RepertoireEvaluationForm (CTA-219)", () => {
     await i18n.changeLanguage("he");
     render(<Harness />);
     expect(screen.getByRole("slider", { name: "מגבלת חצאי מסעים" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "מנוע" })).toHaveAccessibleDescription("עומק 18 · 5 שנ׳ למסע");
     await expectNoAxeViolations();
   });
 });

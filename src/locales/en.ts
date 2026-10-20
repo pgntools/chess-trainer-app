@@ -2992,6 +2992,8 @@ const en = {
     },
     /** The Analysis Board's Computer analysis tab's form (CTA-174, `ComputerAnalysisForm`). */
     form: {
+      /** The dialog's title (CTA-241 — the Jobs module's "New job" before). */
+      title: "Computer analysis",
       engine: "Engine",
       engineName: "The job runs {{name}} — the engine chosen in Settings.",
       threads: "Threads",
@@ -3002,6 +3004,12 @@ const en = {
       noTimeLimitHelp: "Each position is searched to the full depth, however long that takes — a deep search can take minutes a move.",
       moveTimeNone: "No limit",
       seconds: "{{seconds}} s",
+      /** The Engine section's line while it is folded (CTA-241, `EngineSearchSummary`): the engine and preset by name, then these. */
+      summary: {
+        depth: "depth {{depth}}",
+        moveTime: "{{seconds}} s a move",
+        noTimeLimit: "no time limit",
+      },
       lines: "Lines",
       minDepth: "Early stop from depth",
       minDepthHelp: "From this depth a search stops as soon as another line falls more than the variation range below the best. At the full depth it never stops early.",
@@ -3563,6 +3571,8 @@ const en = {
       tooManyProjects: "No project could be made — the browser refused it, or there are {{max}} already.",
     },
     save: "Save",
+    /** A Download of the picks the browser would not save (CTA-241). */
+    downloadProblem: "The browser refused the download.",
     loading: "Reading your projects…",
     browser: {
       title: "Projects",
@@ -3596,6 +3606,8 @@ const en = {
       pick: "Pick {{name}}",
       selected: "{{count}} selected",
       clearSelected: "Clear the picks",
+      /** The picks as one zip — a directory per folder, a .pgn per project (CTA-241). */
+      downloadSelected: "Download the picked items",
       deleteSelected: "Delete the picked items",
       deleteManyTitle_one: "Delete {{count}} item?",
       deleteManyTitle_other: "Delete {{count}} items?",
@@ -3671,6 +3683,8 @@ const en = {
       pick: "Pick {{name}}",
       selected: "{{count}} selected",
       clearSelected: "Clear the picks",
+      /** The picked Cases as one .pgn, named after the project (CTA-241). */
+      downloadSelected: "Download the picked cases",
       deleteSelected: "Delete the picked cases",
       deleteManyTitle_one: "Delete {{count}} case?",
       deleteManyTitle_other: "Delete {{count}} cases?",
@@ -3910,6 +3924,8 @@ const en = {
     },
     /** A Case's Jobs tab (CTA-188; the Jobs module's `EntityJobs` since CTA-221). */
     caseJobs: {
+      /** The tab's button, which opens the computer analysis's dialog (CTA-241 — "New job" before). */
+      newJob: "Computer analysis",
       list: "This Case's jobs",
       none: "No jobs for this Case yet.",
     },

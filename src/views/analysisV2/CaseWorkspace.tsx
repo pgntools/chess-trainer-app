@@ -625,6 +625,7 @@ function CaseWorkspace() {
                     onNewJob={() =>
                       newJob.open({ type: ANALYSIS_CASE_ENTITY, id: record.id }, { tree: view.tree, name: row.name } satisfies ComputerAnalysisContext)
                     }
+                    newJobLabel={t("analysisV2.caseJobs.newJob")}
                     label={t("analysisV2.caseJobs.list")}
                     emptyText={t("analysisV2.caseJobs.none")}
                     testId="analysis-case-jobs"

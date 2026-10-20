@@ -25,6 +25,7 @@ import {
 import type { DeviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import EngineSearchFields, { type ComputerAnalysisEngineChoice } from "./EngineSearchFields";
+import EngineSearchSummary from "./EngineSearchSummary";
 import { computerAnalysisStartNote } from "./startNote";
 
 export type { ComputerAnalysisEngineChoice };
@@ -82,6 +83,8 @@ export type ComputerAnalysisFormProps = {
    * the variants as radios, the one chosen `outputs[0]`. Absent, checkboxes.
    */
   singleVariant?: boolean;
+  /** The Engine section open at first. Absent, folded, its choice said on one line (CTA-241). */
+  engineExpanded?: boolean;
   /**
    * The root; the sliders are `<testId>-<option>` (`-threads`, `-hash`,
    * `-multipv`, `-depth`, `-movetime`, `-mindepth`, `-inaccuracy`, `-mistake`,
@@ -89,7 +92,9 @@ export type ComputerAnalysisFormProps = {
    * `-from-colour`, `-to-move`, the variants `-variant-<light|medium|full>`,
    * the Advanced toggle `-advanced`, Start `-start`, its note `-start-note`,
    * the refusal `-problem`; the engine and preset selects `-engine-select`
-   * and `-preset`, the single variant's radios `-variant-<variant>` too.
+   * and `-preset`, the single variant's radios `-variant-<variant>` too;
+   * the Engine section `-engine`, folded at first — its toggle
+   * `-engine-toggle`, its one line `-engine-summary` (CTA-241).
    */
   testId: string;
 };
@@ -158,7 +163,9 @@ function MoveNumberField({
 /**
  * **A computer analysis's options** (CTA-174, CTA-171) — the Analysis Board's
  * Computer analysis tab: how the engine searches (threads, hash, depth, time
- * per move, lines, the depth an early stop may start from), which moves are
+ * per move, lines, the depth an early stop may start from — a section folded
+ * at first, its header the engine, preset, depth and time per move on one
+ * line, CTA-241), which moves are
  * analysed (a side, a first move and colour, a last move), and — under
  * **Advanced**, collapsed — the losses that make an inaccuracy, a mistake and
  * a blunder and the range a kept line may fall below the best; then the
@@ -192,6 +199,7 @@ function ComputerAnalysisForm({
   problem,
   engineChoice,
   singleVariant = false,
+  engineExpanded = false,
   testId,
 }: ComputerAnalysisFormProps) {
   const { t } = useTranslation();
@@ -230,6 +238,11 @@ function ComputerAnalysisForm({
               ? undefined
               : t("computerAnalysis.form.engineName", { name: engineName })
         }
+        // Folded at first, its choice said on one line (CTA-241).
+        fold={{
+          summary: <EngineSearchSummary values={options} engineChoice={engineChoice} engineName={engineName} />,
+          defaultExpanded: engineExpanded,
+        }}
         testId={`${testId}-engine`}
       >
         <EngineSearchFields

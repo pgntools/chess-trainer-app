@@ -83,10 +83,11 @@ export type ProjectsTableProps = {
   testId: string;
 };
 
+/** A Project row's actions, in their order — Duplicate first (CTA-241); a folder's row keeps Rename, Move to…. */
 const PROJECT_ACTIONS: readonly { action: ProjectAction; icon: typeof ContentCopyRoundedIcon }[] = [
+  { action: "duplicate", icon: ContentCopyRoundedIcon },
   { action: "rename", icon: DriveFileRenameOutlineRoundedIcon },
   { action: "move", icon: DriveFileMoveRoundedIcon },
-  { action: "duplicate", icon: ContentCopyRoundedIcon },
 ];
 
 /** A row's key: a Project's id, or a folder's or a Case's — prefixed, which a record id (`[0-9a-z]`) never is. */

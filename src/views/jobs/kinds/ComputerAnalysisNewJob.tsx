@@ -203,6 +203,7 @@ function ComputerAnalysisNewJob({ open, onClose, onStarted, subjects, context, k
     <NewJobFrame
       open={open}
       onClose={onClose}
+      title={t("computerAnalysis.form.title")}
       onStart={() => void start()}
       kinds={kinds}
       kindId={kindId}
