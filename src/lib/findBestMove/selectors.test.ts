@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { ANALYSED_PGN, RUY_LOPEZ_38, START_FEN, applied, searchOf, sessionOfPgn } from "../../test/findBestMoveKit";
+import { ANALYSED_PGN, PARTIAL_PGN, RUY_LOPEZ_38, START_FEN, applied, searchOf, sessionOfPgn } from "../../test/findBestMoveKit";
 import { sessionEvents as e } from "./reducer";
 import {
   REPLAY_MAX_PLIES,
   engineFailedAt,
+  engineOfferedAt,
   gradeOf,
   isDone,
   nextOpen,
@@ -95,6 +96,46 @@ describe("nextOpen", () => {
     expect(later.current).toBe(4);
     expect(nextOpen(later)).toBe(5);
     expect(nextOpen(applied(later, [e.goTo(38)]))).toBeUndefined();
+  });
+});
+
+describe("a partial analysis (CTA-245)", () => {
+  // White's positions: 1. e4 (lines), 2. Nf3 and 3. Nxe5 (none), 4. Nxc6 (lines) — the engine off.
+  const white = () => sessionOfPgn(PARTIAL_PGN, { side: "w" });
+
+  it("keeps every analysed position of the side in the manifest", () => {
+    expect(white().keys).toEqual([1, 3, 5, 7]);
+    expect(sessionOfPgn(PARTIAL_PGN, { settings: { engine: true } }).keys).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("goes on from a pass to the very next position — 1, 2, 3, 4 — and Results skips none", () => {
+    let record = white();
+    const visited = [record.current];
+    while (nextOpen(record) !== undefined) {
+      record = applied(record, [e.pass(record.current), e.next()]);
+      visited.push(record.current);
+    }
+    expect(visited).toEqual([1, 3, 5, 7]);
+    // The three passed, then the one being answered.
+    expect(resultsOf(record).map((row) => [row.key, row.state])).toEqual([[1, "passed"], [3, "passed"], [5, "passed"], [7, "answering"]]);
+  });
+
+  it("offers the engine where the lines are too few while it is off — never once it is on, asked or answered", () => {
+    const record = white();
+    // N 2: 1. e4 has three top lines, 2. Nf3 none.
+    expect(engineOfferedAt(record, 1)).toBe(false);
+    expect(engineOfferedAt(record, 3)).toBe(true);
+    expect(engineOfferedAt(applied(record, [e.goTo(3), e.answer(3, ["d4"])]), 3)).toBe(false);
+    // Turned on, the first move asks: no offer, the engine wanted.
+    const accepted = applied(record, [e.goTo(3), e.settingsChanged({ engine: true }), e.firstMove(3)]);
+    expect(accepted.positions.get(3)?.engine).toEqual({ kind: "wanted" });
+    expect(engineOfferedAt(accepted, 5)).toBe(false);
+  });
+
+  it("grades a position with no line against nothing, the engine declined", () => {
+    const record = applied(white(), [e.goTo(3), e.answer(3, ["d4"])]);
+    expect(phaseOf(record, 3)).toBe("graded");
+    expect(gradeOf(record, 3)).toMatchObject({ target: 0, found: 0 });
   });
 });
 

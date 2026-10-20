@@ -56,10 +56,10 @@ opens in Analysis, and is never converted — R26 dropped.)
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/accuracyTrainer.ts` | **The grading**, pure (§1–§2): `trainingPositionsOf`, `sessionPositionsOf`, `trainingPositionFrom`, `withEngineResult`, `needsEngine`, `targetOf`, `gradeSuggestion` / `gradePosition`, `sessionSummaryOf`, `moveSquaresOf`, `bareSan`. Reused by v4 as is. |
+| `src/lib/accuracyTrainer.ts` | **The grading**, pure (§1–§2): `trainingPositionsOf`, `gamePositionsOf` (a session's positions, CTA-245), `sessionPositionsOf`, `trainingPositionFrom`, `withEngineResult`, `needsEngine`, `targetOf`, `gradeSuggestion` / `gradePosition`, `sessionSummaryOf`, `moveSquaresOf`, `bareSan`. Reused by v4 as is. |
 | `src/lib/findBestMove/model.ts` | **The record** (§3): `FindBestMoveRecord`, `PositionRecord`, the two axes `AnswerState` / `EngineState`, the position key; the recorded game replayed once (`replayGame`), a key's path, FEN and game move, `trainingPositionOf` (the grading's `TrainingPosition`, derived, never stored), `storedLinesOf`. |
 | `src/lib/findBestMove/reducer.ts` | **The transitions** (§3.2): `sessionReducer`, `reduceSession`, the events `sessionEvents.*` — an event that does not apply answers the same record. |
-| `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
+| `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `engineOfferedAt` (CTA-245), `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
 | `src/lib/findBestMove/pgn.ts` | **The format, version 2** (§5): `isSessionTags` (the one predicate — Analysis's S3 reads it), `isOlderSessionTags`, `withoutSessionTags`, `sessionTagsOf` / `withSessionTags`, `sessionRecordOf` (lenient: `SessionIssue`s), the work fragment (`workFragmentOf`, `workFromFragment`). |
 | `src/lib/findBestMove/projection.ts` | **The projections** (§4, §5.3): `sessionMovetextOf` (the readable game), `boardTreeOf` (the board at a position), `workOf`, `candidatesOf`, `reorderedCandidates`, `withoutCandidate`, `isAtPosition`, `isWorkNode` (S5's predicate); `AnswerWords`. |
 | `src/lib/findBestMove/start.ts` | A session from a game (`sessionFromGame`) or one position (`sessionFromPosition`); `sourceHeadersOf` (the game's tags but its analysis's). |
@@ -69,7 +69,7 @@ opens in Analysis, and is never converted — R26 dropped.)
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind**, `analysis.evaluate-session-position` — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV4/` | **The screen** (§8): `useSessionCase.ts` (persistence), `useSessionBoard.ts` (the board), `useReplay.ts` (the replay), `useSessionEngine.ts` (the engine jobs), `useFindBestMove.ts` (their composition, the actions), `FindBestMove.tsx` (composition alone), `FindBestMoveRoute.tsx` (a session's arrival), `SessionsLobby.tsx`, `NewSessionForm.tsx`, `SessionSetup.tsx` + `sessionSetup.ts` (the form's Game tab and its reading), `paths.ts`, `Main.tsx` / `LobbyMain.tsx` (layout-only). |
 | `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the summary; the left panel (the game, its Case, Your moves, Results, Settings); the lobby's table (`older` rows said). |
-| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts` (a retired v3 job too); `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
+| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap, a partial analysis — `PARTIAL_PGN` — passed through and the engine offered, CTA-245), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts` (a retired v3 job too); `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
 
 Routes and nav: `/accuracy-trainer/find-best-move-v4` — the sessions lobby,
 the table in the board square and the New session form in the right-hand
@@ -96,10 +96,20 @@ own; the **full** variant at every analysed move, **medium** and **light** at
 the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
 
 - **A position to train** (`trainingPositionsOf`) is the position before an
-  analysed mainline move with at least one evaluated side line — or, with the
-  engine on (`unevaluated`), every analysed position. Its **lines**: those
-  side lines' first moves and the game's move (where it has an eval), scored
-  from the mover's view (a mate ±10000 less its distance), ranked best first.
+  analysed mainline move with at least one evaluated side line — or, with
+  `unevaluated`, every analysed position. Its **lines**: those side lines'
+  first moves and the game's move (where it has an eval), scored from the
+  mover's view (a mate ±10000 less its distance), ranked best first.
+- **A session over a game asks every analysed position** (`gamePositionsOf`,
+  CTA-245) — the `AnalysedPlies` / `AnalysedSide` scope, whether or not the
+  analysis hung side lines there and whatever *Use the engine* says: a full
+  analysis prunes every line far below line 1, so where the game's move was
+  the only one in range there is **no side line**, and leaving that position
+  out made Pass skip it (1 → 4). Such a position has **no top line of its
+  own** — the game's move, unlisted, is not one — so it needs the engine to
+  be graded (`needsEngine`, §3.2). A tree with **no** engine line asks
+  nothing while the engine is off (the form refuses it), every position with
+  it on.
 - **The top N** are the engine's listed lines: every side line, and the
   game's move when it scores at least as well as the worst of them.
 - **An engine search** (`withEngineResult`) adds its lines — every one
@@ -173,6 +183,15 @@ never reach it but through `store.ts`.
   lists applied in one write: Next while answering `[workRecorded, answer,
   next]`, Pass `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
   reopen]`.
+- **The engine offered** (CTA-245): a first move at a position whose engine
+  *would* be wanted were *Use the engine* on (`engineOfferedAt` — the switch
+  off, the answer open or reopened, the engine `idle`, `needsEngine`) opens
+  a dialog, *Use the engine?*: **Use the engine** is one write,
+  `[settingsChanged({ engine: true }), firstMove(key)]` — the switch on for
+  the session and the position `wanted`; **Go on without it** leaves both,
+  the answer graded against the lines there are (none: "nothing to compare",
+  `target` 0). Asked once per position while the screen is up; **a Pass
+  never asks**.
 - **The invariants** (held by a seeded random walk in `reducer.test.ts`):
   `current ∈ keys` and `positions` has exactly the keys; at most one
   `reopened`, and it is `current`; an answer is non-empty and never changes;
@@ -188,11 +207,12 @@ engine), `passed`. `gradeOf` (a pass grades as one, for the summary),
 `resultsOf` (every answered or passed position and the one being answered,
 in game order), `summaryOf`, `progressOf` (the lobby's — from the record
 alone, so it is what the screen says), `nextOpen` (**the first `open` key
-after `current`** in the manifest), `positionAtPath` (the trained position
-the board stands at, never past `current`), and `replayPlan(record, from,
-to)` — the recorded game's SANs between two keys, **capped at
-`REPLAY_MAX_PLIES` = 2**: a longer gap (where positions between were not
-trained) starts two plies short of `to`.
+after `current`** in the manifest — every analysed position of the side is
+in it, §1, so Pass goes 1 → 2 → 3, never past one), `engineOfferedAt`
+(§3.2), `positionAtPath` (the trained position the board stands at, never
+past `current`), and `replayPlan(record, from, to)` — the recorded game's
+SANs between two keys, **capped at `REPLAY_MAX_PLIES` = 2**: a longer gap
+(where positions between were not trained) starts two plies short of `to`.
 
 ## 4. The board — a projection of the record
 
@@ -301,7 +321,9 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   standard start is the session's — one position, the side to move's, no line
   of its own: the engine finds them, its switch on whatever the form said —
   Start off with why while it cannot be answered) and **Settings** (*Moves to
-  find*, *Use the engine* — on, a game with no engine lines trains —, *Show
+  find*, *Use the engine* — on, a game with no engine lines trains; off, a
+computer analysis trains whole, the positions it left no line at too
+(`gamePositionsOf`, §1) —, *Show
   next-move arrows*), a full-width **Start** under all three. Start makes
   the session (`sessionFromGame` / `sessionFromPosition`) and its Case
   (`createSessionCase`) and opens it.
@@ -318,7 +340,7 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
 | Unit | Owns |
 | --- | --- |
 | `useSessionCase(caseId)` | the Case store's snapshot, the record parsed from its tags (memoised on the Case's row), `dispatch(events)` through `editSessionCase`, the write problem |
-| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove`); the debounced `workRecorded` and `flushWork`; the replay's start |
+| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove` — or, the switch off, opens the offer, `engineOffer`: `open`, `accept`, `decline`, once per position, CTA-245); the debounced `workRecorded` and `flushWork`; the replay's start |
 | `useReplay` | the timers: the board put on the plan's start, then one ply every `stepDelayMs` (`STEP_DELAY_MS`, 1 s — a prop for tests), stopped once the reader moves the board. No chess |
 | `useSessionEngine` | an Evaluate Position job queued for every `wanted` position (the Engine menu's search, MultiPV N; an in-flight set so no render queues twice), then `engineQueued` / `engineFailed`; the queued jobs watched and echoed — `engineSearched` with a done job's result, `engineFailed` for one failed, cancelled or gone |
 
@@ -333,7 +355,9 @@ answered) **· Summary**; the header — back to the sessions, the
 *Experimental* chip, "Position 3 of 12 · 12. White", New session (an icon) and
 Download PGN; the footer — a read issue, a refused write, the comment block,
 the next-moves bar, the instructions, the reader's moves, the engine's word,
-then New move · Pass · Results (n) · Next, or Next / Summary once answered.
+then New move · Pass · Results (n) · Next, or Next / Summary once answered;
+and **the engine's offer** (§3.2), a `ConfirmDialog` — *Use the engine?*,
+Go on without it · Use the engine.
 **The arrows**: the explorer's; once graded, on the position itself, the top
 N in green and the reader's moves outside them in red. **The left panel**
 (`AccuracyTrainerDetails`, a drawer under the breakpoint): the game's name,

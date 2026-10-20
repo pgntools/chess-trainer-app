@@ -1,4 +1,4 @@
-import { gradePosition, sessionSummaryOf, type PositionGrade, type SessionSummary } from "../accuracyTrainer";
+import { gradePosition, needsEngine, sessionSummaryOf, type PositionGrade, type SessionSummary } from "../accuracyTrainer";
 import { positionPathOf, trainingPositionOf, type FindBestMoveRecord, type PositionKey } from "./model";
 
 /**
@@ -117,6 +117,25 @@ export const isDone = (record: FindBestMoveRecord): boolean =>
     const kind = record.positions.get(key)?.answer.kind;
     return kind === "answered" || kind === "passed";
   });
+
+/**
+ * **Whether to offer the engine at a position** (CTA-245): Use the engine is
+ * off, and the position — still to answer, its engine never asked — has
+ * fewer top lines than N (`needsEngine`), so the engine would be asked for it
+ * were it on. The screen asks the reader then, on their first move there.
+ */
+export const engineOfferedAt = (record: FindBestMoveRecord, key: PositionKey): boolean => {
+  if (record.settings.engine) return false;
+  const position = record.positions.get(key);
+  const training = trainingPositionOf(record, key);
+  return (
+    position !== undefined &&
+    training !== undefined &&
+    (position.answer.kind === "open" || position.answer.kind === "reopened") &&
+    position.engine.kind === "idle" &&
+    needsEngine(training, record.wanted)
+  );
+};
 
 /** **The next position**: the first key after `current`, in the manifest's order, still open — `undefined` when none is (the summary's turn). */
 export const nextOpen = (record: FindBestMoveRecord): PositionKey | undefined =>

@@ -1,10 +1,10 @@
 import type { SideValue } from "../../../design-system/components/forms";
-import { trainingPositionsOf } from "../../../lib/accuracyTrainer";
+import { gamePositionsOf } from "../../../lib/accuracyTrainer";
 import type { FindBestMoveRecord } from "../../../lib/findBestMove/model";
 import { isOlderSessionTags, isSessionTags, sessionRecordOf } from "../../../lib/findBestMove/pgn";
 import type { GameTree } from "../../../lib/gameTree";
 
-/** A game loaded: its name and its tree — whether it trains is read from it as it stands (`trainingPositionsOf`). */
+/** A game loaded: its name and its tree — whether it trains is read from it as it stands (`gamePositionsOf`). */
 export type SessionSource = { name: string; tree: GameTree };
 
 /**
@@ -33,7 +33,7 @@ export const setupReadingOf = (source: SessionSource | null, engine: boolean, si
   const headers = source?.tree.headers ?? {};
   const session =
     source === null || (!isSessionTags(headers) && !isOlderSessionTags(headers)) ? undefined : (sessionRecordOf(headers)?.record ?? null);
-  const positions = source === null || session !== undefined ? [] : trainingPositionsOf(source.tree, { unevaluated: engine });
+  const positions = source === null || session !== undefined ? [] : gamePositionsOf(source.tree, { engine });
   const white = positions.filter((position) => position.turn === "w").length;
   const black = positions.length - white;
   const forSide = side === "white" ? white : side === "black" ? black : white + black;
