@@ -1,4 +1,5 @@
 import { gradePosition, sessionSummaryOf, trainingPositionsOf, type SessionSummary } from "../../../lib/accuracyTrainer";
+import { noPieces, piecesOf, sessionMaterialOf, type SessionMaterial } from "../../../lib/achievements/material";
 import { parsePgnTree } from "../../../lib/pgn";
 import type { AccuracyReportRow } from "./AccuracySessionReport";
 
@@ -44,3 +45,18 @@ export const SUMMARY: SessionSummary = sessionSummaryOf(grades.flatMap((grade) =
 
 /** A session ended before its first answer. */
 export const EMPTY: SessionSummary = sessionSummaryOf([]);
+
+/**
+ * The achievements over the three graded (CTA-249): the first position's
+ * Queen, Rook, Queen, none, Pawn; the pass none; the third A3's Pawn alone.
+ */
+export const MATERIAL: SessionMaterial = sessionMaterialOf(
+  positions.flatMap((position, index) => {
+    const grade = grades[index];
+    if (grade === null || grade === undefined) return [];
+    return [grade.passed ? noPieces() : piecesOf({ position, grade, work: null, wanted: WANTED })];
+  }),
+);
+
+/** No position graded: every count and material 0. */
+export const EMPTY_MATERIAL: SessionMaterial = sessionMaterialOf([]);

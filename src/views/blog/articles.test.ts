@@ -192,8 +192,10 @@ describe("the Blog's tree", () => {
     expect(BLOG_ARTICLES.find((article) => article.path === "writing-an-article/a-draft")?.draft).toBe(true);
     // The Stockfish 19 guide waits, a draft, for its screenshots, and the UCI options guide (CTA-179) with it, which it links to.
     // The legal pages guide (CTA-182) is a draft; so is the lichess evaluation database guide (CTA-193), until its screenshots.
+    // The Find Best Move achievements guide (CTA-249) too: its trainer is dev-only, and its screenshots are to come.
     expect(BLOG_ARTICLES.filter((article) => article.draft).map((article) => article.path)).toEqual([
       "writing-an-article/a-draft",
+      "guides/find-best-move-achievements",
       "guides/local-lichess-evaluation-database",
       "guides/creating-legal-pages",
       "guides/stockfish-19-browser-vs-native",

@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AccuracyReportRow, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
+import type { AccuracyReportRow, AccuracyTrainerAchievements, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
 import { targetOf } from "../../../lib/accuracyTrainer";
 import type { AnalysisCase } from "../../../lib/analysisProjects";
 import { gameMoveOf, trainingPositionOf, type EngineStart, type FindBestMoveRecord, type PositionKey } from "../../../lib/findBestMove/model";
@@ -9,9 +9,11 @@ import type { SessionIssue } from "../../../lib/findBestMove/pgn";
 import type { AnswerWords } from "../../../lib/findBestMove/projection";
 import { reduceSession, sessionEvents as events, type SessionEvent } from "../../../lib/findBestMove/reducer";
 import {
+  achievementsOf,
   answerOf,
   engineFailedAt,
   gradeOf,
+  materialOf,
   nextOpen,
   phaseOf,
   placeOf,
@@ -145,10 +147,11 @@ export const useFindBestMove = ({
 
   // The trained position the board stands at — the one on screen inside its lines, an earlier one stepped back to.
   const shownAt = positionAtPath(record, sanPathTo(core.tree, core.nodeId)) ?? key;
+  const shownLabel = t("accuracyTrainer.details.positionLabel", { at: placeOf(record, shownAt), count: record.keys.length, move: labelOf(shownAt) });
   const shownMoves = ((): AccuracyTrainerMoves | undefined => {
     const shownPosition = trainingPositionOf(record, shownAt);
     if (shownPosition === undefined) return undefined;
-    const label = t("accuracyTrainer.details.positionLabel", { at: placeOf(record, shownAt), count: record.keys.length, move: labelOf(shownAt) });
+    const label = shownLabel;
     switch (phaseOf(record, shownAt)) {
       case "answering":
         return { kind: "answering", label, list: board.candidates, onMove: board.moveCandidate, onRemove: board.removeCandidate };
@@ -165,15 +168,25 @@ export const useFindBestMove = ({
     }
   })();
 
+  // Its pieces, derived from the record — never stored (CTA-249): the left panel's Achievements.
+  const shownAchievements: AccuracyTrainerAchievements | undefined =
+    trainingPositionOf(record, shownAt) === undefined ? undefined : { label: shownLabel, pieces: achievementsOf(record, shownAt), wanted: record.wanted };
+
   const playedOf = (at: PositionKey) => gameMoveOf(record.game, at) ?? "–";
-  const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => ({
-    index: row.key,
-    label: labelOf(row.key),
-    playedSan: playedOf(row.key),
-    state: row.state === "graded" && row.grade === null ? "waiting" : row.state,
-    ...(row.state === "graded" && row.grade !== null ? { grade: row.grade } : {}),
-    current: row.key === shownAt,
-  }));
+  const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => {
+    // A pass wins nothing: its slots are disabled pawns too.
+    const pieces = row.state === "graded" || row.state === "passed" ? achievementsOf(record, row.key) : null;
+    return {
+      index: row.key,
+      label: labelOf(row.key),
+      playedSan: playedOf(row.key),
+      state: row.state === "graded" && row.grade === null ? "waiting" : row.state,
+      ...(row.state === "graded" && row.grade !== null ? { grade: row.grade } : {}),
+      // Its pieces, derived from the record (CTA-249): the row's five slots.
+      ...(pieces === null ? {} : { achievements: pieces }),
+      current: row.key === shownAt,
+    };
+  });
 
   const reportRows = useMemo<AccuracyReportRow[]>(
     () =>
@@ -194,6 +207,8 @@ export const useFindBestMove = ({
     [record],
   );
   const summary = useMemo(() => summaryOf(record), [record]);
+  // The achievements, derived from the record — never stored (CTA-249).
+  const material = useMemo(() => materialOf(record), [record]);
 
   /** The session's PGN, projected from the record now with the board's work in — what Download saves. */
   const pgn = () => sessionPgnOf(reduceSession(record, [board.flushWork()]), readPgnTags(caseRecord.pgn), words);
@@ -217,9 +232,11 @@ export const useFindBestMove = ({
     searching: answering && engine.searchingAt(key),
     candidates: phase === "waiting" || phase === "graded" ? (answerOf(record, key) ?? []) : board.candidates,
     shownMoves,
+    shownAchievements,
     results,
     reportRows,
     summary,
+    material,
     hasNext: nextOpen(record) !== undefined,
     unreadPositions,
     sideOf,

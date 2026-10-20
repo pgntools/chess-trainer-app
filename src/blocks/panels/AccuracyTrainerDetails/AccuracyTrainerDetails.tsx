@@ -14,12 +14,16 @@ import { StatusText } from "../../../design-system/components/feedback";
 import { LabelChip, type LabelChipTone } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../lib/accuracyTrainer";
+import type { AchievementPieces } from "../../../lib/achievements/material";
 import { formatScore } from "../../../lib/engineAnalysis";
 import type { EngineStart } from "../../../lib/findBestMove/model";
+import { useChessTokens } from "../../../design-system/theme";
 import { gradeHeadlineOf } from "../GradedLines";
+import { AchievementNotes, AchievementTable, PieceIcon } from "./AchievementTable";
+import { achievementNameOf } from "./achievementWords";
 
 /** The panel's tabs. */
-export type AccuracyTrainerDetailsTab = "moves" | "results" | "settings";
+export type AccuracyTrainerDetailsTab = "moves" | "results" | "achievements" | "settings";
 
 /** **One position answered or passed**, as Results lists it. */
 export type AccuracyTrainerResult = {
@@ -33,6 +37,12 @@ export type AccuracyTrainerResult = {
   state: "graded" | "waiting" | "passed" | "answering";
   /** Its grade, graded. */
   grade?: PositionGrade;
+  /**
+   * Its achievements, graded or passed (CTA-249) — five slots in the row's
+   * middle, a category each: the piece won in its category's colour, a
+   * disabled pawn where none was. Absent (waiting, answering): the slots' room kept empty.
+   */
+  achievements?: AchievementPieces;
   /** The position the board stands at. */
   current: boolean;
 };
@@ -68,6 +78,17 @@ export type AccuracyTrainerMoves = { label: string } & (
   | { kind: "graded"; position: TrainingPosition; grade: PositionGrade }
 );
 
+/**
+ * **The achievements of the position the board stands at** (CTA-249) — its
+ * pieces, one per category (`achievementsOf`), `null` while it is not graded.
+ */
+export type AccuracyTrainerAchievements = {
+  label: string;
+  pieces: AchievementPieces | null;
+  /** X — the session's *Moves to find*, as the notes under the table name it. */
+  wanted: number;
+};
+
 export type AccuracyTrainerDetailsProps = {
   /** The panel's heading: the game loaded, else the exercise's name. */
   title: string;
@@ -95,6 +116,8 @@ export type AccuracyTrainerDetailsProps = {
   moves?: AccuracyTrainerMoves;
   /** Every position answered or passed so far — absent before a session starts. */
   results?: AccuracyTrainerResults;
+  /** The pieces the position the board stands at won — absent before a session starts. */
+  achievements?: AccuracyTrainerAchievements;
   /**
    * The root; its parts `-title`, `-case` (the Case's link), `-tabs` (each tab
    * `<testId>-tab-<id>`), `-moves-tab` (its position `-moves-label`; being
@@ -103,6 +126,12 @@ export type AccuracyTrainerDetailsProps = {
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
    * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
+   * `-achievements-tab` (its position `-achievements-label`, the pieces
+   * `-achievements` — a row `-achievements-<category>`, a cell
+   * `-achievements-<category>-<piece>` —, the notes under it
+   * `-achievements-notes` (a line `-achievements-notes-<category>`, none
+   * `-achievements-notes-none`), not graded yet
+   * `-achievements-none`, no session `-achievements-empty`),
    * `-settings` (`-moves`, `-arrows`, `-engine-start` — each radio
    * `-engine-start-<move|grade>`).
    */
@@ -127,7 +156,9 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * answered now, so a pass reopened stays in its place — in game order, each a
  * button back to it (its score — found / in place, *Perfect* —, waiting for
  * the engine, passed: to answer it, or *Answering now*), the one the board
- * stands at current —
+ * stands at current — **Score** (CTA-249): the pieces the position the
+ * board stands at won, one per category, once it is graded, and under them
+ * what each piece won means —
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position) and *Show next-move arrows* (the
@@ -154,6 +185,7 @@ function AccuracyTrainerDetails({
   caseLink,
   moves,
   results,
+  achievements,
   testId,
 }: AccuracyTrainerDetailsProps) {
   const { t } = useTranslation();
@@ -185,6 +217,7 @@ function AccuracyTrainerDetails({
           tabs={[
             { id: "moves", label: t("accuracyTrainer.details.tabs.moves") },
             { id: "results", label: t("accuracyTrainer.details.tabs.results") },
+            { id: "achievements", label: t("accuracyTrainer.details.tabs.achievements") },
             { id: "settings", label: t("accuracyTrainer.details.tabs.settings") },
           ]}
           value={tab}
@@ -250,6 +283,31 @@ function AccuracyTrainerDetails({
             )}
           </Box>
         )}
+        {tab === "achievements" && (
+          <Box {...tabPanelProps(testId, "achievements")} data-testid={`${testId}-achievements-tab`} sx={{ display: "grid", gap: 1, p: 1 }}>
+            {achievements === undefined ? (
+              <Typography variant="body2" data-testid={`${testId}-achievements-empty`} sx={{ color: "text.secondary" }}>
+                {t("accuracyTrainer.details.movesNoSession")}
+              </Typography>
+            ) : (
+              <>
+                <Typography component="h3" variant="subtitle2" data-testid={`${testId}-achievements-label`} sx={{ fontWeight: 700 }}>
+                  {achievements.label}
+                </Typography>
+                {achievements.pieces === null ? (
+                  <Typography variant="body2" data-testid={`${testId}-achievements-none`} sx={{ color: "text.secondary" }}>
+                    {t("accuracyTrainer.details.achievementsNone")}
+                  </Typography>
+                ) : (
+                  <>
+                    <AchievementTable pieces={achievements.pieces} testId={`${testId}-achievements`} />
+                    <AchievementNotes pieces={achievements.pieces} wanted={achievements.wanted} testId={`${testId}-achievements-notes`} />
+                  </>
+                )}
+              </>
+            )}
+          </Box>
+        )}
         {tab === "settings" && (
           <Box
             {...tabPanelProps(testId, "settings")}
@@ -296,9 +354,14 @@ function AccuracyTrainerDetails({
   );
 }
 
+/** A Results row's achievement slots — one per category — and each one's side, in pixels. */
+const SLOTS = 5;
+const SLOT_PX = 18;
+
 /** Every position answered or passed, each a button back to it. */
 function ResultList({ results, testId }: { results: AccuracyTrainerResults; testId: string }) {
   const { t } = useTranslation();
+  const tints = useChessTokens().achievements;
   const scoreOf = (row: AccuracyTrainerResult): string => {
     if (row.state === "passed") return t("accuracyTrainer.details.resultPassed");
     if (row.state === "answering") return t("accuracyTrainer.details.resultAnswering");
@@ -311,6 +374,7 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
       {results.rows.map((row) => {
         const perfect = row.grade !== undefined && row.grade.target > 0 && row.grade.inPlace === row.grade.target;
         const score = scoreOf(row);
+        const won = (row.achievements ?? []).flatMap(({ category, piece }) => (piece === null ? [] : [{ category, piece }]));
         return (
           <Box component="li" key={row.index}>
             <Button
@@ -323,11 +387,22 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
                   ? "accuracyTrainer.details.resultAnswer"
                   : row.state === "answering"
                     ? "accuracyTrainer.details.resultBack"
-                    : "accuracyTrainer.details.resultOpen",
-                { move: row.label, score },
+                    : won.length > 0
+                      ? "accuracyTrainer.details.resultOpenWon"
+                      : "accuracyTrainer.details.resultOpen",
+                { move: row.label, score, pieces: won.map(({ category, piece }) => achievementNameOf(t, category, piece)).join(", ") },
               )}
               data-testid={`${testId}-result-${row.index}`}
-              sx={{ justifyContent: "space-between", gap: 1, textTransform: "none", textAlign: "start", color: "text.primary" }}
+              sx={{
+                // Equal side columns: the slots sit at the same place on every row, whatever the label's or the score's width.
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                alignItems: "center",
+                gap: 1,
+                textTransform: "none",
+                textAlign: "start",
+                color: "text.primary",
+              }}
             >
               <Box component="span" sx={{ display: "grid", minWidth: 0 }}>
                 <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
@@ -340,10 +415,31 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
                   </Box>
                 </Typography>
               </Box>
-              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
-                <Typography component="span" variant="body2" dir="ltr" sx={{ color: row.state === "graded" ? "text.primary" : "text.secondary" }}>
-                  {score}
-                </Typography>
+              {/* A slot per category, in the registry's order — the piece won in its colour, a disabled pawn where none was; named in the button's own name. */}
+              <Box
+                component="span"
+                {...(row.achievements === undefined ? {} : { "data-testid": `${testId}-result-${row.index}-pieces` })}
+                sx={{ display: "grid", gridTemplateColumns: `repeat(${SLOTS}, ${SLOT_PX}px)`, gap: "2px", justifyContent: "center" }}
+              >
+                {row.achievements?.map(({ category, piece }) => (
+                  <Box
+                    component="span"
+                    key={category}
+                    data-category={category}
+                    data-piece={piece ?? "none"}
+                    sx={{ display: "inline-flex", ...(piece === null ? { opacity: 0.25, filter: "grayscale(1)" } : {}) }}
+                  >
+                    {piece === null ? <PieceIcon piece="pawn" size={SLOT_PX} /> : <PieceIcon piece={piece} size={SLOT_PX} tint={tints[category]} />}
+                  </Box>
+                ))}
+              </Box>
+              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 0.75, minWidth: 0 }}>
+                {/* A pass says so with its chip alone. */}
+                {row.state !== "passed" && (
+                  <Typography component="span" variant="body2" dir="ltr" sx={{ color: row.state === "graded" ? "text.primary" : "text.secondary" }}>
+                    {score}
+                  </Typography>
+                )}
                 {perfect && <LabelChip label={t("accuracyTrainer.report.perfectMark")} tone="success" />}
                 {row.state === "passed" && <LabelChip label={t("accuracyTrainer.details.resultLater")} tone="warning" />}
               </Box>

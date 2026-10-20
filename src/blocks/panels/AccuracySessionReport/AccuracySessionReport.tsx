@@ -8,7 +8,11 @@ import { KeyValueList, type KeyValueRow } from "../../../design-system/component
 import { LabelChip, type LabelChipTone } from "../../../design-system/components/tables";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import type { PositionGrade, SessionSummary } from "../../../lib/accuracyTrainer";
+import type { AchievementCategoryId } from "../../../lib/achievements/categories";
+import type { PieceCounts, SessionMaterial } from "../../../lib/achievements/material";
+import { PIECES, type Piece } from "../../../lib/achievements/pieces";
 import type { Turn } from "../../../lib/engineAnalysis";
+import { CategorySwatch, PieceIcon } from "../AccuracyTrainerDetails";
 
 /** One position of the session, as the report lists it. */
 export type AccuracyReportRow = {
@@ -29,10 +33,18 @@ export type AccuracyReportRow = {
 export type AccuracySessionReportProps = {
   summary: SessionSummary;
   rows: readonly AccuracyReportRow[];
+  /**
+   * The session's achievements (CTA-249, `materialOf`) — the material per
+   * category and the count of each piece, a table under the measures.
+   * Absent, none.
+   */
+  material?: SessionMaterial;
   /** Back to a position — its row's move is a button. */
   onOpen: (index: number) => void;
   /**
    * The root; the measures `-measures` (each value `-measures-<measure>`),
+   * the achievements `-achievements` (a row `-achievements-row-<category>`,
+   * the whole `-achievements-row-total`),
    * the table `-table` (a row `-table-row-<index>`, its button `-open-<index>`,
    * its result `-result-<index>`).
    */
@@ -40,6 +52,10 @@ export type AccuracySessionReportProps = {
 };
 
 type Column = "move" | "game" | "best" | "yours" | "found" | "loss" | "result";
+
+/** A row of the achievements table: a category's pieces and material, or every category's. */
+type MaterialRow = { id: AchievementCategoryId | "total"; counts: PieceCounts; material: number };
+type MaterialColumn = "category" | Piece | "material";
 
 /** A move number as a PGN writes it: `12.` for White, `12…` for Black. */
 const moveLabelOf = (row: Pick<AccuracyReportRow, "moveNumber" | "turn">) => `${row.moveNumber}${row.turn === "w" ? "." : "…"}`;
@@ -65,13 +81,16 @@ const resultOf = (grade: PositionGrade): { key: string; tone: LabelChipTone } | 
  * then **every position** in game order: its move, the game's move, the
  * engine's top N (hidden for a pass — put off for later), the reader's moves in their order, found / in place, the
  * best one's loss and a result (Perfect, Best, the worst verdict, Good,
- * Outside, or Passed). Each position's move is a button back to it.
+ * Outside, or Passed). Each position's move is a button back to it. With
+ * `material` (CTA-249), **the achievements** between the two: each
+ * category's pieces counted and its material (Pawn 1, Knight 3, Bishop 3,
+ * Rook 5, Queen 9), and every category's together.
  *
  * Presentational: the summary and the rows are props
  * (`lib/accuracyTrainer.ts`'s `sessionSummaryOf`). Its words are
  * `accuracyTrainer.report.*`.
  */
-function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessionReportProps) {
+function AccuracySessionReport({ summary, material, rows, onOpen, testId }: AccuracySessionReportProps) {
   const { t } = useTranslation();
 
   const rate = (value: number | null, count: number) => share(value, count, summary.positions);
@@ -162,12 +181,74 @@ function AccuracySessionReport({ summary, rows, onOpen, testId }: AccuracySessio
     [t, onOpen, testId],
   );
 
+  const materialRows = useMemo<MaterialRow[]>(
+    () =>
+      material === undefined
+        ? []
+        : [
+            ...material.categories.map((each): MaterialRow => ({ id: each.category, counts: each.counts, material: each.material })),
+            { id: "total", counts: material.counts, material: material.material },
+          ],
+    [material],
+  );
+  const materialColumns = useMemo<DataTableColumn<MaterialRow, MaterialColumn>[]>(
+    () => [
+      {
+        id: "category",
+        header: t("accuracyTrainer.achievements.category"),
+        rowHeader: true,
+        render: (row) =>
+          row.id === "total" ? (
+            t("accuracyTrainer.achievements.total")
+          ) : (
+            <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+              <CategorySwatch category={row.id} />
+              {t(`accuracyTrainer.achievements.categories.${row.id}`)}
+            </Box>
+          ),
+      },
+      ...PIECES.map((piece): DataTableColumn<MaterialRow, MaterialColumn> => ({
+        id: piece,
+        header: (
+          <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+            <PieceIcon piece={piece} size={18} />
+            {t(`accuracyTrainer.achievements.pieces.${piece}`)}
+          </Box>
+        ),
+        align: "end",
+        dir: "ltr",
+        render: (row) => row.counts[piece],
+      })),
+      { id: "material", header: t("accuracyTrainer.achievements.material"), align: "end", dir: "ltr", render: (row) => row.material },
+    ],
+    [t],
+  );
+
   return (
     <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1.5 }}>
       <Typography id={`${testId}-title`} component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
         {t("accuracyTrainer.report.title")}
       </Typography>
       <KeyValueList rows={measures} ariaLabel={t("accuracyTrainer.report.measures")} testId={`${testId}-measures`} />
+      {material !== undefined && (
+        <>
+          <Typography id={`${testId}-achievements-title`} component="h4" variant="subtitle2" sx={{ fontWeight: 700 }}>
+            {t("accuracyTrainer.achievements.title")}
+          </Typography>
+          <DataTable<MaterialRow, MaterialColumn>
+            columns={materialColumns}
+            rows={materialRows}
+            rowId={(row) => row.id}
+            stickyHeader={false}
+            density="dense"
+            // Every category's together closes the table, apart.
+            groupEnd={(_, next) => next?.id === "total"}
+            emptyLabel={t("accuracyTrainer.achievements.empty")}
+            ariaLabel={t("accuracyTrainer.achievements.table")}
+            testId={`${testId}-achievements`}
+          />
+        </>
+      )}
       <DataTable<AccuracyReportRow, Column>
         columns={columns}
         rows={rows}

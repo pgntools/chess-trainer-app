@@ -3,6 +3,7 @@ paths:
   - "src/views/accuracyTrainer/**"
   - "src/lib/accuracyTrainer*"
   - "src/lib/findBestMove/**"
+  - "src/lib/achievements/**"
   - "src/lib/jobs/kinds/evaluatePosition/**"
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
@@ -57,9 +58,10 @@ its sessions: a v3 session Case is a plain Case, R26 dropped.)
 | Path | What lives there |
 | --- | --- |
 | `src/lib/accuracyTrainer.ts` | **The grading**, pure (§1–§2): `trainingPositionsOf`, `gamePositionsOf` (a session's positions, CTA-245), `sessionPositionsOf`, `trainingPositionFrom`, `withEngineResult`, `needsEngine`, `targetOf`, `gradeSuggestion` / `gradePosition`, `sessionSummaryOf`, `moveSquaresOf`, `bareSan`. Reused by v4 as is. |
+| `src/lib/achievements/` | **The achievements** (§10, CTA-249): `pieces.ts` (the five pieces, their values, `AchievementInput`), `categories.ts` (the five graders and `ACHIEVEMENT_CATEGORIES`, the registry), `material.ts` (`piecesOf`, `noPieces`, `sessionMaterialOf`). |
 | `src/lib/findBestMove/model.ts` | **The record** (§3): `FindBestMoveRecord`, `PositionRecord`, the two axes `AnswerState` / `EngineState`, the position key; the recorded game replayed once (`replayGame`), a key's path, FEN and game move, `trainingPositionOf` (the grading's `TrainingPosition`, derived, never stored), `storedLinesOf`. |
 | `src/lib/findBestMove/reducer.ts` | **The transitions** (§3.2): `sessionReducer`, `reduceSession`, the events `sessionEvents.*` — an event that does not apply answers the same record. |
-| `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `engineOfferedAt` (CTA-245), `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
+| `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `engineOfferedAt` (CTA-245), `achievementsOf` / `materialOf` (CTA-249, §10), `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
 | `src/lib/findBestMove/pgn.ts` | **The format, version 2** (§5): `isSessionTags` (the one predicate — Analysis's S3 reads it), `withoutSessionTags`, `sessionTagsOf` / `withSessionTags`, `sessionRecordOf` (lenient: `SessionIssue`s), the work fragment (`workFragmentOf`, `workFromFragment`). |
 | `src/lib/findBestMove/projection.ts` | **The projections** (§4, §5.3): `sessionMovetextOf` (the readable game), `boardTreeOf` (the board at a position), `workOf`, `candidatesOf`, `reorderedCandidates`, `withoutCandidate`, `isAtPosition`, `isWorkNode` (S5's predicate); `AnswerWords`. |
 | `src/lib/findBestMove/start.ts` | A session from a game (`sessionFromGame`) or one position (`sessionFromPosition`); `sourceHeadersOf` (the game's tags but its analysis's). |
@@ -69,7 +71,7 @@ its sessions: a v3 session Case is a plain Case, R26 dropped.)
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind**, `analysis.evaluate-session-position` — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV4/` | **The screen** (§8): `useSessionCase.ts` (persistence), `useSessionBoard.ts` (the board), `useReplay.ts` (the replay), `useSessionEngine.ts` (the engine jobs), `useFindBestMove.ts` (their composition, the actions), `FindBestMove.tsx` (composition alone), `FindBestMoveRoute.tsx` (a session's arrival), `SessionsLobby.tsx`, `NewSessionForm.tsx`, `SessionSetup.tsx` + `sessionSetup.ts` (the form's Game tab and its reading), `paths.ts`, `Main.tsx` / `LobbyMain.tsx` (layout-only). |
 | `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the summary; the left panel (the game, its Case, Your moves, Results, Settings); the lobby's table. |
-| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap, a partial analysis — `PARTIAL_PGN` — passed through and the engine offered, CTA-245), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts`; `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
+| Tests | `lib/accuracyTrainer.test.ts`; `lib/achievements/categories.test.ts` (each grader per tier and precondition, the outside rule, the tiers' nesting over every answer of a pool), `material.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap, a partial analysis — `PARTIAL_PGN` — passed through and the engine offered, CTA-245), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts`; `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
 
 Routes and nav: `/accuracy-trainer/find-best-move-v4` — the sessions lobby,
 the table in the board square and the New session form in the right-hand
@@ -389,7 +391,8 @@ its Case linked, then **Your moves** (the trained position the board stands
 at — answering, its moves to reorder or delete; waiting; graded, every line
 with the reader's marked; passed, with *Answer it now*; not answered yet),
 **Results** (in game order, the one the board stands at current; a click back
-to each — a passed one to answer it now) and **Settings** (*Moves to find*
+to each — a passed one to answer it now), **Score** (the pieces the
+position the board stands at won, §10) and **Settings** (*Moves to find*
 locked, *Show next-move arrows*, *Engine starts thinking* — on the first
 move played, or after Next is clicked, a `RadioGroupField`, CTA-247
 (`engineStart` / `onEngineStartChange`, `useFindBestMove`'s
@@ -406,3 +409,78 @@ it on).
   table row, the invariants walk's generator, its test — an action of
   `useFindBestMove`. Never a field the screen keeps beside the record.
 - **A new piece of session state**: §5's last point.
+- **A new achievement category**: a grader and a registry line
+  (`lib/achievements/categories.ts`, `ACHIEVEMENT_CATEGORIES`), its table
+  test, and its name `accuracyTrainer.achievements.categories.<id>` in both
+  catalogs — the row, the report and the material follow the registry.
+
+## 10. Achievements — a piece per position, per category (CTA-249)
+
+The design is [`docs/design/accuracy-achievements.md`](../../docs/design/accuracy-achievements.md).
+**Every graded position wins a chess piece (or none) in each of five
+categories** — a category is a goal at one position, a piece how well the
+answer met it there; one answer earns in every category at once (no new
+input, no mode). Pawn 1, Knight 3, Bishop 3 (ranked above the Knight), Rook
+5, Queen 9; **the highest tier whose condition holds wins** (each grader
+reads its table top down).
+
+- **Pure, `lib/achievements/`**: a grader per category, `(AchievementInput)
+  → Piece | null` — the `TrainingPosition`, its `PositionGrade` (every move
+  given), the reader's `work` there and X, the session's *Moves to find*.
+  **Only the first X moves are graded** (`grade.suggestions.slice(0, X)`).
+  No piece for a pass or `target` 0 (every grader); a precondition not met,
+  none in its category. **A move outside the lines fails every tier above
+  Pawn** where its category grades it — A1 / A3 any of the first X, A2 / A4
+  the first — and Pawn too where its bound (`lossAtLeast`) fails it.
+- **The categories** (`ACHIEVEMENT_CATEGORIES`, ids and the note's codes):
+  `order` A1 *Place in order* (X ≥ 2; Queen all X in place, Rook all X in the
+  top X, Bishop the best first, Knight the best among them, Pawn one in the
+  top X; a target under X caps it at Bishop); `best` A2 *Best move* (the
+  first: Queen the best and line 2 losing ≥ 150 — `ONLY_MOVE_CP`, no second
+  listed line at most Rook —, Rook the best, Bishop ≤ 20 — `NEAR_BEST_CP` —,
+  Knight ≤ 50, Pawn in the top X); `clean` A3 *Clean candidates* (X moves
+  given; every one: Queen ≤ 20, Rook in the top X, Bishop ≤ 50, Knight ≤
+  100, Pawn ≤ 300); `game` A4 *Better than the game* (the game's move's line
+  losing > 100; the first: Queen the best, Rook in the top X, Bishop ≤ 50,
+  Knight ≤ 100, Pawn less than the game's — **a move not losing less than
+  the game's wins nothing**, the game's move itself too, so every tier
+  holds Pawn's); `line` B1 *See the line* (one of the first X the best move:
+  the reader's work from it along its first children against the engine's
+  line from it, `TrainingLine.sans` — plies matched from the start, 1 / 2 /
+  3 / 4 / 6, `LINE_TIERS`; the game's move's stored line is the move alone).
+- **Nothing stored.** `achievementsOf(record, key)` (`selectors.ts`): graded,
+  `piecesOf` over the derived position, its grade and its work — none
+  (`noPieces`) for one graded without its engine (`engineFailedAt`) or a
+  pass; `null` while not graded. `materialOf(record)` →
+  `sessionMaterialOf`: per category and in all, and how many of each piece.
+  No tag, no projection — the pieces cannot drift from the grade.
+- **The screen**: the left panel's **Score** tab (its id `achievements`)
+  (`AccuracyTrainerDetails`' `achievements` — `{ label, pieces }`, the
+  position the board stands at, as Your moves; `useFindBestMove`'s
+  `shownAchievements`): a table (`AchievementTable`), a row per category —
+  its colour's swatch (`CategorySwatch`) and name, then the five pieces Pawn
+  to Queen from the board's set (`defaultPieces` via `PieceIcon`), the one
+  won **filled with its category's colour** on a highlighted cell, the others
+  dimmed and grey as disabled. **Each category has its own colour**, a theme
+  token — `chess.achievements.<id>`, a light and a dark shade, each 3:1 on its
+  paper (`contrast.ts` reports it; the theme editor's Annotations section
+  edits it) — so a piece shown alone says which category it belongs to;
+  `PieceIcon`'s `tint` draws one (one drawing per scheme: an SVG fill takes
+  no CSS variable); under the table **what each piece won means**
+  (`AchievementNotes`: a line per category that won, its piece, its name and
+  `accuracyTrainer.achievements.explain.<category>.<piece>` with X as
+  `count`; none won, a line saying so); on the **Results** tab every graded or passed row has **five slots** in
+  its middle, a category each in the registry's order — the piece won in its
+  colour, a disabled (dimmed, grey) pawn where none was — the row a grid of
+  equal side columns, so the slots line up on every row
+  (`AccuracyTrainerResult`'s `achievements`; a row waiting or being answered
+  keeps their room empty); the pieces won named in the row's button ("— won
+  Place in order: Queen, …", `resultOpenWon`); a screen reader hears each row header whole,
+  "Place in order: Queen" / "…: no piece" (`achievementNameOf`), and each
+  cell its piece and *Won* / *Not won* — or, not graded yet, a line
+  saying so — the Result tab's `GradedLines` shows none; the Summary's `AccuracySessionReport`
+  takes `material` — a table under the measures, a row per category and
+  *All categories* (each category's swatch beside its name): each piece counted, the material. Words
+  `accuracyTrainer.achievements.*`.
+- **Later** (the note's §5, not built): a reader's lifetime ledger across
+  sessions, a database of its own.

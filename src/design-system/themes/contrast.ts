@@ -65,6 +65,7 @@ const PALETTE_COLOURS = ["primary", "secondary", "error", "warning", "info", "su
 /** The palette colours written as text (a status line, a link, a text button). */
 const TONES = ["primary", "error", "warning", "info", "success"] as const;
 const NAG_TONES = ["good", "brilliant", "interesting", "dubious", "mistake", "blunder"] as const;
+const ACHIEVEMENT_CATEGORIES = ["order", "best", "clean", "game", "line"] as const;
 const RESULTS = ["white", "draw", "black"] as const;
 
 type Measure = Omit<ContrastCheck, "id" | "ratio" | "minimum" | "pass"> & { backgroundName: string };
@@ -140,6 +141,21 @@ const chessChecks = ({ chess }: ThemeDefinition, papers: Record<"light" | "dark"
         foreground: chess.nag[tone][scheme],
         background: papers[scheme],
         backgroundName: "paper",
+      });
+    }
+  }
+  // An achievement's piece is a graphic, filled with its category's colour: 3:1 on the paper (CTA-249), reported as the move marks are.
+  for (const category of ACHIEVEMENT_CATEGORIES) {
+    for (const scheme of ["light", "dark"] as const) {
+      measures.push({
+        token: `chess.achievements.${category}.${scheme}`,
+        scheme,
+        label: `the ${category} achievement's pieces on the ${scheme} paper`,
+        foreground: chess.achievements[category][scheme],
+        background: papers[scheme],
+        backgroundName: "paper",
+        kind: "ui",
+        level: "advisory",
       });
     }
   }

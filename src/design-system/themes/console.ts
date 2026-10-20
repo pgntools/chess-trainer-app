@@ -127,6 +127,14 @@ export const consoleTheme: ThemeDefinition = {
       mistake: { light: "#8f5b00", dark: "#fcaf3e" },
       blunder: { light: "#a40000", dark: "#f25c5c" },
     },
+    // The achievement categories (CTA-249) in the ANSI families — blue, green, cyan, orange, magenta.
+    achievements: {
+      order: { light: "#204a87", dark: "#8fb4e0" },
+      best: { light: "#3b6e0a", dark: "#8ae234" },
+      clean: { light: "#06787a", dark: "#34e2e2" },
+      game: { light: "#8f5b00", dark: "#fcaf3e" },
+      line: { light: "#75507b", dark: "#d7a6d3" },
+    },
     promotion: { scrim: "rgba(0, 0, 0, 0.55)" },
     map: { whiteDot: "#eeeeec", blackDot: "#0e100e" },
     // Tango's white, grey and black.

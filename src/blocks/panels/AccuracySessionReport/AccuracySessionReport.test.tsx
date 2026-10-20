@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracySessionReport from "./AccuracySessionReport";
-import { EMPTY, ROWS, SUMMARY } from "./fixtures";
+import { EMPTY, EMPTY_MATERIAL, MATERIAL, ROWS, SUMMARY } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -54,6 +54,41 @@ describe("AccuracySessionReport (CTA-238)", () => {
     expect(screen.getByTestId("report-measures-foundRate")).toHaveTextContent("–");
     expect(screen.getByTestId("report-measures-bestRate")).toHaveTextContent("–");
     expect(screen.getByTestId("report-measures-averageLoss")).toHaveTextContent("–");
+  });
+
+  it("counts each category's pieces and its material, and every category's together (CTA-249)", () => {
+    render(<AccuracySessionReport summary={SUMMARY} material={MATERIAL} rows={ROWS} onOpen={() => {}} testId="report" />);
+    const table = screen.getByRole("table", { name: "Material per category" });
+    expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Category", "Pawn", "Knight", "Bishop", "Rook", "Queen", "Material"]);
+    expect(
+      within(table)
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => [...row.querySelectorAll("th, td")].map((cell) => cell.textContent)),
+    ).toEqual([
+      ["Place in order", "0", "0", "0", "0", "1", "9"],
+      ["Best move", "0", "0", "0", "1", "0", "5"],
+      ["Clean candidates", "1", "0", "0", "0", "1", "10"],
+      ["Better than the game", "0", "0", "0", "0", "0", "0"],
+      ["See the line", "1", "0", "0", "0", "0", "1"],
+      ["All categories", "2", "0", "0", "1", "2", "25"],
+    ]);
+    expect(screen.getByRole("rowheader", { name: "All categories" })).toBeInTheDocument();
+  });
+
+  it("draws no achievements without material", () => {
+    render(<AccuracySessionReport summary={SUMMARY} rows={ROWS} onOpen={() => {}} testId="report" />);
+    expect(screen.queryByRole("table", { name: "Material per category" })).toBeNull();
+  });
+
+  it("passes axe with its achievements, won and none", async () => {
+    const { container } = render(
+      <>
+        <AccuracySessionReport summary={SUMMARY} material={MATERIAL} rows={ROWS} onOpen={() => {}} testId="report" />
+        <AccuracySessionReport summary={EMPTY} material={EMPTY_MATERIAL} rows={[]} onOpen={() => {}} testId="report-empty" />
+      </>,
+    );
+    await expectNoAxeViolations(container);
   });
 
   it("passes axe", async () => {

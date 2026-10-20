@@ -103,6 +103,14 @@ export const highContrastTheme: ThemeDefinition = {
       mistake: { light: "#8a4f00", dark: "#ffb000" },
       blunder: { light: "#b3261e", dark: "#ff7a50" },
     },
+    // The achievement categories (CTA-249) in Okabe–Ito's blue, green, yellow, vermillion and reddish purple.
+    achievements: {
+      order: { light: "#005f94", dark: "#56b4e9" },
+      best: { light: "#00704f", dark: "#3fd6a5" },
+      clean: { light: "#665c00", dark: "#f0e442" },
+      game: { light: "#b3261e", dark: "#ff7a50" },
+      line: { light: "#933b73", dark: "#e7a2cf" },
+    },
     promotion: { scrim: "rgba(0, 0, 0, 0.6)" },
     map: { whiteDot: "#ffffff", blackDot: "#000000" },
     filterBoard: {

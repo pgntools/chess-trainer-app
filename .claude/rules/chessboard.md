@@ -224,7 +224,7 @@ Every colour drawn on or over a board is a **`chess` token** of the reader's
 theme (CTA-107, `src/design-system/themes/types.ts`): the squares and their
 coordinates, the last-move fill, the next-move arrow palettes, the required,
 untagged and play-chance arrows, the book arrows, the move marks' tones, the
-promotion scrim, the map's dots and the filter board's result bars. **Never
+achievement categories' colours (CTA-249), the promotion scrim, the map's dots and the filter board's result bars. **Never
 write a colour literal in a board file.**
 
 - The squares: spread `useBoardSquareOptions()` (`views/shared/boardColors.ts`)
