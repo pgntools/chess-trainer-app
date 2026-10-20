@@ -29,6 +29,7 @@ import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
 import { BoardLeftPanel } from "../../main/boardLeftPanel";
 import { usePageTitle } from "../../main/pageTitle";
 import { useShellCompact } from "../../main/shellCompact";
+import { distinctArrows } from "../../shared/nextMoveArrows";
 import { FIND_BEST_MOVE_PATH } from "./paths";
 import { useFindBestMove, type Landing } from "./useFindBestMove";
 
@@ -93,19 +94,17 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
   });
 
   // Once graded, on the position itself: the top N in green, the reader's moves outside them in red, over the reader's own arrows.
+  // One arrow to a pair of squares (`distinctArrows`): a move of the reader's that is also graded keeps its grade's colour.
   const arrows = useMemo(() => {
     // A pass is put off for later: no answer is drawn.
-    if (position === undefined || grade === null || grade.passed || core.nodeId !== board.positionNodeId) return explorer.arrows;
+    if (position === undefined || grade === null || grade.passed || core.nodeId !== board.positionNodeId) return distinctArrows(explorer.arrows);
     const arrowOf = (san: string, color: string) => {
       const squares = moveSquaresOf(position.fen, san);
       return squares === undefined ? [] : [{ startSquare: squares.from, endSquare: squares.to, color }];
     };
     const top = position.lines.slice(0, grade.target);
     const missed = grade.suggestions.filter((each) => !each.inTop && !top.some((line) => bareSan(line.san) === bareSan(each.san)));
-    const graded = [...top.flatMap((line) => arrowOf(line.san, drawing.green)), ...missed.flatMap((each) => arrowOf(each.san, drawing.red))];
-    // One arrow to a pair of squares: the board keys its arrows by them, and a pair drawn twice leaves one behind when the arrows go.
-    const taken = new Set(graded.map((arrow) => `${arrow.startSquare}${arrow.endSquare}`));
-    return [...explorer.arrows.filter((arrow) => !taken.has(`${arrow.startSquare}${arrow.endSquare}`)), ...graded];
+    return distinctArrows([...explorer.arrows, ...top.flatMap((line) => arrowOf(line.san, drawing.green)), ...missed.flatMap((each) => arrowOf(each.san, drawing.red))]);
   }, [position, grade, core.nodeId, board.positionNodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 
