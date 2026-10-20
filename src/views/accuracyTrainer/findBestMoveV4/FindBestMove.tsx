@@ -102,7 +102,10 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
     };
     const top = position.lines.slice(0, grade.target);
     const missed = grade.suggestions.filter((each) => !each.inTop && !top.some((line) => bareSan(line.san) === bareSan(each.san)));
-    return [...explorer.arrows, ...top.flatMap((line) => arrowOf(line.san, drawing.green)), ...missed.flatMap((each) => arrowOf(each.san, drawing.red))];
+    const graded = [...top.flatMap((line) => arrowOf(line.san, drawing.green)), ...missed.flatMap((each) => arrowOf(each.san, drawing.red))];
+    // One arrow to a pair of squares: the board keys its arrows by them, and a pair drawn twice leaves one behind when the arrows go.
+    const taken = new Set(graded.map((arrow) => `${arrow.startSquare}${arrow.endSquare}`));
+    return [...explorer.arrows.filter((arrow) => !taken.has(`${arrow.startSquare}${arrow.endSquare}`)), ...graded];
   }, [position, grade, core.nodeId, board.positionNodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 

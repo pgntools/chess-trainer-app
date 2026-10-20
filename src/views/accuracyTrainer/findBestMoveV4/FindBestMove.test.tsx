@@ -197,6 +197,11 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
     await screen.findByTestId(`${ID}-graded-headline`);
+    // On the position, the reader's e4 is also one of the top moves: one arrow to e2-e4, not two (the board keys its arrows by their squares).
+    await user.click(screen.getByTestId("board-control-first"));
+    const pairs = (boardOptions().arrows as { startSquare: string; endSquare: string }[]).map((arrow) => `${arrow.startSquare}${arrow.endSquare}`);
+    expect(pairs).toContain("e2e4");
+    expect(new Set(pairs).size).toBe(pairs.length);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     // 2. Qh5's position: the game's 1. e4 e5 there, the board on it; Qh5 and Nc6 hidden.
