@@ -670,8 +670,16 @@ scores normalised against the searched FEN's turn.
 on, not terminal, and the search last asked for not yet answered with its
 `bestmove` (an infinite one never is until stopped). The board's session
 publishes it with the switch to the shell (`usePublishBoardEngineState`,
-`views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on /
-searching. **`searchProgress`** (CTA-195) is where that search stops — its
+`views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on
+as its colour. **The icon breathes while an engine searches anywhere**
+(CTA-242, `views/main/engineSearching.ts`'s `useEngineSearching`): this
+board searching, a board in another tab searching — each tab tells the
+others on its own `BroadcastChannel`, `chessapp.engineSearching`
+(`lib/searchingTabs.ts`: said at once, again every 20 s while it lasts,
+"stopped" on stopping or `pagehide`, a tab gone quiet forgotten after 90 s, a
+tab opening asks), beside the claim's — or an engine-lane job running in any
+tab (`runningEngineJobOf`, read through `engineGateJobs.ts`, so a test stubs
+it with `engineGateJobsMock`), the job then named in the button's name. **`searchProgress`** (CTA-195) is where that search stops — its
 target depth, held to the engine's `capabilities.maxDepth`, and its move time —
 while `searching`, and absent under infinite analysis: every board passes it to
 `BoardPanel` (`searchProgress`), whose variations block's depth chip then reads

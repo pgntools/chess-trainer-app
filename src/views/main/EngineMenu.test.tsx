@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
+import { engineJobsStub } from "../board/boardTestHarness";
 import { readStoredEngineId } from "../../lib/engineChoice";
 import { selectedPresetOf } from "../../lib/enginePresets";
 import {
@@ -15,6 +16,7 @@ import {
   settledEnginePresets,
 } from "../../lib/enginePresetStore";
 import { readEngineSearchSettings, storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
+import { SEARCHING_TABS_CHANNEL } from "../../lib/searchingTabs";
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { LICHESS_EVAL_API_STORAGE_KEY, readLichessEvalApiSettings } from "../../lib/evalSources/lichess/settings";
 import { expectNoAxeViolations } from "../../test/axe";
@@ -22,6 +24,9 @@ import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { usePublishBoardEngineState, type BoardEngineState } from "./boardEngineState";
 import { EngineMenu } from "./EngineMenu";
+
+// The jobs the button reads (CTA-242) — none running unless a test sets one.
+vi.mock("../board/core/engineGateJobs", async () => (await import("../board/boardTestHarness")).engineGateJobsMock());
 
 /*
   The top bar's Engine menu (CTA-181): the search settings every board uses,
@@ -61,6 +66,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  engineJobsStub.reset();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -173,6 +179,83 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     mount("searching");
     expect(screen.getByRole("button", { name: "Engine settings — engine searching" })).toHaveClass("MuiButton-colorPrimary");
     expect(icon()).toHaveAttribute("data-breathing", "true");
+  });
+
+  describe("breathing while an engine searches anywhere (CTA-242)", () => {
+    const job = (status: string, control?: "pause" | "cancel") => ({
+      id: "job-1",
+      lane: "engine",
+      status,
+      control,
+      title: "Computer analysis — Najdorf",
+    });
+
+    it("breathes while an engine job runs, in any tab — named, the colour still the board's", async () => {
+      engineJobsStub.set([job("running")]);
+      mount("off");
+      const named = screen.getByRole("button", { name: "Engine settings — engine searching: Computer analysis — Najdorf" });
+      expect(named).toBe(button());
+      expect(icon()).toHaveAttribute("data-breathing", "true");
+      expect(icon()).toHaveAttribute("data-searching", "job");
+      // The board's engine is off: neutral.
+      expect(button()).not.toHaveClass("MuiButton-colorPrimary");
+      expect(icon()).toHaveAttribute("data-state", "off");
+      await expectNoAxeViolations(button());
+
+      // Finished: still.
+      act(() => engineJobsStub.set([job("succeeded")]));
+      expect(icon()).toHaveAttribute("data-breathing", "false");
+      expect(button()).toHaveAccessibleName("Engine settings — engine off");
+    });
+
+    it("stays still for an engine job queued or paused, and for a job of another lane", () => {
+      engineJobsStub.set([job("queued"), { ...job("paused"), id: "job-2" }, { ...job("running"), id: "job-3", lane: "cpu" }]);
+      mount("on");
+      expect(icon()).toHaveAttribute("data-breathing", "false");
+      expect(button()).toHaveAccessibleName("Engine settings — engine on");
+    });
+
+    it("names the board's search, not the job's, when the board on screen searches", () => {
+      engineJobsStub.set([job("running")]);
+      mount("searching");
+      expect(button()).toHaveAccessibleName("Engine settings — engine searching");
+      expect(icon()).toHaveAttribute("data-searching", "board");
+    });
+
+    it("breathes while a board in another tab searches, and stops when it stops — or the tab goes", async () => {
+      // Another tab of the app, on the page's channel.
+      const otherTab = new BroadcastChannel(SEARCHING_TABS_CHANNEL);
+      try {
+        mount();
+        expect(icon()).toHaveAttribute("data-breathing", "false");
+        otherTab.postMessage({ tab: "other", searching: true });
+        await waitFor(() => expect(icon()).toHaveAttribute("data-breathing", "true"));
+        expect(icon()).toHaveAttribute("data-searching", "tab");
+        expect(button()).toHaveAccessibleName("Engine settings — engine searching");
+        // The colour is this screen's board's — none here.
+        expect(button()).not.toHaveClass("MuiButton-colorPrimary");
+
+        otherTab.postMessage({ tab: "other", searching: false });
+        await waitFor(() => expect(icon()).toHaveAttribute("data-breathing", "false"));
+        expect(button()).toHaveAccessibleName("Engine settings — engine off");
+      } finally {
+        otherTab.close();
+      }
+    });
+
+    it("tells the other tabs while the board on screen searches", async () => {
+      const otherTab = new BroadcastChannel(SEARCHING_TABS_CHANNEL);
+      const heard: unknown[] = [];
+      otherTab.onmessage = (event) => heard.push(event.data);
+      try {
+        const { unmount } = mount("searching");
+        await waitFor(() => expect(heard).toContainEqual(expect.objectContaining({ searching: true })));
+        unmount();
+        await waitFor(() => expect(heard.at(-1)).toMatchObject({ searching: false }));
+      } finally {
+        otherTab.close();
+      }
+    });
   });
 
   describe("the engine and its preset, chosen in the menu (CTA-185)", () => {

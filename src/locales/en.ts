@@ -419,6 +419,8 @@ const en = {
       off: "Engine settings — engine off",
       on: "Engine settings — engine on",
       searching: "Engine settings — engine searching",
+      /** An engine job running, in any tab, is what searches (CTA-242). */
+      searchingJob: "Engine settings — engine searching: {{job}}",
     },
     /** The header's button's words (CTA-185) — its name is `label.*`, which says the engine's state too. */
     button: "Engine",
