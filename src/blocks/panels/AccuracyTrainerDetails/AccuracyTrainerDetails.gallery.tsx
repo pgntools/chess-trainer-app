@@ -18,7 +18,7 @@ const moved = (list: readonly string[], index: number, move: "up" | "down"): str
   return next;
 };
 
-type Shown = "answering" | "waiting" | "graded" | "passed";
+type Shown = "answering" | "waiting" | "graded" | "lost" | "passed";
 
 const framed = (title: string, testId: string, initial: Settings, withCase = false, tab: AccuracyTrainerDetailsTab = "settings", shown: Shown = "answering", pieces: AchievementPieces | null = ACHIEVEMENTS) => (
   <Box sx={{ width: 300, height: 420, display: "flex", border: 1, borderColor: "divider", p: 1 }}>
@@ -43,8 +43,8 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
                 moves:
                   shown === "passed"
                     ? { kind: "passed" as const, label: LABEL, onAnswerAgain: () => {} }
-                    : shown === "graded"
-                    ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED }
+                    : shown === "graded" || shown === "lost"
+                    ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED, ...(shown === "lost" ? { onEvaluateAgain: () => {} } : {}) }
                     : shown === "waiting"
                       ? { kind: "waiting" as const, label: LABEL, list: settings.list }
                       : {
@@ -74,6 +74,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Moves — checked and graded: every line, the reader's moves marked",
       render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-graded", { arrows: true, moves: 2 }, true, "moves", "graded"),
+    },
+    {
+      name: "Moves — graded without the engine's search: Evaluate again",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-lost", { arrows: true, moves: 2 }, true, "moves", "lost"),
     },
     {
       name: "Moves — passed, put off for later: no line shown, Answer it now",

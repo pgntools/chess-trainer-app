@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useCallback, useState } from "react";
 
 import { addAnalysisCases } from "../../../lib/analysisCaseStore";
@@ -49,7 +49,7 @@ const mount = (initial: FindBestMoveRecord) => {
       return undefined;
     }, []);
     const engine = useSessionEngine({ caseId: "c", record, dispatch, titleOf: (key) => `Evaluate ${key}`, labelOf: (key) => `move ${key}` });
-    return { record, ...engine };
+    return { record, dispatch, ...engine };
   });
   return { ...hook, events };
 };
@@ -118,6 +118,40 @@ describe("useSessionEngine", () => {
     const { result } = mount(applied(record, [e.engineQueued(1, queued.id)]));
     await waitFor(() => expect(jobsOfKind().map((job) => job.id)).toContain(queued.id));
     expect(await jobRuntime().cancel(queued.id)).toBeUndefined();
+    await waitFor(() => expect(result.current.record.positions.get(1)?.engine).toEqual({ kind: "failed", jobId: queued.id }));
+  });
+
+  it("queues a new search for a position whose job is gone once Evaluate again wants it — and fails it again when that one goes too (CTA-250)", async () => {
+    const answered = applied(sessionOfPgn(GAME, { side: "w", settings: { engine: true, moves: 3 } }), [e.answer(1, ["e4"]), e.engineQueued(1, "nojob")]);
+    await seed(answered);
+    const { result, events } = mount(answered);
+    await waitFor(() => expect(result.current.record.positions.get(1)?.engine).toEqual({ kind: "failed", jobId: "nojob" }));
+    expect(jobsOfKind()).toEqual([]);
+
+    // Evaluate again: the position wanted once more, its search queued — a new job, the in-flight set no bar to it.
+    await act(() => result.current.dispatch([e.engineRetry(1)]));
+    await waitFor(() => expect(jobsOfKind()).toHaveLength(1));
+    const [job] = jobsOfKind();
+    expect(job.input).toMatchObject({ caseId: "c", key: 1, search: { multiPv: 3 } });
+    await waitFor(() => expect(result.current.record.positions.get(1)?.engine).toEqual({ kind: "searched", jobId: job.id }), { timeout: 10_000 });
+    expect(result.current.record.positions.get(1)?.answer).toEqual({ kind: "answered", moves: ["e4"] });
+    expect(events.filter((event) => event.type === "engineQueued")).toHaveLength(1);
+  });
+
+  it("fails a re-queued search whose job is deleted, so it is offered again (CTA-250)", async () => {
+    const record = applied(sessionOfPgn(GAME, { side: "w", settings: { engine: true, moves: 3 } }), [e.answer(1, ["e4"]), e.engineFailed(1)]);
+    await seed(record);
+    // Queued far off, so it is still waiting when deleted.
+    const queued = await jobRuntime().enqueue(
+      EVALUATE_POSITION_KIND,
+      { version: 2, caseId: "c", key: 1, name: "x", fen: START_FEN, label: "", engine: "stockfish-19-lite", preset: null, search: { depth: 12, moveTimeMs: 1000, threads: 1, hashMb: 16, multiPv: 3 } },
+      { runAfter: new Date(Date.now() + 3_600_000) },
+    );
+    if (!("id" in queued)) throw new Error("not queued");
+    const { result } = mount(applied(record, [e.engineRetry(1), e.engineQueued(1, queued.id)]));
+    await waitFor(() => expect(jobsOfKind().map((job) => job.id)).toContain(queued.id));
+    expect(result.current.searchingAt(1)).toBe(true);
+    expect(await jobRuntime().remove([queued.id])).toBeUndefined();
     await waitFor(() => expect(result.current.record.positions.get(1)?.engine).toEqual({ kind: "failed", jobId: queued.id }));
   });
 });

@@ -12,6 +12,7 @@ import {
   achievementsOf,
   answerOf,
   engineFailedAt,
+  engineRetryOfferedAt,
   gradeOf,
   materialOf,
   nextOpen,
@@ -140,6 +141,13 @@ export const useFindBestMove = ({
     open(at);
     return "result";
   };
+  /**
+   * **Evaluate again** (CTA-250): a position graded without its engine asks it once more — one write, the session's
+   * engine on first (a position whose offer was declined), so it waits for a new Evaluate Position job.
+   */
+  const evaluateAgain = (at: PositionKey) => {
+    if (engineRetryOfferedAt(record, at)) void act([events.settingsChanged({ engine: true }), events.engineRetry(at)]);
+  };
   // The engine is turned on by the offer alone (`useSessionBoard`, CTA-245) — no switch (CTA-246).
   const changeArrows = (arrows: boolean) => void dispatch([events.settingsChanged({ arrows })]);
   /** When a position's engine starts — its first move, or its grading (CTA-247); a position already asked keeps its search. */
@@ -161,7 +169,14 @@ export const useFindBestMove = ({
         return { kind: "waiting", label, list: answerOf(record, shownAt) ?? [] };
       case "graded": {
         const shownGrade = gradeOf(record, shownAt);
-        return shownGrade === null ? undefined : { kind: "graded", label, position: shownPosition, grade: shownGrade };
+        if (shownGrade === null) return undefined;
+        return {
+          kind: "graded",
+          label,
+          position: shownPosition,
+          grade: shownGrade,
+          ...(engineRetryOfferedAt(record, shownAt) ? { onEvaluateAgain: () => evaluateAgain(shownAt) } : {}),
+        };
       }
       default:
         return { kind: "unanswered", label };
@@ -229,6 +244,8 @@ export const useFindBestMove = ({
     grade,
     waiting: phase === "waiting",
     engineFailed: phase === "graded" && engineFailedAt(record, key),
+    /** Whether the position on screen offers *Evaluate again* (CTA-250) — beside the Result's word on its engine. */
+    engineRetry: engineRetryOfferedAt(record, key),
     searching: answering && engine.searchingAt(key),
     candidates: phase === "waiting" || phase === "graded" ? (answerOf(record, key) ?? []) : board.candidates,
     shownMoves,
@@ -248,6 +265,7 @@ export const useFindBestMove = ({
     answerAgain,
     open,
     openResult,
+    evaluateAgain,
     changeArrows,
     changeEngineStart,
   };

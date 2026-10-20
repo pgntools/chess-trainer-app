@@ -234,6 +234,8 @@ the position's top lines are fewer than N, `needsEngine`):
                   └──refused─┐           └──failed / cancelled / gone──┐
                              ▼                                         ▼
                            failed ◀────────────────────────────────────┘
+                             │
+                             └──retry (Evaluate again, answered — CTA-250)──▶ wanted
 ```
 
 ```ts
@@ -245,9 +247,11 @@ type EngineState =
   | { kind: "failed"; jobId?: string };     // graded with the lines there are, and said
 ```
 
-`searched` and `failed` are terminal, and nothing leads back to `idle`. That
-is **"never asked twice"**, held by the type rather than by a ref and a
-`queuedAt` set.
+`searched` is terminal, and nothing leads back to `idle`. That is **"never
+asked twice"**, held by the type rather than by a ref and a `queuedAt` set.
+`failed` is left by one event alone, the reader's **Evaluate again**
+(`engineRetry`, CTA-250): an answered position whose search was lost goes back
+to `wanted`, and a new job is queued for it.
 
 **The derived phase**, what every panel reads:
 
@@ -277,7 +281,8 @@ pure. An event that does not apply returns the same record by reference, so
 | `next` | `goTo(nextOpen(record))`, or nothing when no position is left (the summary's turn). |
 | `engineQueued(key, jobId)` | `wanted → queued`. |
 | `engineSearched(key, jobId, result)` | `wanted` / `queued` → `searched`, and the result merged into `lines` (`withEngineResult`'s rule: a move the lines already hold keeps its own). **Idempotent**: the same result twice is the same record. |
-| `engineFailed(key, jobId?)` | `wanted` / `queued` → `failed`. |
+| `engineFailed(key, jobId?)` | `wanted` / `queued` → `failed`; with a `jobId`, only `queued(jobId)` — a job's echo names its own search, never a new one. |
+| `engineRetry(key)` (CTA-250) | *Evaluate again*: `answered`, the engine on and the lines still too few — `failed` or `idle` → `wanted`. The answer is untouched. For a position whose offer was declined the action is `[settingsChanged({ engine: true }), engineRetry(k)]`, one write. |
 | `settingsChanged({ engine?, arrows? })` | The settings (N is not a setting here). |
 
 The flow's compound actions are **event lists applied in one write**: Next
@@ -289,7 +294,8 @@ while answering is `[answer(k, moves), next]`, Pass is `[pass(k), next]`,
 - `current ∈ keys`, and `positions` has exactly `keys`;
 - at most one position is `reopened`, and it is `current`;
 - `answered.moves` is non-empty and never changes;
-- the engine axis never leaves `searched` / `failed`, and never re-enters `idle`;
+- the engine axis never leaves `searched`, never re-enters `idle`, and leaves
+  `failed` only by `engineRetry`, to `wanted`, at an answered position (CTA-250);
 - `lines` only grows, and only through `engineSearched`;
 - `work`, when present, is a tree from the position's FEN.
 
