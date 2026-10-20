@@ -102,14 +102,16 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   mover's view (a mate ±10000 less its distance), ranked best first.
 - **A session over a game asks every analysed position** (`gamePositionsOf`,
   CTA-245) — the `AnalysedPlies` / `AnalysedSide` scope, whether or not the
-  analysis hung side lines there and whatever *Use the engine* says: a full
+  analysis hung side lines there: a full
   analysis prunes every line far below line 1, so where the game's move was
   the only one in range there is **no side line**, and leaving that position
   out made Pass skip it (1 → 4). Such a position has **no top line of its
   own** — the game's move, unlisted, is not one — so it needs the engine to
-  be graded (`needsEngine`, §3.2). A tree with **no** engine line asks
-  nothing while the engine is off (the form refuses it), every position with
-  it on.
+  be graded (`needsEngine`, §3.2). A tree with **no** engine line — a plain
+  game — asks **every mainline position** (CTA-246; no scope tags, the whole
+  game), none with a top line: each is the engine's, offered there (§3.2).
+  There is **no engine switch** (CTA-246): what a session asks never depends
+  on it.
 - **The top N** are the engine's listed lines: every side line, and the
   game's move when it scores at least as well as the worst of them.
 - **An engine search** (`withEngineResult`) adds its lines — every one
@@ -169,8 +171,9 @@ never reach it but through `store.ts`.
 - **Answer**: `open` → `answered(moves)` (one or more, final) or `passed`;
   `passed` → `reopened` (*Answer it now*, only ever `current`) → `answered`
   or `passed` again.
-- **Engine** (left `idle` unless *Use the engine* is on and the top lines are
-  fewer than N, `needsEngine`): `idle` → `wanted` (a first move there, or a
+- **Engine** (left `idle` unless the session's engine is on — `settings.engine`,
+  the `FindBestMoveEngine` tag — and the top lines are fewer than N,
+  `needsEngine`): `idle` → `wanted` (a first move there, or a
   check — persisted, so a reload still queues it) → `queued(jobId)` →
   `searched(jobId)` (its lines merged — `withEngineResult`'s rule) or
   `failed`. `searched` and `failed` are terminal: **a position's engine is
@@ -184,14 +187,18 @@ never reach it but through `store.ts`.
   next]`, Pass `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
   reopen]`.
 - **The engine offered** (CTA-245): a first move at a position whose engine
-  *would* be wanted were *Use the engine* on (`engineOfferedAt` — the switch
+  *would* be wanted were the session's engine on (`engineOfferedAt` — it
   off, the answer open or reopened, the engine `idle`, `needsEngine`) opens
   a dialog, *Use the engine?*: **Use the engine** is one write,
-  `[settingsChanged({ engine: true }), firstMove(key)]` — the switch on for
+  `[settingsChanged({ engine: true }), firstMove(key)]` — the engine on for
   the session and the position `wanted`; **Go on without it** leaves both,
   the answer graded against the lines there are (none: "nothing to compare",
   `target` 0). Asked once per position while the screen is up; **a Pass
-  never asks**.
+  never asks**. **The offer is the only way a game's session turns its
+  engine on** (CTA-246 removed *Use the engine* from the New session form
+  and the left panel): a game's session starts with it off
+  (`sessionFromGame`), a Board editor position's with it on
+  (`sessionFromPosition`); once on it stays on.
 - **The invariants** (held by a seeded random walk in `reducer.test.ts`):
   `current ∈ keys` and `positions` has exactly the keys; at most one
   `reopened`, and it is `current`; an answer is non-empty and never changes;
@@ -319,12 +326,15 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   **Game** (a PGN uploaded or pasted — a file of several picks one — or a
   Case picked; the side), **Board editor** (a position other than the
   standard start is the session's — one position, the side to move's, no line
-  of its own: the engine finds them, its switch on whatever the form said —
+  of its own: the engine finds them, the session's engine on —
   Start off with why while it cannot be answered) and **Settings** (*Moves to
-  find*, *Use the engine* — on, a game with no engine lines trains; off, a
-computer analysis trains whole, the positions it left no line at too
-(`gamePositionsOf`, §1) —, *Show
-  next-move arrows*), a full-width **Start** under all three. Start makes
+  find*, *Show next-move arrows* — no engine switch, CTA-246), a full-width
+  **Start** under all three. **Any game trains** (`setupReadingOf`,
+  `gamePositionsOf`, §1): a computer analysis whole, the positions it left no
+  line at too; **a game with no engine lines** is taken, said as one (*This
+  game carries no engine lines, so training it needs the engine: each
+  position offers to turn it on* — `noLines`, information, not a refusal),
+  Start on, its session's engine off and offered at each position (§3.2). Start makes
   the session (`sessionFromGame` / `sessionFromPosition`) and its Case
   (`createSessionCase`) and opens it.
 - **A session PGN loaded in the form** (a downloaded one, or a session Case
@@ -340,7 +350,7 @@ computer analysis trains whole, the positions it left no line at too
 | Unit | Owns |
 | --- | --- |
 | `useSessionCase(caseId)` | the Case store's snapshot, the record parsed from its tags (memoised on the Case's row), `dispatch(events)` through `editSessionCase`, the write problem |
-| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove` — or, the switch off, opens the offer, `engineOffer`: `open`, `accept`, `decline`, once per position, CTA-245); the debounced `workRecorded` and `flushWork`; the replay's start |
+| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove` — or, the session's engine off, opens the offer, `engineOffer`: `open`, `accept`, `decline`, once per position, CTA-245); the debounced `workRecorded` and `flushWork`; the replay's start |
 | `useReplay` | the timers: the board put on the plan's start, then one ply every `stepDelayMs` (`STEP_DELAY_MS`, 1 s — a prop for tests), stopped once the reader moves the board. No chess |
 | `useSessionEngine` | an Evaluate Position job queued for every `wanted` position (the Engine menu's search, MultiPV N; an in-flight set so no render queues twice), then `engineQueued` / `engineFailed`; the queued jobs watched and echoed — `engineSearched` with a done job's result, `engineFailed` for one failed, cancelled or gone |
 
@@ -366,7 +376,8 @@ at — answering, its moves to reorder or delete; waiting; graded, every line
 with the reader's marked; passed, with *Answer it now*; not answered yet),
 **Results** (in game order, the one the board stands at current; a click back
 to each — a passed one to answer it now) and **Settings** (*Moves to find*
-locked, *Show next-move arrows*, *Use the engine*).
+locked, *Show next-move arrows* — no engine switch since CTA-246: the offer
+alone turns it on).
 
 ## 9. Extending it
 
