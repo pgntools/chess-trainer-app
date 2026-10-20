@@ -22,6 +22,25 @@ export const ANALYSED_PGN = `[Event "Casual game"]
 1... e5 { [%eval 0.30,20] } (1... c5 { [%eval 0.35,20] })
 2. Qh5 { [%eval -1.50,20] } (2. Nf3 { [%eval 0.30,20] }) (2. Bc4 { [%eval 0.20,20] }) 2... Nc6 *`;
 
+/**
+ * **A partial analysis** (CTA-245) — the first eight plies of a full computer
+ * analysis (`example_pgn/…-computer-analysis-full-…`): its pruning left no
+ * side line where the game's move was the only one in range — 1... e5,
+ * 2. Nf3 and 3. Nxe5. White's positions are plies 1, 3, 5 and 7.
+ */
+export const PARTIAL_PGN = `[Event "Live Chess"]
+[White "Alice"]
+[Black "Bob"]
+[Result "*"]
+[AnalysedPlies "1-8"]
+
+1. e4 { [%eval 0.18,70] } (1. d4 { [%eval 0.15,75] } 1... Nf6) (1. Nf3 { [%eval 0.14,75] } 1... d5)
+1... e5 { [%eval 0.22,65] } 2. Nf3 { [%eval 0.18,65] }
+2... Nf6 { [%eval 0.34,59] } (2... Nc6 { [%eval 0.18,65] } 3. Bc4)
+3. Nxe5 { [%eval 0.29,60] } 3... Nc6 { [%eval 1.47,40] } (3... d6 { [%eval 0.29,60] } 4. Nf3)
+4. Nxc6 { [%eval 1.87,40] } (4. d4 { [%eval 0.70,40] } 4... Qe7)
+4... dxc6 { [%eval 1.42,48] } (4... bxc6 { [%eval 2.06,40] } 5. Nc3) *`;
+
 /** A Ruy Lopez of 38 plies, no analysis — with the engine on, 38 positions over both sides (the 38-to-35 game's shape). */
 export const RUY_LOPEZ_38 = `[Event "Training"]
 [White "White"]

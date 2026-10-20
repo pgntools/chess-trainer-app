@@ -14,7 +14,7 @@ import { EVALUATE_POSITION_KIND } from "../../../lib/jobs/kinds/evaluatePosition
 import { jobRuntime } from "../../../lib/jobs/runtime";
 import { legalMove } from "../../../test/answeringEngine";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { PLAIN_WORDS, RUY_LOPEZ_38, applied, sessionOfPgn } from "../../../test/findBestMoveKit";
+import { PARTIAL_PGN, PLAIN_WORDS, RUY_LOPEZ_38, applied, sessionOfPgn } from "../../../test/findBestMoveKit";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
@@ -147,6 +147,16 @@ const editorDrag = (pieceType: string, from: string, to: string | null) =>
 /** The header's "Position n of m · …", once the screen reads it — a write has to land first. */
 const atPosition = (text: string) => waitFor(() => expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent(text));
 
+/**
+ * The engine offered on a first move where the lines are too few, the engine
+ * off (CTA-245) — 2. Qh5's position has two, three to find — declined.
+ */
+const declineEngine = async (user: ReturnType<typeof userEvent.setup>) => {
+  const dialog = await screen.findByRole("dialog", { name: "Use the engine?" });
+  await user.click(within(dialog).getByRole("button", { name: "Go on without it" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+};
+
 const startWith = async (user: ReturnType<typeof userEvent.setup>, side: "White" | "Black" | "Both", pgn = ANALYSED) => {
   await load(user, pgn);
   await user.click(screen.getByRole("button", { name: side }));
@@ -219,6 +229,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await user.click(screen.getByTestId("move-ply-2"));
     expect(boardOptions().allowDragging).toBe(true);
     expect(drag("f1", "c4")).toBe(true);
+    await declineEngine(user);
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
     await expectNoAxeViolations();
   });
@@ -308,6 +319,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
     // The top 2 here are Nf3, Bc4: both found, the wrong way round.
     drag("f1", "c4");
+    await declineEngine(user);
     await user.click(screen.getByTestId("move-ply-2"));
     drag("g1", "f3");
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
@@ -478,6 +490,84 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await pgnHolds(`engine:searched/${job.id}`, "[%eval 0.20]");
   });
 
+  it("asks every analysed position of a partial analysis — a pass goes on to the very next, none skipped (CTA-245)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await load(user, PARTIAL_PGN);
+    // White's 1. e4, 2. Nf3, 3. Nxe5 and 4. Nxc6 — 2. and 3. without a side line, the engine off.
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Alice – Bob — 8 positions to train: White 4, Black 4.");
+    await user.click(screen.getByRole("button", { name: "White" }));
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    await atPosition("Position 1 of 4 · 1. White");
+
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 2 of 4 · 2. White");
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 3 of 4 · 3. White");
+
+    await user.click(screen.getByRole("tab", { name: "Results" }));
+    const list = within(screen.getByRole("list", { name: "The positions answered or passed" }));
+    await waitFor(() =>
+      expect(list.getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
+        "Answer 1. White now — passed",
+        "Answer 2. White now — passed",
+        "Back to 3. White — answering now",
+      ]),
+    );
+  });
+
+  it("offers the engine on a first move where the lines are too few — declined, graded against the lines there are; a pass asks nothing (CTA-245)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White", PARTIAL_PGN);
+    // 1. e4's position has its lines: no offer.
+    drag("e2", "e4");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await atPosition("Position 2 of 4 · 2. White");
+
+    // 2. Nf3's has none.
+    expect(drag("g1", "f3")).toBe(true);
+    const dialog = await screen.findByRole("dialog", { name: "Use the engine?" });
+    expect(within(dialog).getByText(/fewer of the engine's lines here than moves to find/)).toBeInTheDocument();
+    await expectNoAxeViolations(dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Go on without it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // Another line from the position asks nothing more, and no job is queued.
+    await user.click(screen.getByRole("button", { name: "New move" }));
+    expect(drag("b1", "c3")).toBe(true);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Results (2)" }));
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("There is no line here to compare your moves with.");
+    expect(jobRuntime().snapshot() ?? []).toEqual([]);
+
+    // 3. Nxe5's has none either: a pass goes on, no dialog.
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await atPosition("Position 3 of 4 · 3. White");
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 4 of 4 · 4. White");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("turns Use the engine on from the offer — the position's search queued (CTA-245)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White", PARTIAL_PGN);
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 2 of 4 · 2. White");
+
+    drag("g1", "f3");
+    const dialog = await screen.findByRole("dialog", { name: "Use the engine?" });
+    await user.click(within(dialog).getByRole("button", { name: "Use the engine" }));
+    await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
+    expect(jobRuntime().snapshot()![0].input).toMatchObject({ key: 3, search: { multiPv: 3 } });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByRole("switch", { name: "Use the engine" })).toBeChecked();
+    await pgnHolds("engine:");
+  });
+
   it("lists the reader's moves on the left panel's Moves tab — moved up or down, deleted, on the board too — and checks them in that order", async () => {
     const user = userEvent.setup();
     mount();
@@ -563,6 +653,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     // On 2. Qh5's position, a move of the reader's; then back to the start — the passed one.
     await atPosition("Position 2 of 2");
     drag("f1", "c4");
+    await declineEngine(user);
     await user.click(screen.getByTestId("board-control-first"));
     expect(screen.getByTestId(`${ID}-details-moves-label`)).toHaveTextContent("Position 1 of 2");
     expect(screen.getByTestId(`${ID}-details-moves-passed`)).toBeInTheDocument();
@@ -618,6 +709,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent("Position 2 of 2 · 2. White");
     expect(boardOptions().position).toBe(AFTER_E5);
     expect(drag("g1", "f3")).toBe(true);
+    await declineEngine(user);
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
     // Still listed, in its place: the one being answered now.
     expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
@@ -684,6 +776,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
 
     // The last position: Next goes to the summary, the answer there.
     drag("g1", "f3");
+    await declineEngine(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(screen.getByTestId(`${ID}-report-measures-foundRate`)).toHaveTextContent("60% (3 of 5)"));
@@ -705,6 +798,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
     await atPosition("Position 2 of 2");
     drag("f1", "c4");
+    await declineEngine(user);
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(screen.getByRole("switch", { name: "Show next-move arrows" }));
     await pgnHolds('[FindBestMove "2"]', '[FindBestMoveCurrent "3"]', '[FindBestMoveArrows "off"]', "state:answered answer:e4,d4", '[FindBestMoveWork_3 "2. Bc4"]');

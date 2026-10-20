@@ -28,9 +28,10 @@ import { mainline, type GameTree, type VariationNode } from "./gameTree";
  *
  * - **A position to train** is the position before an analysed mainline move
  *   (inside the `AnalysedPlies` / `AnalysedSide` tags when the tree has them)
- *   that has at least one evaluated side line. Its **lines** are those side
- *   lines' first moves and the game's move, when it carries an eval —
- *   ranked best first from the mover's view.
+ *   that has at least one evaluated side line — or, for a session over a
+ *   game, any analysed one ({@link gamePositionsOf}, CTA-245). Its **lines**
+ *   are those side lines' first moves and the game's move, when it carries
+ *   an eval — ranked best first from the mover's view.
  * - **The top N** are the lines the engine listed: every side line, and the
  *   game's move when it scores at least as well as the worst of them (the
  *   writer leaves the game's move out of its lines, so a game move inside
@@ -266,6 +267,20 @@ export const withEngineResult = (position: TrainingPosition, result: PositionRes
 
 /** Whether a position has fewer of the engine's top lines than `needed` — the engine is asked for it (CTA-238). */
 export const needsEngine = (position: TrainingPosition, needed: number): boolean => position.topCount < needed;
+
+/**
+ * **The positions a session over a game asks** (CTA-245), both sides, in
+ * game order: **every analysed position** — whether or not the analysis hung
+ * side lines there — of a tree with any engine line (a computer analysis
+ * prunes every line far below line 1, so a position where the game's move
+ * was the only one in range has none: its top lines are the engine's to
+ * find, `needsEngine`); with the engine on, every analysed position of any
+ * tree. None for a tree with no engine line while the engine is off.
+ */
+export const gamePositionsOf = (tree: GameTree, { engine }: { engine: boolean }): TrainingPosition[] => {
+  const positions = trainingPositionsOf(tree, { unevaluated: true });
+  return engine || positions.some((position) => position.topCount > 0) ? positions : [];
+};
 
 /** The positions a session over `side` asks, in game order. */
 export const sessionPositionsOf = (positions: readonly TrainingPosition[], side: TrainingSide): TrainingPosition[] =>

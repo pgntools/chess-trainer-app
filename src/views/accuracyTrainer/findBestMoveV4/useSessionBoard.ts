@@ -12,7 +12,7 @@ import {
   type AnswerWords,
 } from "../../../lib/findBestMove/projection";
 import { sessionEvents, sessionReducer, type SessionEvent } from "../../../lib/findBestMove/reducer";
-import { phaseOf, replayPlan } from "../../../lib/findBestMove/selectors";
+import { engineOfferedAt, phaseOf, replayPlan } from "../../../lib/findBestMove/selectors";
 import { nodeAtSanPath } from "../../../lib/gameTree";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { useReplay } from "./useReplay";
@@ -39,7 +39,10 @@ type Shown = { key: PositionKey; nodeId: string | null; replay?: { start: string
  *   the reader's to change.
  * - **The reader's moves** (`candidates`): the first moves of their lines
  *   from the position, in their order; one moved or deleted with its line.
- * - **A first move** where the engine is needed asks for it (`firstMove`).
+ * - **A first move** where the engine is needed asks for it (`firstMove`) —
+ *   or, with Use the engine off, **offers it** (`engineOffer`, CTA-245): Yes
+ *   turns it on for the session and asks; No goes on without it. Once per
+ *   position while the screen is up.
  * - **On to another position** with `replayFrom` set (Next, Pass): the board
  *   starts at the position just left and plays the game's moves to the next
  *   one out (`replayPlan`, capped), through the replay unit.
@@ -112,10 +115,18 @@ export const useSessionBoard = ({
   const answering = phase === "answering";
   const atPosition = isAtPosition(core.tree, shown.nodeId, core.nodeId);
 
-  // A first move at a position whose engine is needed asks for it — only where the reducer would take it.
+  // The position whose engine is offered (Use the engine off), and those already offered — once each.
+  const [offer, setOffer] = useState<PositionKey | null>(null);
+  const offered = useRef(new Set<PositionKey>());
+
+  // A first move at a position whose engine is needed asks for it — only where the reducer would take it — or offers it.
   const askEngine = () => {
     const event = sessionEvents.firstMove(shown.key);
     if (sessionReducer(record, event) !== record) void dispatch([event]);
+    else if (engineOfferedAt(record, shown.key) && !offered.current.has(shown.key)) {
+      offered.current.add(shown.key);
+      setOffer(shown.key);
+    }
   };
   const onPieceDrop: typeof core.onPieceDrop = (args) => {
     const accepted = core.onPieceDrop(args);
@@ -150,5 +161,18 @@ export const useSessionBoard = ({
     setReplayFrom,
     stopReplay: stop,
     board: { onPieceDrop, resolvePromotion },
+    /**
+     * **The engine offered** (CTA-245) — open while the reader is asked;
+     * `accept` turns Use the engine on and asks for the position's search,
+     * `decline` goes on without it.
+     */
+    engineOffer: {
+      open: offer !== null,
+      accept: () => {
+        if (offer !== null) void dispatch([sessionEvents.settingsChanged({ engine: true }), sessionEvents.firstMove(offer)]);
+        setOffer(null);
+      },
+      decline: () => setOffer(null),
+    },
   };
 };

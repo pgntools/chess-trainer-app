@@ -631,13 +631,14 @@ const en = {
       pickCase: "Pick a case…",
       /** A game with nothing to train while the engine is off — the way out said. */
       noLines: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
-      loaded: "{{name}} — {{count}} positions with the engine's lines: White {{white}}, Black {{black}}.",
+      /** Every analysed position (CTA-245) — one the analysis left no lines at needs the engine to be graded. */
+      loaded: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. Where the analysis left too few lines, Use the engine finds them.",
       /** With the engine on: every analysed position, the engine finding lines the game lacks. */
       loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",
       untitled: "Untitled game",
       side: "Train",
       sides: { white: "White", black: "Black", both: "Both" },
-      noneForSide: "No position of that side has the engine's lines.",
+      noneForSide: "No position of that side was analysed.",
       start: "Start",
       games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
       caseProblem: "That case could not be read.",
@@ -736,6 +737,13 @@ const en = {
         searching: "The engine is searching this position.",
         waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
         unavailable: "The engine could not search this position — graded with the game's lines alone.",
+        /** A first move where the lines are too few while Use the engine is off (CTA-245). */
+        offer: {
+          title: "Use the engine?",
+          message: "The analysis left fewer of the engine's lines here than moves to find, so your moves cannot all be graded. Turn on Use the engine for this session? It searches this position — an Evaluate position job — and any other short of lines once you start on it.",
+          confirm: "Use the engine",
+          cancel: "Go on without it",
+        },
       },
     },
     lines: {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { PARTIAL_PGN } from "../test/findBestMoveKit";
 import {
+  gamePositionsOf,
   gradePosition,
   gradeSuggestion,
   moveSquaresOf,
@@ -285,6 +287,34 @@ describe("the engine's part (CTA-238, Find Best Move)", () => {
     expect(plain[2].lines[0]).toMatchObject({ san: "Nf3", played: true, listed: false });
     // Without the option, nothing.
     expect(trainingPositionsOf(parsePgnTree("1. e4 e5 2. Nf3 *"))).toEqual([]);
+  });
+
+  it("asks every analysed position of a partial analysis — one with no side line needs the engine, the game's move no top line (CTA-245)", () => {
+    const partial = gamePositionsOf(parsePgnTree(PARTIAL_PGN), { engine: false });
+    expect(partial.map((position) => [position.ply, position.topCount])).toEqual([
+      // 1. e4 above 1. Nf3 — the game's move inside the engine's range, one of its lines.
+      [1, 3],
+      [2, 0],
+      [3, 0],
+      [4, 1],
+      [5, 0],
+      [6, 1],
+      [7, 2],
+      [8, 2],
+    ]);
+    const nf3 = partial.find((position) => position.ply === 3)!;
+    expect(nf3.lines).toEqual([expect.objectContaining({ san: "Nf3", played: true, listed: false })]);
+    expect(needsEngine(nf3, 1)).toBe(true);
+    // White's: 1, 2, 3, 4 — none skipped.
+    expect(sessionPositionsOf(partial, "w").map((position) => position.moveNumber)).toEqual([1, 2, 3, 4]);
+    // The engine's switch changes nothing for an analysed game.
+    expect(gamePositionsOf(parsePgnTree(PARTIAL_PGN), { engine: true })).toEqual(partial);
+  });
+
+  it("asks nothing of a game with no engine line while the engine is off — every position with it on", () => {
+    const plain = parsePgnTree("1. e4 e5 2. Nf3 *");
+    expect(gamePositionsOf(plain, { engine: false })).toEqual([]);
+    expect(gamePositionsOf(plain, { engine: true }).map((position) => position.ply)).toEqual([1, 2, 3]);
   });
 
   it("reads a UCI line as SAN, cut at the first move that does not play", () => {

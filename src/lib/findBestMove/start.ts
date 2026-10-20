@@ -1,4 +1,4 @@
-import { sessionPositionsOf, trainingPositionsOf, type TrainingSide } from "../accuracyTrainer";
+import { gamePositionsOf, sessionPositionsOf, type TrainingSide } from "../accuracyTrainer";
 import { turnOf } from "../computerAnalysis";
 import { ANALYSED_PLIES_TAG, ANALYSED_SIDE_TAG } from "../computerAnalysisTree";
 import type { GameHeaders } from "../gameModel";
@@ -32,8 +32,9 @@ const openPosition = (key: number, lines: PositionRecord["lines"]): PositionReco
 
 /**
  * **A session from a game** — its positions for the side
- * (`trainingPositionsOf`, every analysed one with the engine on), each with
- * the lines the game gives; the first on screen. `undefined` with none.
+ * (`gamePositionsOf`: every analysed one, whatever Use the engine says — one
+ * with no side lines needs the engine, CTA-245), each with the lines the
+ * game gives; the first on screen. `undefined` with none.
  */
 export const sessionFromGame = ({
   tree,
@@ -46,7 +47,7 @@ export const sessionFromGame = ({
   side: TrainingSide;
   settings: NewSessionSettings;
 }): FindBestMoveRecord | undefined => {
-  const positions = sessionPositionsOf(trainingPositionsOf(tree, { unevaluated: settings.engine }), side);
+  const positions = sessionPositionsOf(gamePositionsOf(tree, { engine: settings.engine }), side);
   const first = positions[0];
   if (first === undefined) return undefined;
   return {

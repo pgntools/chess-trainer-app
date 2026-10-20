@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useNavigate } from "react-router";
 
 import { AccuracySessionReport, AccuracyTrainerDetails, GradedLines, type AccuracyTrainerDetailsTab } from "../../../blocks/panels";
+import { ConfirmDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { BackButton } from "../../../design-system/components/navigation";
 import { LabelChip } from "../../../design-system/components/tables";
@@ -345,6 +346,17 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
         boardOptions={boardOptions}
         overlay={explorer.overlay}
         panel={{ testId: `${ID}-panel`, header, tabs, activeTab, onTabChange: (id) => setTab(id as Tab), footer }}
+      />
+      {/* A first move where the lines are too few, the engine off: turn it on for the session? (CTA-245) */}
+      <ConfirmDialog
+        open={board.engineOffer.open}
+        onClose={board.engineOffer.decline}
+        onConfirm={board.engineOffer.accept}
+        title={t("accuracyTrainer.session.engine.offer.title")}
+        message={t("accuracyTrainer.session.engine.offer.message")}
+        confirmLabel={t("accuracyTrainer.session.engine.offer.confirm")}
+        cancelLabel={t("accuracyTrainer.session.engine.offer.cancel")}
+        testId={`${ID}-engine-offer`}
       />
     </>
   );
