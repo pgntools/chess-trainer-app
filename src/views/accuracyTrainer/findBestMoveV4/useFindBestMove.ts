@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { AccuracyReportRow, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
+import type { AccuracyReportRow, AccuracyTrainerAchievements, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
 import { targetOf } from "../../../lib/accuracyTrainer";
 import type { AnalysisCase } from "../../../lib/analysisProjects";
 import { gameMoveOf, trainingPositionOf, type EngineStart, type FindBestMoveRecord, type PositionKey } from "../../../lib/findBestMove/model";
@@ -147,10 +147,11 @@ export const useFindBestMove = ({
 
   // The trained position the board stands at — the one on screen inside its lines, an earlier one stepped back to.
   const shownAt = positionAtPath(record, sanPathTo(core.tree, core.nodeId)) ?? key;
+  const shownLabel = t("accuracyTrainer.details.positionLabel", { at: placeOf(record, shownAt), count: record.keys.length, move: labelOf(shownAt) });
   const shownMoves = ((): AccuracyTrainerMoves | undefined => {
     const shownPosition = trainingPositionOf(record, shownAt);
     if (shownPosition === undefined) return undefined;
-    const label = t("accuracyTrainer.details.positionLabel", { at: placeOf(record, shownAt), count: record.keys.length, move: labelOf(shownAt) });
+    const label = shownLabel;
     switch (phaseOf(record, shownAt)) {
       case "answering":
         return { kind: "answering", label, list: board.candidates, onMove: board.moveCandidate, onRemove: board.removeCandidate };
@@ -166,6 +167,10 @@ export const useFindBestMove = ({
         return { kind: "unanswered", label };
     }
   })();
+
+  // Its pieces, derived from the record — never stored (CTA-249): the left panel's Achievements.
+  const shownAchievements: AccuracyTrainerAchievements | undefined =
+    trainingPositionOf(record, shownAt) === undefined ? undefined : { label: shownLabel, pieces: achievementsOf(record, shownAt) };
 
   const playedOf = (at: PositionKey) => gameMoveOf(record.game, at) ?? "–";
   const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => ({
@@ -216,13 +221,12 @@ export const useFindBestMove = ({
     /** Whether the position on screen is answered — moves or a pass: its Result is on. */
     answered: answerOf(record, key) !== null,
     grade,
-    /** The position on screen's pieces, one per category — once graded (CTA-249). */
-    achievements: achievementsOf(record, key) ?? undefined,
     waiting: phase === "waiting",
     engineFailed: phase === "graded" && engineFailedAt(record, key),
     searching: answering && engine.searchingAt(key),
     candidates: phase === "waiting" || phase === "graded" ? (answerOf(record, key) ?? []) : board.candidates,
     shownMoves,
+    shownAchievements,
     results,
     reportRows,
     summary,

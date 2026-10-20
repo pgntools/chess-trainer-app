@@ -657,9 +657,10 @@ const en = {
     details: {
       label: "{{name}} — the exercise's own view",
       toggle: "The exercise's settings",
-      tabs: { label: "The exercise's own view", moves: "Your moves", results: "Results", settings: "Settings" },
+      tabs: { label: "The exercise's own view", moves: "Your moves", results: "Results", achievements: "Achievements", settings: "Settings" },
       /** The Results tab: every position answered or passed. */
       resultsList: "The positions answered or passed",
+      achievementsNone: "Answer this position to see the pieces it wins — one in each category.",
       resultsNone: "No position answered or passed yet.",
       resultGame: "Game:",
       resultPassed: "Passed",
@@ -788,6 +789,8 @@ const en = {
       },
       won: "{{category}}: {{piece}}",
       none: "{{category}}: no piece",
+      cellWon: "Won",
+      cellNotWon: "Not won",
       category: "Category",
       material: "Material",
       total: "All categories",

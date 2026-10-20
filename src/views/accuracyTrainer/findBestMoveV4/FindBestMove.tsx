@@ -61,7 +61,7 @@ type FindBestMoveProps = {
  * lines alone), the right panel (Moves · Map · Result · Summary; the footer's
  * moves so far with New move · Pass · Results · Next, or Next once answered)
  * and the left one (`AccuracyTrainerDetails`: the game, its Case, Your moves,
- * Results and Settings).
+ * Results, Achievements and Settings).
  */
 function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed, stepDelayMs }: FindBestMoveProps) {
   const { t } = useTranslation();
@@ -152,7 +152,7 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
               </Box>
             </>
           )}
-          {grade !== null && !grade.passed && position !== undefined && <GradedLines position={position} grade={grade} achievements={run.achievements} testId={`${ID}-graded`} />}
+          {grade !== null && !grade.passed && position !== undefined && <GradedLines position={position} grade={grade} testId={`${ID}-graded`} />}
         </Box>
       ),
     },
@@ -331,6 +331,7 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
           onEngineStartChange={run.changeEngineStart}
           caseLink={{ component: RouterLink, to: casePath(caseRecord.projectId, caseRecord.id) }}
           {...(run.shownMoves === undefined ? {} : { moves: run.shownMoves })}
+          {...(run.shownAchievements === undefined ? {} : { achievements: run.shownAchievements })}
           results={{
             rows: run.results,
             // A passed one to answer on the board, Moves; an answered one's result, Result.

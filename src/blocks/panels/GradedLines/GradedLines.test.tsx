@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import GradedLines from "./GradedLines";
-import { MISSED, MISSED_ACHIEVEMENTS, NO_PIECES, PASSED, PERFECT, PERFECT_ACHIEVEMENTS, POSITION, SWAPPED, SWAPPED_ACHIEVEMENTS } from "./fixtures";
+import { MISSED, PASSED, PERFECT, POSITION, SWAPPED } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -48,41 +48,6 @@ describe("GradedLines (CTA-238)", () => {
     render(<GradedLines position={POSITION} grade={PASSED} testId="graded" />);
     expect(screen.getByTestId("graded-headline")).toHaveTextContent("You passed.");
     expect(rowTexts().map((cells) => cells[4])).toEqual(["", "", ""]);
-  });
-
-  it("draws the position's achievements under the headline, each named for a screen reader (CTA-249)", () => {
-    render(<GradedLines position={POSITION} grade={PERFECT} achievements={PERFECT_ACHIEVEMENTS} testId="graded" />);
-    const list = screen.getByRole("list", { name: "Achievements" });
-    expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      expect.stringContaining("Place in order: Queen"),
-      expect.stringContaining("Best move: Rook"),
-      expect.stringContaining("Clean candidates: Queen"),
-      expect.stringContaining("Better than the game: Queen"),
-      expect.stringContaining("See the line: Bishop"),
-    ]);
-    expect(screen.getByTestId("graded-achievements-line")).toHaveAttribute("data-piece", "bishop");
-  });
-
-  it("says a category's piece is missing where its goal was not met", () => {
-    render(<GradedLines position={POSITION} grade={MISSED} achievements={MISSED_ACHIEVEMENTS} testId="graded" />);
-    expect(screen.getByTestId("graded-achievements-order")).toHaveAttribute("data-piece", "none");
-    expect(screen.getByTestId("graded-achievements-order")).toHaveTextContent("Place in order: no piece");
-    expect(screen.getByTestId("graded-achievements-clean")).toHaveAttribute("data-piece", "pawn");
-  });
-
-  it("draws no row without achievements", () => {
-    render(<GradedLines position={POSITION} grade={SWAPPED} testId="graded" />);
-    expect(screen.queryByRole("list", { name: "Achievements" })).toBeNull();
-  });
-
-  it("passes axe with its achievements", async () => {
-    const { container } = render(
-      <>
-        <GradedLines position={POSITION} grade={SWAPPED} achievements={SWAPPED_ACHIEVEMENTS} testId="graded" />
-        <GradedLines position={POSITION} grade={PASSED} achievements={NO_PIECES} testId="graded-passed" />
-      </>,
-    );
-    await expectNoAxeViolations(container);
   });
 
   it("passes axe", async () => {

@@ -1,4 +1,5 @@
 import { gradePosition, trainingPositionsOf, type PositionGrade, type TrainingPosition } from "../../../lib/accuracyTrainer";
+import { noPieces, piecesOf, type AchievementPieces } from "../../../lib/achievements/material";
 import { parsePgnTree } from "../../../lib/pgn";
 import type { AccuracyTrainerResult } from "./AccuracyTrainerDetails";
 
@@ -46,3 +47,20 @@ export const RESULTS: readonly AccuracyTrainerResult[] = [
   { index: 3, label: "3. White", playedSan: "Bc4", state: "waiting", current: false },
   { index: 4, label: "4. White", playedSan: "O-O", state: "answering", current: false },
 ];
+
+/* ─── Achievements (CTA-249) ──────────────────────────────────────────── */
+
+/** The top 2 the wrong way round (a3, the third, is past the 2 to find and not graded): Rook, Bishop, Queen, Rook, Pawn. */
+export const ACHIEVEMENTS: AchievementPieces = piecesOf({ position: GRADED_POSITION, grade: GRADED, work: null, wanted: 2 });
+
+/** Every piece once, Queen to Pawn. */
+export const EVERY_PIECE: AchievementPieces = [
+  { category: "order", piece: "queen" },
+  { category: "best", piece: "rook" },
+  { category: "clean", piece: "bishop" },
+  { category: "game", piece: "knight" },
+  { category: "line", piece: "pawn" },
+];
+
+/** None won — a pass, or a position graded without its engine. */
+export const NO_PIECES: AchievementPieces = noPieces();

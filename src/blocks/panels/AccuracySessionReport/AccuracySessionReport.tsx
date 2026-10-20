@@ -12,7 +12,7 @@ import type { AchievementCategoryId } from "../../../lib/achievements/categories
 import type { PieceCounts, SessionMaterial } from "../../../lib/achievements/material";
 import { PIECES, type Piece } from "../../../lib/achievements/pieces";
 import type { Turn } from "../../../lib/engineAnalysis";
-import { PieceIcon } from "../GradedLines";
+import { PieceIcon } from "../AccuracyTrainerDetails";
 
 /** One position of the session, as the report lists it. */
 export type AccuracyReportRow = {

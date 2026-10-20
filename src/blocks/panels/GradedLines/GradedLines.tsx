@@ -7,9 +7,7 @@ import { StatusText } from "../../../design-system/components/feedback";
 import { LabelChip, type LabelChipTone } from "../../../design-system/components/tables";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../lib/accuracyTrainer";
-import type { AchievementPieces } from "../../../lib/achievements/material";
 import { formatScore, type Score } from "../../../lib/engineAnalysis";
-import { AchievementRow } from "./AchievementRow";
 import { gradeHeadlineOf } from "./headline";
 
 export type GradedLinesProps = {
@@ -18,13 +16,7 @@ export type GradedLinesProps = {
   /** The reader's moves there, in their order, graded (`gradePosition`). */
   grade: PositionGrade;
   /**
-   * The position's achievements (CTA-249, `achievementsOf`) — a piece per
-   * category, drawn as a row under the headline. Absent, no row.
-   */
-  achievements?: AchievementPieces;
-  /**
-   * The root; the headline `-headline`, the achievements `-achievements`
-   * (each `-achievements-<category>`), the table `-table` (a row
+   * The root; the headline `-headline`, the table `-table` (a row
    * `-table-row-<san>`), a row's verdict `-verdict-<san>`, its place
    * `-order-<san>`.
    */
@@ -62,14 +54,13 @@ const verdictOf = (grade: SuggestionGrade): { key: string; tone: LabelChipTone }
  * verdict (Best, Good, Inaccuracy, Mistake, Blunder — the computer analysis's
  * thresholds). A line closes the top N. A move of the reader's none of the
  * lines has comes after them, *not among the lines*, its loss a bound (≥ the
- * worst listed line's) and never a number. With `achievements` (CTA-249),
- * the pieces the answer won — one per category — under the headline.
+ * worst listed line's) and never a number.
  *
  * Presentational: the position and its grade are props
  * (`lib/accuracyTrainer.ts`). Its words are `accuracyTrainer.lines.*` and the
  * computer analysis's verdicts.
  */
-function GradedLines({ position, grade, achievements, testId }: GradedLinesProps) {
+function GradedLines({ position, grade, testId }: GradedLinesProps) {
   const { t } = useTranslation();
 
   const rows = useMemo<Row[]>(() => {
@@ -139,7 +130,6 @@ function GradedLines({ position, grade, achievements, testId }: GradedLinesProps
       <StatusText tone={headline.tone} emphasis testId={`${testId}-headline`}>
         {t(headline.key, headline.values)}
       </StatusText>
-      {achievements !== undefined && <AchievementRow pieces={achievements} testId={`${testId}-achievements`} />}
       <Typography id={`${testId}-title`} component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
         {t("accuracyTrainer.lines.title")}
       </Typography>

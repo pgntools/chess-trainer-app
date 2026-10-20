@@ -2,10 +2,11 @@ import Box from "@mui/material/Box";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
+import type { AchievementPieces } from "../../../lib/achievements/material";
 import type { EngineStart } from "../../../lib/findBestMove/model";
 import type { BlockFamilyId } from "../../families";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
+import { ACHIEVEMENTS, CASE_LINK, EVERY_PIECE, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, NO_PIECES, RESULTS } from "./fixtures";
 
 type Settings = { arrows: boolean; moves: number; engineStart?: EngineStart };
 
@@ -19,7 +20,7 @@ const moved = (list: readonly string[], index: number, move: "up" | "down"): str
 
 type Shown = "answering" | "waiting" | "graded" | "passed";
 
-const framed = (title: string, testId: string, initial: Settings, withCase = false, tab: AccuracyTrainerDetailsTab = "settings", shown: Shown = "answering") => (
+const framed = (title: string, testId: string, initial: Settings, withCase = false, tab: AccuracyTrainerDetailsTab = "settings", shown: Shown = "answering", pieces: AchievementPieces | null = ACHIEVEMENTS) => (
   <Box sx={{ width: 300, height: 420, display: "flex", border: 1, borderColor: "divider", p: 1 }}>
     <WithState initial={{ ...initial, list: withCase ? MOVES : [] }}>
       {(settings, set) => (
@@ -38,6 +39,7 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
             ? {
                 caseLink: CASE_LINK,
                 results: { rows: RESULTS, onOpen: () => {} },
+                achievements: { label: LABEL, pieces },
                 moves:
                   shown === "passed"
                     ? { kind: "passed" as const, label: LABEL, onAnswerAgain: () => {} }
@@ -84,6 +86,22 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Results — every position answered or passed, each a way back to it",
       render: () => framed(GAME_TITLE, "gallery-accuracy-details-results", { arrows: true, moves: 2 }, true, "results"),
+    },
+    {
+      name: "Achievements — the pieces the position won, the top 2 the wrong way round",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-achievements", { arrows: true, moves: 2 }, true, "achievements"),
+    },
+    {
+      name: "Achievements — every piece, Queen to Pawn",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-achievements-every", { arrows: true, moves: 2 }, true, "achievements", "graded", EVERY_PIECE),
+    },
+    {
+      name: "Achievements — none won (a pass, or graded without the engine)",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-achievements-none", { arrows: true, moves: 2 }, true, "achievements", "passed", NO_PIECES),
+    },
+    {
+      name: "Achievements — not graded yet",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-achievements-open", { arrows: true, moves: 2 }, true, "achievements", "answering", null),
     },
     {
       name: "Moves — before a session",

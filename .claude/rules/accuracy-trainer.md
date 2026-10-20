@@ -391,7 +391,8 @@ its Case linked, then **Your moves** (the trained position the board stands
 at — answering, its moves to reorder or delete; waiting; graded, every line
 with the reader's marked; passed, with *Answer it now*; not answered yet),
 **Results** (in game order, the one the board stands at current; a click back
-to each — a passed one to answer it now) and **Settings** (*Moves to find*
+to each — a passed one to answer it now), **Achievements** (the pieces the
+position the board stands at won, §10) and **Settings** (*Moves to find*
 locked, *Show next-move arrows*, *Engine starts thinking* — on the first
 move played, or after Next is clicked, a `RadioGroupField`, CTA-247
 (`engineStart` / `onEngineStartChange`, `useFindBestMove`'s
@@ -453,11 +454,16 @@ reads its table top down).
   pass; `null` while not graded. `materialOf(record)` →
   `sessionMaterialOf`: per category and in all, and how many of each piece.
   No tag, no projection — the pieces cannot drift from the grade.
-- **The screen**: the Result tab's `GradedLines` takes `achievements` — a
-  row under the headline (`AchievementRow`: each category's piece from the
-  board's set, `defaultPieces` via `PieceIcon`, or a dash, over its name;
-  each item named whole for a screen reader, "Place in order: Queen" /
-  "…: no piece", `achievementNameOf`); the Summary's `AccuracySessionReport`
+- **The screen**: the left panel's **Achievements** tab
+  (`AccuracyTrainerDetails`' `achievements` — `{ label, pieces }`, the
+  position the board stands at, as Your moves; `useFindBestMove`'s
+  `shownAchievements`): a table (`AchievementTable`), a row per category —
+  its name, then the five pieces Pawn to Queen from the board's set
+  (`defaultPieces` via `PieceIcon`), the one won on a highlighted cell, the
+  others dimmed as disabled; a screen reader hears each row header whole,
+  "Place in order: Queen" / "…: no piece" (`achievementNameOf`), and each
+  cell its piece and *Won* / *Not won* — or, not graded yet, a line
+  saying so — the Result tab's `GradedLines` shows none; the Summary's `AccuracySessionReport`
   takes `material` — a table under the measures, a row per category and
   *All categories*: each piece counted, the material. Words
   `accuracyTrainer.achievements.*`.

@@ -14,12 +14,14 @@ import { StatusText } from "../../../design-system/components/feedback";
 import { LabelChip, type LabelChipTone } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../lib/accuracyTrainer";
+import type { AchievementPieces } from "../../../lib/achievements/material";
 import { formatScore } from "../../../lib/engineAnalysis";
 import type { EngineStart } from "../../../lib/findBestMove/model";
 import { gradeHeadlineOf } from "../GradedLines";
+import { AchievementTable } from "./AchievementTable";
 
 /** The panel's tabs. */
-export type AccuracyTrainerDetailsTab = "moves" | "results" | "settings";
+export type AccuracyTrainerDetailsTab = "moves" | "results" | "achievements" | "settings";
 
 /** **One position answered or passed**, as Results lists it. */
 export type AccuracyTrainerResult = {
@@ -68,6 +70,12 @@ export type AccuracyTrainerMoves = { label: string } & (
   | { kind: "graded"; position: TrainingPosition; grade: PositionGrade }
 );
 
+/**
+ * **The achievements of the position the board stands at** (CTA-249) — its
+ * pieces, one per category (`achievementsOf`), `null` while it is not graded.
+ */
+export type AccuracyTrainerAchievements = { label: string; pieces: AchievementPieces | null };
+
 export type AccuracyTrainerDetailsProps = {
   /** The panel's heading: the game loaded, else the exercise's name. */
   title: string;
@@ -95,6 +103,8 @@ export type AccuracyTrainerDetailsProps = {
   moves?: AccuracyTrainerMoves;
   /** Every position answered or passed so far — absent before a session starts. */
   results?: AccuracyTrainerResults;
+  /** The pieces the position the board stands at won — absent before a session starts. */
+  achievements?: AccuracyTrainerAchievements;
   /**
    * The root; its parts `-title`, `-case` (the Case's link), `-tabs` (each tab
    * `<testId>-tab-<id>`), `-moves-tab` (its position `-moves-label`; being
@@ -103,6 +113,10 @@ export type AccuracyTrainerDetailsProps = {
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
    * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
+   * `-achievements-tab` (its position `-achievements-label`, the pieces
+   * `-achievements` — a row `-achievements-<category>`, a cell
+   * `-achievements-<category>-<piece>` —, not graded yet
+   * `-achievements-none`, no session `-achievements-empty`),
    * `-settings` (`-moves`, `-arrows`, `-engine-start` — each radio
    * `-engine-start-<move|grade>`).
    */
@@ -127,7 +141,8 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * answered now, so a pass reopened stays in its place — in game order, each a
  * button back to it (its score — found / in place, *Perfect* —, waiting for
  * the engine, passed: to answer it, or *Answering now*), the one the board
- * stands at current —
+ * stands at current — **Achievements** (CTA-249): the pieces the position
+ * the board stands at won, one per category, once it is graded —
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position) and *Show next-move arrows* (the
@@ -154,6 +169,7 @@ function AccuracyTrainerDetails({
   caseLink,
   moves,
   results,
+  achievements,
   testId,
 }: AccuracyTrainerDetailsProps) {
   const { t } = useTranslation();
@@ -185,6 +201,7 @@ function AccuracyTrainerDetails({
           tabs={[
             { id: "moves", label: t("accuracyTrainer.details.tabs.moves") },
             { id: "results", label: t("accuracyTrainer.details.tabs.results") },
+            { id: "achievements", label: t("accuracyTrainer.details.tabs.achievements") },
             { id: "settings", label: t("accuracyTrainer.details.tabs.settings") },
           ]}
           value={tab}
@@ -247,6 +264,28 @@ function AccuracyTrainerDetails({
               </Typography>
             ) : (
               <ResultList results={results} testId={testId} />
+            )}
+          </Box>
+        )}
+        {tab === "achievements" && (
+          <Box {...tabPanelProps(testId, "achievements")} data-testid={`${testId}-achievements-tab`} sx={{ display: "grid", gap: 1, p: 1 }}>
+            {achievements === undefined ? (
+              <Typography variant="body2" data-testid={`${testId}-achievements-empty`} sx={{ color: "text.secondary" }}>
+                {t("accuracyTrainer.details.movesNoSession")}
+              </Typography>
+            ) : (
+              <>
+                <Typography component="h3" variant="subtitle2" data-testid={`${testId}-achievements-label`} sx={{ fontWeight: 700 }}>
+                  {achievements.label}
+                </Typography>
+                {achievements.pieces === null ? (
+                  <Typography variant="body2" data-testid={`${testId}-achievements-none`} sx={{ color: "text.secondary" }}>
+                    {t("accuracyTrainer.details.achievementsNone")}
+                  </Typography>
+                ) : (
+                  <AchievementTable pieces={achievements.pieces} testId={`${testId}-achievements`} />
+                )}
+              </>
             )}
           </Box>
         )}

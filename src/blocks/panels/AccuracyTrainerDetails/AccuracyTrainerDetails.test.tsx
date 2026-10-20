@@ -7,7 +7,8 @@ import i18n from "../../../i18n";
 import type { EngineStart } from "../../../lib/findBestMove/model";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
-import { CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
+import type { AchievementPieces } from "../../../lib/achievements/material";
+import { ACHIEVEMENTS, CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, NO_PIECES, RESULTS } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -23,6 +24,7 @@ function Live({
   onAnswerAgain = () => {},
   onOpen = () => {},
   withEngineStart = true,
+  pieces = ACHIEVEMENTS,
 }: {
   title?: string;
   initial?: boolean;
@@ -32,6 +34,7 @@ function Live({
   onAnswerAgain?: () => void;
   onOpen?: (index: number) => void;
   withEngineStart?: boolean;
+  pieces?: AchievementPieces | null;
 }) {
   const [tab, setTab] = useState<AccuracyTrainerDetailsTab>(startTab);
   const [list, setList] = useState<readonly string[]>(MOVES);
@@ -53,6 +56,7 @@ function Live({
         ? {
             caseLink: CASE_LINK,
             results: { rows: RESULTS, onOpen },
+            achievements: { label: LABEL, pieces },
             moves:
               shown === "passed"
                 ? { kind: "passed" as const, label: LABEL, onAnswerAgain: answerAgain }
@@ -219,6 +223,44 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     render(<Live />);
     await user.click(screen.getByRole("tab", { name: "Results" }));
     expect(screen.getByTestId("details-results-empty")).toHaveTextContent("Start a session");
+  });
+
+  it("shows on Achievements the pieces the position won, one per category, each named for a screen reader (CTA-249)", async () => {
+    const user = userEvent.setup();
+    render(<Live withCase startTab="moves" />);
+    await user.click(screen.getByRole("tab", { name: "Achievements" }));
+    expect(screen.getByTestId("details-achievements-label")).toHaveTextContent(LABEL);
+    const table = screen.getByRole("table", { name: "Achievements" });
+    expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Category", "Pawn", "Knight", "Bishop", "Rook", "Queen"]);
+    expect(within(table).getAllByRole("rowheader").map((cell) => cell.textContent)).toEqual([
+      expect.stringContaining("Place in order: Rook"),
+      expect.stringContaining("Best move: Bishop"),
+      expect.stringContaining("Clean candidates: Queen"),
+      expect.stringContaining("Better than the game: Rook"),
+      expect.stringContaining("See the line: Pawn"),
+    ]);
+    // A row: its category, then the five pieces — the one won marked, the others not.
+    expect(screen.getByTestId("details-achievements-game")).toHaveAttribute("data-piece", "rook");
+    expect(screen.getByTestId("details-achievements-game-rook")).toHaveAttribute("data-won", "true");
+    expect(screen.getByTestId("details-achievements-game-rook")).toHaveTextContent("Won");
+    expect(screen.getByTestId("details-achievements-game-queen")).toHaveAttribute("data-won", "false");
+    expect(screen.getByTestId("details-achievements-game-queen")).toHaveTextContent("Not won");
+    await expectNoAxeViolations();
+  });
+
+  it("says a category won no piece, and that a position not graded yet has none", () => {
+    const { unmount } = render(<Live withCase startTab="achievements" pieces={NO_PIECES} />);
+    expect(screen.getByTestId("details-achievements-order")).toHaveTextContent("Place in order: no piece");
+    expect(screen.getByTestId("details-achievements-order").querySelectorAll('[data-won="true"]')).toHaveLength(0);
+    unmount();
+    render(<Live withCase startTab="achievements" pieces={null} />);
+    expect(screen.getByTestId("details-achievements-none")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Achievements" })).not.toBeInTheDocument();
+  });
+
+  it("says there are no achievements before a session", () => {
+    render(<Live startTab="achievements" />);
+    expect(screen.getByTestId("details-achievements-empty")).toHaveTextContent("Start a session");
   });
 
   it("passes axe on a graded position", async () => {

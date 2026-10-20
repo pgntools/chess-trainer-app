@@ -313,8 +313,11 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("Every best move found, each in its place — 3 of 3.");
     expect(screen.getByTestId(`${ID}-graded-order-d4`)).toHaveTextContent("2In place");
-    // Its achievements, derived from the answer (CTA-249): all three in place — A1's Queen.
-    expect(within(screen.getByRole("list", { name: "Achievements" })).getByText("Place in order: Queen")).toBeInTheDocument();
+    // Its achievements, derived from the answer, on the left panel's own tab (CTA-249): all three in place — A1's Queen.
+    expect(screen.queryByRole("table", { name: "Achievements" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Achievements" }));
+    expect(within(screen.getByRole("table", { name: "Achievements" })).getByRole("rowheader", { name: "Place in order: Queen" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Your moves" }));
 
     await user.click(screen.getByRole("button", { name: "Next" }));
     await atPosition("Position 2 of 2");
