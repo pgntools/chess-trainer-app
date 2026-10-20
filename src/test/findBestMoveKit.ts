@@ -1,5 +1,5 @@
 import type { PositionResult } from "../lib/computerAnalysis";
-import type { FindBestMoveRecord } from "../lib/findBestMove/model";
+import type { FindBestMoveRecord, SessionSettings } from "../lib/findBestMove/model";
 import type { AnswerWords } from "../lib/findBestMove/projection";
 import { reduceSession, type SessionEvent } from "../lib/findBestMove/reducer";
 import { sessionFromGame, type NewSessionSettings } from "../lib/findBestMove/start";
@@ -64,16 +64,20 @@ const SETTINGS: NewSessionSettings = { moves: 2, arrows: true };
 /**
  * A session of a PGN's game — both sides unless said, N 2, the engine off.
  * `engine: true` stands for a session whose reader has since turned it on
- * (the CTA-245 offer) — a new one never starts with it.
+ * (the CTA-245 offer) — a new one never starts with it; `engineStart`, the
+ * reader's choice on the Settings tab (CTA-247), on the first move unless said.
  */
 export const sessionOfPgn = (
   pgn: string,
-  { side = "both", settings = {} }: { side?: FindBestMoveRecord["side"]; settings?: Partial<NewSessionSettings & { engine: boolean }> } = {},
+  {
+    side = "both",
+    settings = {},
+  }: { side?: FindBestMoveRecord["side"]; settings?: Partial<NewSessionSettings & Pick<SessionSettings, "engine" | "engineStart">> } = {},
 ): FindBestMoveRecord => {
-  const { engine = false, ...rest } = settings;
+  const { engine = false, engineStart = "move", ...rest } = settings;
   const record = sessionFromGame({ tree: parsePgnTree(pgn), name: "Alice – Bob", side, settings: { ...SETTINGS, ...rest } });
   if (record === undefined) throw new Error("The game trains no position.");
-  return engine ? { ...record, settings: { ...record.settings, engine } } : record;
+  return { ...record, settings: { ...record.settings, engine, engineStart } };
 };
 
 /** Events applied — the kit's shorthand. */

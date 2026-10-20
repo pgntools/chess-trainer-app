@@ -4,6 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
+import type { EngineStart } from "../../../lib/findBestMove/model";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
 import { CASE_LINK, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
@@ -21,6 +22,7 @@ function Live({
   startTab = "settings",
   onAnswerAgain = () => {},
   onOpen = () => {},
+  withEngineStart = true,
 }: {
   title?: string;
   initial?: boolean;
@@ -29,12 +31,14 @@ function Live({
   startTab?: AccuracyTrainerDetailsTab;
   onAnswerAgain?: () => void;
   onOpen?: (index: number) => void;
+  withEngineStart?: boolean;
 }) {
   const [tab, setTab] = useState<AccuracyTrainerDetailsTab>(startTab);
   const [list, setList] = useState<readonly string[]>(MOVES);
   const answerAgain = onAnswerAgain;
   const [showArrows, setShowArrows] = useState(initial);
   const [moves, setMoves] = useState(3);
+  const [engineStart, setEngineStart] = useState<EngineStart>("move");
   return (
     <AccuracyTrainerDetails
       title={title}
@@ -44,6 +48,7 @@ function Live({
       onShowArrowsChange={setShowArrows}
       movesToFind={moves}
       onMovesToFindChange={setMoves}
+      {...(withEngineStart ? { engineStart, onEngineStartChange: setEngineStart } : {})}
       {...(withCase
         ? {
             caseLink: CASE_LINK,
@@ -104,6 +109,26 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(moves).toHaveValue("4");
     expect(screen.getByRole("switch", { name: "Show next-move arrows" })).toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: "Use the engine" })).not.toBeInTheDocument();
+  });
+
+  it("chooses when the engine starts thinking — the first move played, or after Next (CTA-247)", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Live withCase />);
+    const group = screen.getByRole("radiogroup", { name: "Engine starts thinking" });
+    const onMove = within(group).getByRole("radio", { name: "On the first move played" });
+    const afterNext = within(group).getByRole("radio", { name: "After Next is clicked" });
+    expect(onMove).toBeChecked();
+    expect(group).toHaveAccessibleDescription(/starts on your first move/);
+    await user.click(afterNext);
+    expect(afterNext).toBeChecked();
+    expect(onMove).not.toBeChecked();
+    expect(group).toHaveAccessibleDescription(/only once the position is graded/);
+    await expectNoAxeViolations(container);
+  });
+
+  it("has no engine-start choice where none is given", () => {
+    render(<Live withEngineStart={false} />);
+    expect(screen.queryByRole("radiogroup", { name: "Engine starts thinking" })).not.toBeInTheDocument();
   });
 
   it("links the session's case once there is one", () => {

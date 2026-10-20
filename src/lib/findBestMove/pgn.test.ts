@@ -95,6 +95,19 @@ describe("the round trip", () => {
     expect(pgn).not.toContain("[%fbm");
   });
 
+  it("writes when the engine starts, and reads a session without the tag as on the first move (CTA-247)", () => {
+    const record = sessionOfPgn(ANALYSED_PGN, { settings: { engineStart: "grade" } });
+    const { pgn, read } = roundTrip(record);
+    expect(pgn).toContain('[FindBestMoveEngineStart "grade"]');
+    expect(read.record.settings.engineStart).toBe("grade");
+    expect(roundTrip(sessionOfPgn(ANALYSED_PGN)).pgn).toContain('[FindBestMoveEngineStart "move"]');
+    // A session from before it — no such tag — or a value it does not know: today's behaviour, unsaid.
+    const older = pgn.split("\n").filter((line) => !line.startsWith("[FindBestMoveEngineStart ")).join("\n");
+    expect(sessionRecordOf(readPgnTags(older))).toMatchObject({ record: { settings: { engineStart: "move" } }, issues: [] });
+    const unknown = pgn.replace('[FindBestMoveEngineStart "grade"]', '[FindBestMoveEngineStart "later"]');
+    expect(sessionRecordOf(readPgnTags(unknown))?.record.settings.engineStart).toBe("move");
+  });
+
   it("keeps a session from a position — its game empty, its one key 1", () => {
     const fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
     const record = applied(sessionFromPosition({ fen, name: "Position — White to move", settings: { moves: 2, arrows: false } }), [

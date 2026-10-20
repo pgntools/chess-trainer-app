@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { AccuracyReportRow, AccuracyTrainerMoves, AccuracyTrainerResult } from "../../../blocks/panels";
 import { targetOf } from "../../../lib/accuracyTrainer";
 import type { AnalysisCase } from "../../../lib/analysisProjects";
-import { gameMoveOf, trainingPositionOf, type FindBestMoveRecord, type PositionKey } from "../../../lib/findBestMove/model";
+import { gameMoveOf, trainingPositionOf, type EngineStart, type FindBestMoveRecord, type PositionKey } from "../../../lib/findBestMove/model";
 import type { SessionIssue } from "../../../lib/findBestMove/pgn";
 import type { AnswerWords } from "../../../lib/findBestMove/projection";
 import { reduceSession, sessionEvents as events, type SessionEvent } from "../../../lib/findBestMove/reducer";
@@ -140,6 +140,8 @@ export const useFindBestMove = ({
   };
   // The engine is turned on by the offer alone (`useSessionBoard`, CTA-245) — no switch (CTA-246).
   const changeArrows = (arrows: boolean) => void dispatch([events.settingsChanged({ arrows })]);
+  /** When a position's engine starts — its first move, or its grading (CTA-247); a position already asked keeps its search. */
+  const changeEngineStart = (engineStart: EngineStart) => void dispatch([events.settingsChanged({ engineStart })]);
 
   // The trained position the board stands at — the one on screen inside its lines, an earlier one stepped back to.
   const shownAt = positionAtPath(record, sanPathTo(core.tree, core.nodeId)) ?? key;
@@ -230,5 +232,6 @@ export const useFindBestMove = ({
     open,
     openResult,
     changeArrows,
+    changeEngineStart,
   };
 };

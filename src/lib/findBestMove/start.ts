@@ -3,7 +3,7 @@ import { turnOf } from "../computerAnalysis";
 import { ANALYSED_PLIES_TAG, ANALYSED_SIDE_TAG } from "../computerAnalysisTree";
 import type { GameHeaders } from "../gameModel";
 import { mainline, type GameTree } from "../gameTree";
-import { SESSION_FORMAT_VERSION, storedLinesOf, type FindBestMoveRecord, type PositionRecord } from "./model";
+import { DEFAULT_ENGINE_START, SESSION_FORMAT_VERSION, storedLinesOf, type FindBestMoveRecord, type PositionRecord } from "./model";
 
 /**
  * **A session started** (CTA-244, the design note §3.1) — pure: from a game
@@ -61,7 +61,7 @@ export const sessionFromGame = ({
     name,
     side,
     wanted: settings.moves,
-    settings: { engine: false, arrows: settings.arrows },
+    settings: { engine: false, arrows: settings.arrows, engineStart: DEFAULT_ENGINE_START },
     game: { startFen: tree.startFen, moves: mainline(tree).map((node) => node.san) },
     keys: positions.map((position) => position.ply),
     current: first.ply,
@@ -79,7 +79,7 @@ export const sessionFromPosition = ({ fen, name, settings }: { fen: string; name
   name,
   side: turnOf(fen),
   wanted: settings.moves,
-  settings: { engine: true, arrows: settings.arrows },
+  settings: { engine: true, arrows: settings.arrows, engineStart: DEFAULT_ENGINE_START },
   game: { startFen: fen, moves: [] },
   keys: [1],
   current: 1,

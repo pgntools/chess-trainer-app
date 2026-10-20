@@ -504,6 +504,43 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await pgnHolds(`engine:searched/${job.id}`, "[%eval 0.20]");
   });
 
+  it("starts the engine thinking after Next when Settings says so — the offer on the first move still, the search only once graded (CTA-247)", async () => {
+    const user = userEvent.setup();
+    const { unmount } = mount();
+    await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    const group = screen.getByRole("radiogroup", { name: "Engine starts thinking" });
+    expect(within(group).getByRole("radio", { name: "On the first move played" })).toBeChecked();
+    await expectNoAxeViolations(group);
+    await user.click(within(group).getByRole("radio", { name: "After Next is clicked" }));
+    await pgnHolds('[FindBestMoveEngineStart "grade"]');
+
+    // The first move still offers the engine; taken, the session's engine is on — and the position asks it nothing yet.
+    const best = legalMove(START);
+    drag(best.slice(0, 2), best.slice(2, 4));
+    await acceptEngine(user);
+    await pgnHolds('[FindBestMoveEngine "on"]', '[FindBestMove_1 "state:open"]');
+    await user.click(screen.getByTestId("board-control-first"));
+    const other = best === "g1f3" ? "b1c3" : "g1f3";
+    expect(drag(other.slice(0, 2), other.slice(2, 4))).toBe(true);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(jobRuntime().snapshot() ?? []).toEqual([]);
+
+    // Graded: the search starts then, and the answer is graded once it ends.
+    await user.click(screen.getByRole("button", { name: "Results (2)" }));
+    await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
+    expect(jobRuntime().snapshot()![0].input).toMatchObject({ key: 1, search: { multiPv: 3 } });
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("1 of 1");
+
+    // The choice is the session's: a reload of its address keeps it.
+    const caseId = (await sessionCase())!.id;
+    unmount();
+    mount(0, `${LOBBY}/${caseId}`);
+    await screen.findByTestId(`${ID}-progress`);
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByRole("radio", { name: "After Next is clicked" })).toBeChecked();
+  });
+
   it("asks every analysed position of a partial analysis — a pass goes on to the very next, none skipped (CTA-245)", async () => {
     const user = userEvent.setup();
     mount();
