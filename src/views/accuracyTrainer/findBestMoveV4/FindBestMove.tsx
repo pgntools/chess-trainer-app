@@ -152,7 +152,7 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
               </Box>
             </>
           )}
-          {grade !== null && !grade.passed && position !== undefined && <GradedLines position={position} grade={grade} testId={`${ID}-graded`} />}
+          {grade !== null && !grade.passed && position !== undefined && <GradedLines position={position} grade={grade} achievements={run.achievements} testId={`${ID}-graded`} />}
         </Box>
       ),
     },
@@ -163,6 +163,7 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
         <Box sx={{ p: 1 }}>
           <AccuracySessionReport
             summary={run.summary}
+            material={run.material}
             rows={run.reportRows}
             onOpen={(key) => {
               run.open(key);

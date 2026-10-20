@@ -9,9 +9,11 @@ import type { SessionIssue } from "../../../lib/findBestMove/pgn";
 import type { AnswerWords } from "../../../lib/findBestMove/projection";
 import { reduceSession, sessionEvents as events, type SessionEvent } from "../../../lib/findBestMove/reducer";
 import {
+  achievementsOf,
   answerOf,
   engineFailedAt,
   gradeOf,
+  materialOf,
   nextOpen,
   phaseOf,
   placeOf,
@@ -194,6 +196,8 @@ export const useFindBestMove = ({
     [record],
   );
   const summary = useMemo(() => summaryOf(record), [record]);
+  // The achievements, derived from the record — never stored (CTA-249).
+  const material = useMemo(() => materialOf(record), [record]);
 
   /** The session's PGN, projected from the record now with the board's work in — what Download saves. */
   const pgn = () => sessionPgnOf(reduceSession(record, [board.flushWork()]), readPgnTags(caseRecord.pgn), words);
@@ -212,6 +216,8 @@ export const useFindBestMove = ({
     /** Whether the position on screen is answered — moves or a pass: its Result is on. */
     answered: answerOf(record, key) !== null,
     grade,
+    /** The position on screen's pieces, one per category — once graded (CTA-249). */
+    achievements: achievementsOf(record, key) ?? undefined,
     waiting: phase === "waiting",
     engineFailed: phase === "graded" && engineFailedAt(record, key),
     searching: answering && engine.searchingAt(key),
@@ -220,6 +226,7 @@ export const useFindBestMove = ({
     results,
     reportRows,
     summary,
+    material,
     hasNext: nextOpen(record) !== undefined,
     unreadPositions,
     sideOf,

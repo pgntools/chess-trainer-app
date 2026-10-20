@@ -1,4 +1,5 @@
 import { gradePosition, trainingPositionsOf, type PositionGrade, type TrainingPosition } from "../../../lib/accuracyTrainer";
+import { noPieces, piecesOf, type AchievementPieces } from "../../../lib/achievements/material";
 import { parsePgnTree } from "../../../lib/pgn";
 
 /*
@@ -26,3 +27,32 @@ export const MISSED: PositionGrade = gradePosition(POSITION, ["Qh5", "h4"], { wa
 
 /** A pass. */
 export const PASSED: PositionGrade = gradePosition(POSITION, [], { wanted: 2 });
+
+/* ─── Achievements (CTA-249) ──────────────────────────────────────────── */
+
+/** The reader's work at the position: 2. Nf3 Nc6 3. Bb5 — the engine's line from Nf3, whole — and 2. Bc4. */
+const WORK = parsePgnTree(`[SetUp "1"]
+[FEN "${POSITION.fen}"]
+
+2. Nf3 (2. Bc4) 2... Nc6 3. Bb5 *`);
+
+/** Both in place, Nf3's line seen whole (3 plies): A1 Queen, A2 Rook, A3 Queen, A4 Queen, B1 Bishop. */
+export const PERFECT_ACHIEVEMENTS: AchievementPieces = piecesOf({ position: POSITION, grade: PERFECT, work: WORK, wanted: 2 });
+
+/** The wrong way round with a move outside the lines: Pawn, Bishop, Pawn, Rook, Pawn. */
+export const SWAPPED_ACHIEVEMENTS: AchievementPieces = piecesOf({ position: POSITION, grade: SWAPPED, work: null, wanted: 2 });
+
+/** None of the top 2 — the game's move itself, so A4 gives none; A3's Pawn alone (no blunder). */
+export const MISSED_ACHIEVEMENTS: AchievementPieces = piecesOf({ position: POSITION, grade: MISSED, work: null, wanted: 2 });
+
+/** Every piece once, Queen to Pawn — the five drawn side by side. */
+export const EVERY_PIECE: AchievementPieces = [
+  { category: "order", piece: "queen" },
+  { category: "best", piece: "rook" },
+  { category: "clean", piece: "bishop" },
+  { category: "game", piece: "knight" },
+  { category: "line", piece: "pawn" },
+];
+
+/** None won — a pass, or a position graded without its engine. */
+export const NO_PIECES: AchievementPieces = noPieces();
