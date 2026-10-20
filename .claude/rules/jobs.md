@@ -57,7 +57,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `src/lib/jobs/entityTypes.ts`, `entities.ts` | **The entity registry**: `analysis-case`, `analysis-project`, `repertoire`, `library-collection` — each a label, an app path and an existence check over its store's snapshot; `subscribeJobEntities`. A kind names types and never imports a screen. `library-collection` no kind applies to since CTA-232: it stays for a reader's stored merge jobs (their subjects named and linked, an unfinished one deleted with its collection). |
 | `src/lib/jobs/subjectDeletion.ts` | **The deletion rule's hook**: the stores call `removeUnfinishedJobsOf`; the runtime registers itself (a delete before it exists is held). |
 | `src/views/jobs/` | **The screens**: `JobsScreen` (`/jobs`), `JobScreen` (`/jobs/<id>`), `JobsSettingsScreen` (`/jobs/settings`), `JobsShell` (the runtime's start, the eval sources' warning, the header indicator), `useJobs.ts` (the runtime's React hooks over the page's runtime), `jobViews.ts` (a record mapped onto the blocks' view models), `kindViews.ts` + `kindViewTypes.ts` (each kind's views), `kinds/` (those views), `useNewJob.ts` + `NewJobHost.tsx`, `useResumeJob.ts` (Resume, asking first — CTA-236), `paths.ts`, `useJobsSettings.ts`. |
-| `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable` (its filters in its headers since CTA-221, `JobQueueFilters` gone), `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221), `JobSettingsChangedDialog` (CTA-236); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`; `JobsSettingsForm`. (`CollectionMergeForm` is the Library's since CTA-232, in its `CollectionMergeDialog`; `CollectionMergeSummary` is gone.) Block-local view models: no block imports the runtime. |
+| `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable` (its filters in its headers since CTA-221, `JobQueueFilters` gone), `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221), `JobSettingsChangedDialog` (CTA-236); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`, `JobEngineSettings` (the Evaluate Position job's engine settings plate, CTA-248); `JobsSettingsForm`. (`CollectionMergeForm` is the Library's since CTA-232, in its `CollectionMergeDialog`; `CollectionMergeSummary` is gone.) Block-local view models: no block imports the runtime. |
 | `src/test/jobsKit.ts` | The kinds' test kit (§6); its answering engine in `src/test/answeringEngine.ts` (no runtime import — a screen test mocking the registry imports it from its mock). |
 
 Routes and nav: `/jobs`, `/jobs/settings` and `/jobs/<id>` (full width,
@@ -228,7 +228,7 @@ stay in the catalogs, as the dev screens' do).
 - **Input**, `version: 2` (`EVALUATE_POSITION_INPUT_VERSION`): the session's
   Case (`caseId`, its one subject — deleted, its unfinished jobs go), the
   session's **position key** (`key` — the ply of its move in the session's
-  recorded game; v3's SAN `path` into the movetext is gone), the position's
+  recorded game), the position's
   `fen`, the move's `label`, the engine, its preset (id, name, values sent)
   and the search — the **top bar's Engine menu's** depth, move time, Threads
   and Hash, MultiPV the session's *Moves to find* (`core.ts`, read leniently;
@@ -245,17 +245,23 @@ stay in the catalogs, as the dev screens' do).
   Case's tags and the movetext re-derived. An event applied to the record as
   stored — it commutes with the trainer's writes, needs no merge id, and lands
   with the trainer closed. Applied twice, written once.
-- **v3's jobs** (`analysis.evaluate-position`, CTA-238 to CTA-243 — their
-  input a SAN path) are **a retired kind's** (§3.1): its id in
-  `RETIRED_JOB_KIND_LOCALE_KEYS` (dev-gated, as the kind was;
-  `jobs.retiredKinds.evaluatePositionV3`), so a stored one is kept, never
-  run, and offers Delete alone. The new kind's id is what makes them so — the
-  runtime would run an unparseable input of a registered kind and fail it.
+- **Its page** (`/jobs/<id>`, CTA-248): the live engine while it runs
+  (`EngineLiveView`) and, as its Parameters, **the engine settings it
+  started with as a plate** — `JobEngineSettings` (`blocks/cards/`), read
+  through `parseEvaluatePositionInput` (and the state's `RanEngine`) by
+  `views/jobs/kinds/EvaluatePositionViews.tsx`: the engine (the one that ran
+  it by name, else the registry id asked for), the preset (or *None
+  recorded*), depth, time per move (or *No limit*), lines, Threads, Hash,
+  and the UCI option values the preset sent, name → value (or the words that
+  it sent none) — numbers and option names pinned LTR. Its words
+  `jobs.engineSettings.*` and `jobs.facts.*`. Dev-only with the kind's other
+  views. The other two engine kinds keep their own `KeyValueList`s — their
+  parameters mix the engine with the rest of their form.
 - **Not in Resume's comparison** (§4.1): one search, re-planned anyway.
-- Tests: `kinds/evaluatePosition/core.test.ts` (a v3 input refused),
+- Tests: `kinds/evaluatePosition/core.test.ts`,
   `kind.test.ts` (the run into the record, the crash between every pair of
-  writes, the deletion rule, a Case gone or no session, a retired v3 job kept
-  and never run).
+  writes, the deletion rule, a Case gone or no session); the plate's
+  `JobEngineSettings.test.tsx` and its page in `views/jobs/Jobs.test.tsx`.
 
 ---
 
