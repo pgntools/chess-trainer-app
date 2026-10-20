@@ -4,10 +4,12 @@ import { ANALYSED_PGN, PARTIAL_PGN, RUY_LOPEZ_38, START_FEN, applied, searchOf, 
 import { sessionEvents as e } from "./reducer";
 import {
   REPLAY_MAX_PLIES,
+  achievementsOf,
   engineFailedAt,
   engineOfferedAt,
   gradeOf,
   isDone,
+  materialOf,
   nextOpen,
   phaseOf,
   positionAtPath,
@@ -72,6 +74,40 @@ describe("gradeOf, resultsOf, summaryOf", () => {
   it("sums up the graded positions and the passes", () => {
     const record = applied(fresh(), [e.answer(1, ["e4", "d4"]), e.next(), e.pass(2)]);
     expect(summaryOf(record)).toMatchObject({ answered: 1, passed: 1 });
+  });
+});
+
+describe("achievementsOf and materialOf (CTA-249) — derived, never stored", () => {
+  const piecesAt = (record: ReturnType<typeof fresh>, key: number) => achievementsOf(record, key)?.map(({ category, piece }) => [category, piece]);
+
+  it("wins a piece per category from the graded answer", () => {
+    // 1. e4 d4 Nf3 — the top 3 in order; the game's move e4 is no mistake (A4 none); e4's line is the move alone (B1 a Pawn).
+    const record = applied(fresh(), [e.answer(1, ["e4", "d4", "Nf3"])]);
+    expect(piecesAt(record, 1)).toEqual([
+      ["order", "queen"],
+      ["best", "rook"],
+      ["clean", "queen"],
+      ["game", null],
+      ["line", "pawn"],
+    ]);
+    expect(record.positions.get(1)).not.toHaveProperty("achievements");
+  });
+
+  it("is none for a pass and for a position graded without its engine; nothing while not graded", () => {
+    const passed = applied(fresh(), [e.pass(1), e.next()]);
+    expect(achievementsOf(passed, 1)?.every(({ piece }) => piece === null)).toBe(true);
+    const failed = applied(engineOn(), [e.answer(1, ["e4"]), e.engineQueued(1, "j"), e.engineFailed(1, "j")]);
+    expect(achievementsOf(failed, 1)?.every(({ piece }) => piece === null)).toBe(true);
+    expect(achievementsOf(applied(engineOn(), [e.answer(1, ["e4"])]), 1)).toBeNull();
+    expect(achievementsOf(fresh(), 1)).toBeNull();
+  });
+
+  it("sums the session's material over the graded positions", () => {
+    const record = applied(fresh(), [e.answer(1, ["e4", "d4", "Nf3"]), e.next(), e.pass(2)]);
+    const material = materialOf(record);
+    expect(material.material).toBe(9 + 5 + 9 + 1);
+    expect(material.counts).toEqual({ pawn: 1, knight: 0, bishop: 0, rook: 1, queen: 2 });
+    expect(materialOf(fresh()).material).toBe(0);
   });
 });
 

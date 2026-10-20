@@ -1,4 +1,5 @@
 import { gradePosition, needsEngine, sessionSummaryOf, type PositionGrade, type SessionSummary } from "../accuracyTrainer";
+import { noPieces, piecesOf, sessionMaterialOf, type AchievementPieces, type SessionMaterial } from "../achievements/material";
 import { positionPathOf, trainingPositionOf, type FindBestMoveRecord, type PositionKey } from "./model";
 
 /**
@@ -75,6 +76,30 @@ export const summaryOf = (record: FindBestMoveRecord): SessionSummary =>
   sessionSummaryOf(record.keys.flatMap((key) => {
     const grade = gradeOf(record, key);
     return grade === null ? [] : [grade];
+  }));
+
+/**
+ * **A position's achievements** (CTA-249, `lib/achievements/`) — a piece (or
+ * none) per category, derived from the record and never stored: graded, the
+ * answer's — none for one graded without its engine; passed, none; `null`
+ * while it is not graded.
+ */
+export const achievementsOf = (record: FindBestMoveRecord, key: PositionKey): AchievementPieces | null => {
+  const phase = phaseOf(record, key);
+  if (phase === "passed") return noPieces();
+  const grade = phase === "graded" ? gradeOf(record, key) : null;
+  const position = record.positions.get(key);
+  const training = trainingPositionOf(record, key);
+  if (grade === null || position === undefined || training === undefined) return null;
+  if (engineFailedAt(record, key)) return noPieces();
+  return piecesOf({ position: training, grade, work: position.work, wanted: record.wanted });
+};
+
+/** **The session's material** — every graded position's pieces, per category and in all, and how many of each. */
+export const materialOf = (record: FindBestMoveRecord): SessionMaterial =>
+  sessionMaterialOf(record.keys.flatMap((key) => {
+    const pieces = achievementsOf(record, key);
+    return pieces === null ? [] : [pieces];
   }));
 
 /** **How far a session has got** — what the lobby lists, from the record alone, so it is what the screen says. */
