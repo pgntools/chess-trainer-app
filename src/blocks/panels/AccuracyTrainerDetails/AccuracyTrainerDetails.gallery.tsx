@@ -39,7 +39,7 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
             ? {
                 caseLink: CASE_LINK,
                 results: { rows: RESULTS, onOpen: () => {} },
-                achievements: { label: LABEL, pieces },
+                achievements: { label: LABEL, pieces, wanted: 2 },
                 moves:
                   shown === "passed"
                     ? { kind: "passed" as const, label: LABEL, onAnswerAgain: () => {} }

@@ -170,7 +170,7 @@ export const useFindBestMove = ({
 
   // Its pieces, derived from the record — never stored (CTA-249): the left panel's Achievements.
   const shownAchievements: AccuracyTrainerAchievements | undefined =
-    trainingPositionOf(record, shownAt) === undefined ? undefined : { label: shownLabel, pieces: achievementsOf(record, shownAt) };
+    trainingPositionOf(record, shownAt) === undefined ? undefined : { label: shownLabel, pieces: achievementsOf(record, shownAt), wanted: record.wanted };
 
   const playedOf = (at: PositionKey) => gameMoveOf(record.game, at) ?? "–";
   const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => {

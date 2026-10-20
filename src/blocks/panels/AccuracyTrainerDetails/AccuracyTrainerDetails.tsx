@@ -19,7 +19,7 @@ import { formatScore } from "../../../lib/engineAnalysis";
 import type { EngineStart } from "../../../lib/findBestMove/model";
 import { useChessTokens } from "../../../design-system/theme";
 import { gradeHeadlineOf } from "../GradedLines";
-import { AchievementTable, PieceIcon } from "./AchievementTable";
+import { AchievementNotes, AchievementTable, PieceIcon } from "./AchievementTable";
 import { achievementNameOf } from "./achievementWords";
 
 /** The panel's tabs. */
@@ -82,7 +82,12 @@ export type AccuracyTrainerMoves = { label: string } & (
  * **The achievements of the position the board stands at** (CTA-249) — its
  * pieces, one per category (`achievementsOf`), `null` while it is not graded.
  */
-export type AccuracyTrainerAchievements = { label: string; pieces: AchievementPieces | null };
+export type AccuracyTrainerAchievements = {
+  label: string;
+  pieces: AchievementPieces | null;
+  /** X — the session's *Moves to find*, as the notes under the table name it. */
+  wanted: number;
+};
 
 export type AccuracyTrainerDetailsProps = {
   /** The panel's heading: the game loaded, else the exercise's name. */
@@ -123,7 +128,9 @@ export type AccuracyTrainerDetailsProps = {
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
    * `-achievements-tab` (its position `-achievements-label`, the pieces
    * `-achievements` — a row `-achievements-<category>`, a cell
-   * `-achievements-<category>-<piece>` —, not graded yet
+   * `-achievements-<category>-<piece>` —, the notes under it
+   * `-achievements-notes` (a line `-achievements-notes-<category>`, none
+   * `-achievements-notes-none`), not graded yet
    * `-achievements-none`, no session `-achievements-empty`),
    * `-settings` (`-moves`, `-arrows`, `-engine-start` — each radio
    * `-engine-start-<move|grade>`).
@@ -149,8 +156,9 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * answered now, so a pass reopened stays in its place — in game order, each a
  * button back to it (its score — found / in place, *Perfect* —, waiting for
  * the engine, passed: to answer it, or *Answering now*), the one the board
- * stands at current — **Achievements** (CTA-249): the pieces the position
- * the board stands at won, one per category, once it is graded —
+ * stands at current — **Score** (CTA-249): the pieces the position the
+ * board stands at won, one per category, once it is graded, and under them
+ * what each piece won means —
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position) and *Show next-move arrows* (the
@@ -291,7 +299,10 @@ function AccuracyTrainerDetails({
                     {t("accuracyTrainer.details.achievementsNone")}
                   </Typography>
                 ) : (
-                  <AchievementTable pieces={achievements.pieces} testId={`${testId}-achievements`} />
+                  <>
+                    <AchievementTable pieces={achievements.pieces} testId={`${testId}-achievements`} />
+                    <AchievementNotes pieces={achievements.pieces} wanted={achievements.wanted} testId={`${testId}-achievements-notes`} />
+                  </>
                 )}
               </>
             )}

@@ -149,3 +149,42 @@ export function AchievementTable({ pieces, testId }: { pieces: AchievementPieces
     </Box>
   );
 }
+
+/**
+ * **What each piece won means** (CTA-249) — under the table, a line per
+ * category that won one, in the registry's order: its piece in its colour,
+ * the category and the piece, then what the answer did to earn it
+ * (`accuracyTrainer.achievements.explain.<category>.<piece>`, X the
+ * session's *Moves to find*). None won, a line saying so. Its root `testId`,
+ * each line `-<category>`, none `-none`.
+ */
+export function AchievementNotes({ pieces, wanted, testId }: { pieces: AchievementPieces; wanted: number; testId: string }) {
+  const { t } = useTranslation();
+  const tints = useChessTokens().achievements;
+  const won = pieces.flatMap(({ category, piece }) => (piece === null ? [] : [{ category, piece }]));
+  if (won.length === 0) {
+    return (
+      <Box component="p" data-testid={`${testId}-none`} sx={{ m: 0, typography: "body2", color: "text.secondary" }}>
+        {t("accuracyTrainer.achievements.explainNone")}
+      </Box>
+    );
+  }
+  return (
+    <Box component="ul" aria-label={t("accuracyTrainer.achievements.explainTitle")} data-testid={testId} sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1 }}>
+      {won.map(({ category, piece }) => (
+        <Box component="li" key={category} data-testid={`${testId}-${category}`} sx={{ display: "grid", gridTemplateColumns: "20px 1fr", columnGap: 1, alignItems: "start" }}>
+          <Box component="span" sx={{ pt: "1px" }}>
+            <PieceIcon piece={piece} size={20} tint={tints[category]} />
+          </Box>
+          <Box component="span" sx={{ typography: "body2" }}>
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              {achievementNameOf(t, category, piece)}
+            </Box>
+            {" — "}
+            {t(`accuracyTrainer.achievements.explain.${category}.${piece}`, { count: wanted })}
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
+}
