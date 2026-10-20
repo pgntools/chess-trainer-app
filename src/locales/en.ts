@@ -3313,6 +3313,14 @@ const en = {
       continuesValue_one: "{{title}}, asked for {{date}} — one position carried over, analysed with its settings",
       continuesValue_other: "{{title}}, asked for {{date}} — {{count}} positions carried over, analysed with its settings",
     },
+    /** **An engine job's engine settings** (CTA-248, `JobEngineSettings`) — the plate on an Evaluate Position job's page. */
+    engineSettings: {
+      title: "Engine settings",
+      preset: "Preset",
+      noPreset: "None recorded",
+      options: "Options the preset sent",
+      noOptions: "The preset sent no options — the engine ran with its own defaults.",
+    },
     /**
      * **The Jobs module's generic blocks** (CTA-217): the queue, its filters,
      * a job's details, outputs and history, the New job frame and the header

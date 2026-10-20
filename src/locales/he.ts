@@ -2681,6 +2681,13 @@ const he: typeof en = {
       continuesValue_one: "{{title}}, שהתבקשה ב־{{date}} — עמדה אחת הועברה, שנותחה בהגדרות שלה",
       continuesValue_other: "{{title}}, שהתבקשה ב־{{date}} — {{count}} עמדות הועברו, שנותחו בהגדרות שלה",
     },
+    engineSettings: {
+      title: "הגדרות המנוע",
+      preset: "פריסט",
+      noPreset: "לא נרשם",
+      options: "האפשרויות שהפריסט שלח",
+      noOptions: "הפריסט לא שלח אפשרויות — המנוע רץ בברירות המחדל שלו.",
+    },
     entities: {
       "analysis-case": "מקרה",
       "analysis-project": "פרויקט",
