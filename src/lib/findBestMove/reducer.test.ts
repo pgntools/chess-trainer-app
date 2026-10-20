@@ -141,9 +141,51 @@ describe("sessionReducer — the event table", () => {
     const queued = sessionReducer(on, e.engineQueued(1, "j1"));
     expect(sessionReducer(queued, e.engineFailed(1, "other"))).toBe(queued);
     expect(sessionReducer(queued, e.engineFailed(1)).positions.get(1)?.engine).toEqual({ kind: "failed", jobId: "j1" });
-    // Never asked twice: a failed position is never wanted again.
+    // A failed position is never wanted again by a move — only by Evaluate again (CTA-250).
     const failed = sessionReducer(queued, e.engineFailed(1, "j1"));
     expect(sessionReducer(failed, e.firstMove(1))).toBe(failed);
+    // A job's failure names a queued search: wanted again, the old job's echo is not the new one's.
+    const wanted = applied(failed, [e.answer(1, ["e4"]), e.engineRetry(1)]);
+    expect(sessionReducer(wanted, e.engineFailed(1, "j1"))).toBe(wanted);
+  });
+
+  it("engineRetry wants the engine again at an answered position whose search was lost, or never asked (CTA-250)", () => {
+    const on = sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 4 } });
+    const failed = applied(on, [e.answer(1, ["e4", "d4"]), e.engineQueued(1, "j1"), e.engineFailed(1, "j1")]);
+    const again = sessionReducer(failed, e.engineRetry(1));
+    expect(again.positions.get(1)?.engine).toEqual({ kind: "wanted" });
+    // The answer is never changed.
+    expect(again.positions.get(1)?.answer).toEqual({ kind: "answered", moves: ["e4", "d4"] });
+    // Queued anew, and lost again: failed, and offered once more.
+    const lostAgain = applied(again, [e.engineQueued(1, "j2"), e.engineFailed(1, "j2")]);
+    expect(lostAgain.positions.get(1)?.engine).toEqual({ kind: "failed", jobId: "j2" });
+    expect(sessionReducer(lostAgain, e.engineRetry(1)).positions.get(1)?.engine).toEqual({ kind: "wanted" });
+    // Searched this time: its lines merged as any search's.
+    const searched = applied(again, [e.engineQueued(1, "j2"), e.engineSearched(1, "j2", searchOf(START_FEN, [{ pv: ["c2c4"], cp: 28 }]))]);
+    expect(searched.positions.get(1)?.engine).toEqual({ kind: "searched", jobId: "j2" });
+    expect(searched.positions.get(1)?.lines.map((line) => line.san)).toContain("c4");
+
+    // The offer declined (idle, the engine off): no event alone — the same write turns the engine on, then wants the search.
+    expect(applied(sessionOfPgn(ANALYSED_PGN, { settings: { moves: 4 } }), [e.answer(1, ["e4"]), e.engineRetry(1)]).positions.get(1)?.engine.kind).toBe("idle");
+    const offPartial = applied(sessionOfPgn(ANALYSED_PGN, { settings: { moves: 4 } }), [e.answer(1, ["e4"]), e.settingsChanged({ engine: true }), e.engineRetry(1)]);
+    expect(offPartial.positions.get(1)?.engine).toEqual({ kind: "wanted" });
+    // Lines enough for N (two of the engine's, N 2): nothing short — no event.
+    const enough = applied(sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 2 } }), [e.answer(1, ["e4"])]);
+    expect(sessionReducer(enough, e.engineRetry(1))).toBe(enough);
+  });
+
+  it("engineRetry is no event at a search that landed, a pass, a position not answered, or while waiting (CTA-250)", () => {
+    const on = sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 4 } });
+    const searched = applied(on, [e.answer(1, ["e4"]), e.engineQueued(1, "j1"), e.engineSearched(1, "j1", searchOf(START_FEN, []))]);
+    expect(sessionReducer(searched, e.engineRetry(1))).toBe(searched);
+    const passed = applied(on, [e.pass(1)]);
+    expect(sessionReducer(passed, e.engineRetry(1))).toBe(passed);
+    expect(sessionReducer(on, e.engineRetry(1))).toBe(on);
+    const failedOpen = applied(on, [e.firstMove(1), e.engineFailed(1)]);
+    expect(sessionReducer(failedOpen, e.engineRetry(1))).toBe(failedOpen);
+    const queued = applied(on, [e.answer(1, ["e4"]), e.engineQueued(1, "j1")]);
+    expect(sessionReducer(queued, e.engineRetry(1))).toBe(queued);
+    expect(sessionReducer(on, e.engineRetry(9))).toBe(on);
   });
 
   it("settingsChanged changes the switches, and the same ones are no event", () => {
@@ -195,13 +237,14 @@ const randomEvent = (random: () => number, record: FindBestMoveRecord): SessionE
     () => e.engineQueued(key, job),
     () => e.engineSearched(key, job, searchOf(fen, [{ pv: ["a2a3"], cp: -10 }])),
     () => e.engineFailed(key, random() < 0.5 ? undefined : job),
+    () => e.engineRetry(key),
     () => e.settingsChanged({ engine: random() < 0.5 }),
     () => e.settingsChanged({ engineStart: random() < 0.5 ? "move" : "grade" }),
   ])();
 };
 
-/** Every invariant of the design note §4.3, between a record and the next. */
-const expectInvariants = (before: FindBestMoveRecord, after: FindBestMoveRecord) => {
+/** Every invariant of the design note §4.3, between a record and the next — `event` the one between them. */
+const expectInvariants = (before: FindBestMoveRecord, after: FindBestMoveRecord, event: SessionEvent) => {
   expect(after.keys).toContain(after.current);
   expect([...after.positions.keys()]).toEqual([...after.keys]);
   const reopened = after.keys.filter((key) => after.positions.get(key)?.answer.kind === "reopened");
@@ -212,7 +255,13 @@ const expectInvariants = (before: FindBestMoveRecord, after: FindBestMoveRecord)
     const now = after.positions.get(key)!;
     if (now.answer.kind === "answered") expect(now.answer.moves.length).toBeGreaterThan(0);
     if (was.answer.kind === "answered") expect(now.answer).toEqual(was.answer);
-    if (was.engine.kind === "searched" || was.engine.kind === "failed") expect(now.engine).toEqual(was.engine);
+    if (was.engine.kind === "searched") expect(now.engine).toEqual(was.engine);
+    // A lost search is left only by Evaluate again (CTA-250), for another, at an answered position.
+    if (was.engine.kind === "failed" && now.engine !== was.engine) {
+      expect(event.type).toBe("engineRetry");
+      expect(now.engine).toEqual({ kind: "wanted" });
+      expect(now.answer.kind).toBe("answered");
+    }
     if (was.engine.kind !== "idle") expect(now.engine.kind).not.toBe("idle");
     // The lines only grow, and only through a search.
     expect(now.lines.length).toBeGreaterThanOrEqual(was.lines.length);
@@ -229,14 +278,21 @@ describe("sessionReducer — the invariants", () => {
       sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5 } }),
       sessionOfPgn(RUY_LOPEZ_38, { settings: { engine: true, moves: 3 } }),
       sessionOfPgn(RUY_LOPEZ_38, { settings: { engine: true, moves: 3, engineStart: "grade" } }),
+      // Every position answered and its search lost — where Evaluate again (CTA-250) applies.
+      applied(sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5 } }), [1, 2, 3].flatMap((key) => [e.answer(key, ["e4"]), e.engineFailed(key)])),
     ];
+    let retried = 0;
     for (let walk = 0; walk < 300; walk += 1) {
       let record = starts[walk % starts.length];
       for (let step = 0; step < 40; step += 1) {
-        const next = sessionReducer(record, randomEvent(random, record));
-        expectInvariants(record, next);
+        const event = randomEvent(random, record);
+        const next = sessionReducer(record, event);
+        expectInvariants(record, next, event);
+        if (event.type === "engineRetry" && next !== record && record.positions.get(event.key)?.engine.kind === "failed") retried += 1;
         record = next;
       }
     }
+    // The walk reaches Evaluate again out of a lost search (CTA-250), so its rule is held, not skipped.
+    expect(retried).toBeGreaterThan(0);
   });
 });

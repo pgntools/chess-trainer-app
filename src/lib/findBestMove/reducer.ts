@@ -38,6 +38,7 @@ export type SessionEvent =
   | { type: "engineQueued"; key: PositionKey; jobId: string }
   | { type: "engineSearched"; key: PositionKey; jobId: string; result: PositionResult }
   | { type: "engineFailed"; key: PositionKey; jobId?: string }
+  | { type: "engineRetry"; key: PositionKey }
   | ({ type: "settingsChanged" } & Partial<SessionSettings>);
 
 /** The events, made — what the screen and the job dispatch. */
@@ -52,6 +53,7 @@ export const sessionEvents = {
   engineQueued: (key: PositionKey, jobId: string): SessionEvent => ({ type: "engineQueued", key, jobId }),
   engineSearched: (key: PositionKey, jobId: string, result: PositionResult): SessionEvent => ({ type: "engineSearched", key, jobId, result }),
   engineFailed: (key: PositionKey, jobId?: string): SessionEvent => ({ type: "engineFailed", key, ...(jobId === undefined ? {} : { jobId }) }),
+  engineRetry: (key: PositionKey): SessionEvent => ({ type: "engineRetry", key }),
   settingsChanged: (settings: Partial<SessionSettings>): SessionEvent => ({ type: "settingsChanged", ...settings }),
 } as const;
 
@@ -149,10 +151,20 @@ export const sessionReducer = (record: FindBestMoveRecord, event: SessionEvent):
       return editPosition(record, event.key, (position) => {
         const { engine } = position;
         if (!pending(engine)) return position;
-        // Another job's failure is not this one's.
-        if (engine.kind === "queued" && event.jobId !== undefined && event.jobId !== engine.jobId) return position;
+        // Another job's failure is not this one's — nor, wanted again (`engineRetry`), the new search's: a job's echo names a queued one.
+        if (event.jobId !== undefined && (engine.kind !== "queued" || event.jobId !== engine.jobId)) return position;
         const jobId = event.jobId ?? (engine.kind === "queued" ? engine.jobId : undefined);
         return { ...position, engine: { kind: "failed", ...(jobId === undefined ? {} : { jobId }) } };
+      });
+
+    case "engineRetry":
+      // *Evaluate again* (CTA-250): an answered position whose search was lost (`failed`) or never asked (`idle`, the offer
+      // declined), its top lines still too few, wants its engine once more — the one way out of `failed`. The answer stays.
+      return editPosition(record, event.key, (position) => {
+        if (!record.settings.engine || position.answer.kind !== "answered") return position;
+        if (position.engine.kind !== "failed" && position.engine.kind !== "idle") return position;
+        const training = trainingPositionOf(record, event.key);
+        return training === undefined || !needsEngine(training, record.wanted) ? position : { ...position, engine: { kind: "wanted" } };
       });
 
     case "settingsChanged": {

@@ -5,7 +5,7 @@ import { withEngineLine } from "../computerAnalysisTree";
 import { recordEvaluation } from "../engineEvals";
 import { addLine, emptyTree, findNode, mainline, promoteVariation, setComments, setNags, treeToPgn, type GameTree } from "../gameTree";
 import { parsePgnTree, readPgnTags } from "../pgn";
-import { lineMovesOf, type FindBestMoveRecord } from "./model";
+import { lineMovesOf, positionFenOf, type FindBestMoveRecord } from "./model";
 import { isSessionTags, sessionRecordOf, workFragmentOf, workFromFragment } from "./pgn";
 import { sessionEvents as e } from "./reducer";
 import { nextOpen } from "./selectors";
@@ -105,6 +105,17 @@ describe("the round trip", () => {
     expect(sessionRecordOf(readPgnTags(older))).toMatchObject({ record: { settings: { engineStart: "move" } }, issues: [] });
     const unknown = pgn.replace('[FindBestMoveEngineStart "grade"]', '[FindBestMoveEngineStart "later"]');
     expect(sessionRecordOf(readPgnTags(unknown))?.record.settings.engineStart).toBe("move");
+  });
+
+  it("reads a position evaluated again back in each of its states — wanted, queued, searched — in format 2 (CTA-250)", () => {
+    const failed = applied(busy(), [e.engineRetry(4)]);
+    for (const record of [failed, applied(failed, [e.engineQueued(4, "job-4b")]), applied(failed, [e.engineQueued(4, "job-4b"), e.engineSearched(4, "job-4b", searchOf(positionFenOf(failed.game, 4)!, [{ pv: ["b8c6"], cp: -20 }]))])]) {
+      const { pgn, read } = roundTrip(record);
+      expect(pgn).toContain('[FindBestMove "2"]');
+      expect(read.issues).toEqual([]);
+      expect(comparable(read.record)).toEqual(comparable(record));
+    }
+    expect(roundTrip(failed).pgn).toMatch(/\[FindBestMove_4 "[^"]*engine:wanted/);
   });
 
   it("keeps a session from a position — its game empty, its one key 1", () => {
