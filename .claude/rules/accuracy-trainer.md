@@ -36,6 +36,11 @@ first analysis board, its own tree per position — were deleted when v3
 replaced them; v3 is v2's behaviour on a cleaner model, plus the moves before
 each position.)
 
+> **v4 is designed** (CTA-243, [`docs/design/find-best-move-v4.md`](../../docs/design/find-best-move-v4.md)).
+> It is a clean slate: the session in PGN tags alone, the movetext a projection
+> never read back, per-position records keyed by ply, and an explicit state
+> machine. Read the note before extending v3's session or its PGN format.
+
 > **Dev-only.** The routes — the lobby and a session's — are in `routes.tsx`'s `devRoutes` (`React.lazy`
 > imports under `import.meta.env.DEV`), the folder and the nav entry spreads in
 > `navFolders.ts` / `navItems.ts` under the same flag, and so is the Evaluate
