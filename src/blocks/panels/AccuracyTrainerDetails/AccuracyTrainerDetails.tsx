@@ -75,7 +75,13 @@ export type AccuracyTrainerMoves = { label: string } & (
   | { kind: "unanswered" }
   /** Passed — put off for later: its lines stay hidden, and it may be answered now. */
   | { kind: "passed"; onAnswerAgain: () => void }
-  | { kind: "graded"; position: TrainingPosition; grade: PositionGrade }
+  | {
+      kind: "graded";
+      position: TrainingPosition;
+      grade: PositionGrade;
+      /** Graded without its engine (CTA-250): given, *Evaluate again* — the engine asked once more. */
+      onEvaluateAgain?: () => void;
+    }
 );
 
 /**
@@ -124,7 +130,8 @@ export type AccuracyTrainerDetailsProps = {
    * answered a move `-move-<index>`, its actions `-move-<index>-up`, `-down`,
    * `-remove`, none `-moves-empty`; waiting `-moves-waiting`; graded the
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
-   * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
+   * outside them `-outside-<order>`, graded without its engine
+   * `-moves-engine-lost` and `-evaluate-again`; passed `-moves-passed`, `-answer-again`),
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
    * `-achievements-tab` (its position `-achievements-label`, the pieces
    * `-achievements` — a row `-achievements-<category>`, a cell
@@ -251,6 +258,18 @@ function AccuracyTrainerDetails({
                   </>
                 )}
                 {moves.kind === "graded" && <GradedMoves position={moves.position} grade={moves.grade} testId={testId} />}
+                {moves.kind === "graded" && moves.onEvaluateAgain !== undefined && (
+                  <>
+                    <Typography variant="body2" data-testid={`${testId}-moves-engine-lost`} sx={{ color: "text.secondary" }}>
+                      {t("accuracyTrainer.details.movesEngineLost")}
+                    </Typography>
+                    <Box>
+                      <Button variant="outlined" size="small" onClick={moves.onEvaluateAgain} data-testid={`${testId}-evaluate-again`}>
+                        {t("accuracyTrainer.details.evaluateAgain")}
+                      </Button>
+                    </Box>
+                  </>
+                )}
                 {moves.kind === "passed" && (
                   <>
                     <Typography variant="body2" data-testid={`${testId}-moves-passed`} sx={{ color: "text.secondary" }}>

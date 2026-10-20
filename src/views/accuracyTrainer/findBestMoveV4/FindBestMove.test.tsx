@@ -1,3 +1,4 @@
+import { Chess } from "chess.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -966,6 +967,61 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     mount(0, `${LOBBY}/${made!.caseId}`);
     expect(await screen.findByTestId(`${ID}-engine-unavailable`, {}, { timeout: 10_000 })).toHaveTextContent("The engine could not search this position");
     await waitFor(async () => expect((await loadAnalysisCases()).find((each) => each.id === made!.caseId)?.pgn).toContain("engine:failed/nojob"));
+  });
+
+  it("evaluates a position again once its job is gone — Evaluate again, a new job, its row graded and counted (CTA-250)", async () => {
+    const user = userEvent.setup();
+    // The engine's own best move, answered at a position whose search was lost: nothing to compare.
+    const best = legalMove(START);
+    const san = new Chess(START).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] }).san;
+    const record = applied(sessionOfPgn('[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *', { side: "w", settings: { engine: true, moves: 1 } }), [
+      e.firstMove(1),
+      e.engineQueued(1, "nojob"),
+      e.answer(1, [san]),
+    ]);
+    const made = await createSessionCase({ record, headers: {}, projectName: "Find Best Move", caseName: "Gone job", words: PLAIN_WORDS });
+    mount(0, `${LOBBY}/${made!.caseId}`);
+    expect(await screen.findByTestId(`${ID}-engine-unavailable`, {}, { timeout: 10_000 })).toHaveTextContent("The engine could not search this position");
+
+    // Offered on the Result and on Your moves, the board at the position; its Results row a single button, no line to compare.
+    const details = screen.getByRole("region", { name: /the exercise's own view$/ });
+    const panel = screen.getByTestId(`${ID}-panel`);
+    expect(within(details).getByRole("button", { name: "Evaluate again" })).toBeInTheDocument();
+    expect(within(details).getByTestId(`${ID}-details-moves-engine-lost`)).toHaveTextContent("Graded without the engine's search");
+    await user.click(within(details).getByRole("tab", { name: "Results" }));
+    const list = () => within(screen.getByRole("list", { name: "The positions answered or passed" }));
+    expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual(["Open 1. White — No line to compare"]);
+    expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND) ?? []).toEqual([]);
+
+    // Evaluate again: a new Evaluate Position job, MultiPV N, then graded against its line — the answer as it was.
+    await user.click(within(panel).getByRole("button", { name: "Evaluate again" }));
+    await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
+    const job = jobRuntime().snapshot()!.find((each) => each.kind === EVALUATE_POSITION_KIND)!;
+    expect(job.input).toMatchObject({ key: 1, fen: START, search: { multiPv: 1 } });
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    await waitFor(() => expect(list().getByRole("button", { name: /^Open 1\. White — 1\/1 · 1 in place — won / })).toBeInTheDocument());
+    expect(screen.queryByTestId(`${ID}-engine-unavailable`)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Evaluate again" })).not.toBeInTheDocument();
+    await pgnHolds(`engine:searched/${job.id}`, `answer:${san}`);
+  });
+
+  it("evaluates a position whose engine offer was declined — the session's engine turned on in the same write (CTA-250)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White", PARTIAL_PGN);
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 2 of 4 · 2. White");
+    // 2. Nf3's position has no line: the offer declined, graded with nothing to compare.
+    drag("g1", "f3");
+    await declineEngine(user);
+    await user.click(screen.getByRole("button", { name: "Results (1)" }));
+    expect(await screen.findByTestId(`${ID}-engine-unavailable`)).toHaveTextContent("The engine was not asked to search this position");
+
+    await user.click(within(screen.getByTestId(`${ID}-panel`)).getByRole("button", { name: "Evaluate again" }));
+    await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
+    expect(jobRuntime().snapshot()![0].input).toMatchObject({ key: 3, search: { multiPv: 3 } });
+    await pgnHolds('[FindBestMoveEngine "on"]', "engine:");
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).not.toHaveTextContent("There is no line here to compare");
   });
 
   it("starts a session from a position set in the Board editor — one position, the engine finding its lines", async () => {

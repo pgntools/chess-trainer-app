@@ -22,6 +22,7 @@ function Live({
   shown = "answering",
   startTab = "settings",
   onAnswerAgain = () => {},
+  onEvaluateAgain,
   onOpen = () => {},
   withEngineStart = true,
   pieces = ACHIEVEMENTS,
@@ -32,6 +33,8 @@ function Live({
   shown?: "answering" | "waiting" | "graded" | "passed";
   startTab?: AccuracyTrainerDetailsTab;
   onAnswerAgain?: () => void;
+  /** Given, the graded position offers *Evaluate again* (CTA-250). */
+  onEvaluateAgain?: () => void;
   onOpen?: (index: number) => void;
   withEngineStart?: boolean;
   pieces?: AchievementPieces | null;
@@ -61,7 +64,7 @@ function Live({
               shown === "passed"
                 ? { kind: "passed" as const, label: LABEL, onAnswerAgain: answerAgain }
                 : shown === "graded"
-                ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED }
+                ? { kind: "graded" as const, label: LABEL, position: GRADED_POSITION, grade: GRADED, ...(onEvaluateAgain === undefined ? {} : { onEvaluateAgain }) }
                 : shown === "waiting"
                   ? { kind: "waiting" as const, label: LABEL, list }
                   : {
@@ -173,6 +176,19 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     ]);
     expect(within(screen.getByRole("list", { name: "Your moves not among the lines" })).getByRole("listitem")).toHaveTextContent("a3Yours #3Not among the lines");
     expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
+  });
+
+  it("offers Evaluate again on a position graded without its engine — and nothing on one graded with it (CTA-250)", async () => {
+    const user = userEvent.setup();
+    const onEvaluateAgain = vi.fn();
+    const { unmount } = render(<Live withCase shown="graded" startTab="moves" onEvaluateAgain={onEvaluateAgain} />);
+    expect(screen.getByTestId("details-moves-engine-lost")).toHaveTextContent("Graded without the engine's search");
+    await expectNoAxeViolations(screen.getByTestId("details-moves-tab"));
+    await user.click(screen.getByRole("button", { name: "Evaluate again" }));
+    expect(onEvaluateAgain).toHaveBeenCalledTimes(1);
+    unmount();
+    render(<Live withCase shown="graded" startTab="moves" />);
+    expect(screen.queryByRole("button", { name: "Evaluate again" })).not.toBeInTheDocument();
   });
 
   it("shows a checked position waiting for the engine, and says when there is no session", async () => {

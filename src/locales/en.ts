@@ -682,6 +682,9 @@ const en = {
       /** A pass is "later": its lines stay hidden until it is answered. */
       movesPassed: "Passed — put off for later. Its lines stay hidden until you answer it.",
       answerAgain: "Answer it now",
+      /** Graded without the engine's search — lost, or never asked (CTA-250). */
+      movesEngineLost: "Graded without the engine's search. Evaluate it again to grade your moves against its lines.",
+      evaluateAgain: "Evaluate again",
       /** Which trained position Your moves shows — the one the board stands at. */
       positionLabel: "Position {{at}} of {{count}} · {{move}}",
       /** A graded position: every line, the reader's moves marked. */
@@ -739,6 +742,9 @@ const en = {
         searching: "The engine is searching this position.",
         waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
         unavailable: "The engine could not search this position — graded with the game's lines alone.",
+        /** Graded with no line to compare, the engine never asked — its offer declined (CTA-250). */
+        notAsked: "The engine was not asked to search this position — graded with the game's lines alone.",
+        evaluateAgain: "Evaluate again",
         /** A first move where the lines are too few while the session's engine is off (CTA-245). */
         offer: {
           title: "Use the engine?",

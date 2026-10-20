@@ -55,8 +55,9 @@ export type AnswerState =
 
 /**
  * **The engine axis** — `idle` until the reader starts on a position whose
- * top lines are too few; `searched` and `failed` are terminal, so a
- * position's engine is never asked twice.
+ * top lines are too few; `searched` is terminal, so a search that landed is
+ * never asked twice; `failed` is left only by the reader's *Evaluate again*
+ * (`engineRetry`, CTA-250), back to `wanted`.
  */
 export type EngineState =
   | { kind: "idle" }

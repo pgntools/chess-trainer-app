@@ -7,6 +7,7 @@ import {
   achievementsOf,
   engineFailedAt,
   engineOfferedAt,
+  engineRetryOfferedAt,
   gradeOf,
   isDone,
   materialOf,
@@ -200,5 +201,48 @@ describe("replayPlan — capped", () => {
 
   it("plays nothing backwards — straight there", () => {
     expect(replayPlan(record, 13, 5)).toEqual({ start: 4, sans: [] });
+  });
+});
+
+describe("engineRetryOfferedAt (CTA-250) — Evaluate again, where a graded position lacks its engine", () => {
+  const white = () => sessionOfPgn(PARTIAL_PGN, { side: "w" });
+
+  it("offers it where the search was lost — failed, cancelled or gone — and again once lost again", () => {
+    const failed = applied(engineOn(), [e.answer(1, ["e4"]), e.engineQueued(1, "j"), e.engineFailed(1, "j")]);
+    expect(engineRetryOfferedAt(failed, 1)).toBe(true);
+    const again = applied(failed, [e.engineRetry(1)]);
+    expect(engineRetryOfferedAt(again, 1)).toBe(false);
+    expect(phaseOf(again, 1)).toBe("waiting");
+    expect(engineRetryOfferedAt(applied(again, [e.engineQueued(1, "j2"), e.engineFailed(1, "j2")]), 1)).toBe(true);
+  });
+
+  it("offers it where the engine was never asked and there is nothing to compare — the offer declined", () => {
+    // 2. Nf3's position (key 3) has no line: graded with target 0.
+    const declined = applied(white(), [e.goTo(3), e.answer(3, ["Nf3"])]);
+    expect(gradeOf(declined, 3)?.target).toBe(0);
+    expect(engineRetryOfferedAt(declined, 3)).toBe(true);
+    // 1. e4's has lines, if fewer than N: graded against them, nothing offered.
+    const graded = applied(white(), [e.answer(1, ["e4"])]);
+    expect(gradeOf(graded, 1)?.target).toBeGreaterThan(0);
+    expect(engineRetryOfferedAt(graded, 1)).toBe(false);
+  });
+
+  it("offers nothing at a search that landed, a pass, a position answering, waiting or not there", () => {
+    const searched = applied(engineOn(), [e.answer(1, ["e4"]), e.engineQueued(1, "j"), e.engineSearched(1, "j", searchOf(START_FEN, [{ pv: ["c2c4"], cp: 28 }]))]);
+    expect(engineRetryOfferedAt(searched, 1)).toBe(false);
+    const passed = applied(white(), [e.goTo(3), e.pass(3)]);
+    expect(engineRetryOfferedAt(passed, 3)).toBe(false);
+    expect(engineRetryOfferedAt(white(), 1)).toBe(false);
+    expect(engineRetryOfferedAt(applied(engineOn(), [e.answer(1, ["e4"])]), 1)).toBe(false);
+    expect(engineRetryOfferedAt(white(), 99)).toBe(false);
+  });
+
+  it("counts the position once its new search lands — graded, its pieces won (CTA-249)", () => {
+    const failed = applied(engineOn(), [e.answer(1, ["e4"]), e.engineFailed(1)]);
+    expect(achievementsOf(failed, 1)?.every(({ piece }) => piece === null)).toBe(true);
+    const searched = applied(failed, [e.engineRetry(1), e.engineQueued(1, "j2"), e.engineSearched(1, "j2", searchOf(START_FEN, [{ pv: ["e2e4"], cp: 40 }]))]);
+    expect(phaseOf(searched, 1)).toBe("graded");
+    expect(engineFailedAt(searched, 1)).toBe(false);
+    expect(achievementsOf(searched, 1)?.some(({ piece }) => piece !== null)).toBe(true);
   });
 });

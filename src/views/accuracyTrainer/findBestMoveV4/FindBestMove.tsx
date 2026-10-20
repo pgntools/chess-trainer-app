@@ -127,10 +127,18 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
               {t("accuracyTrainer.session.engine.waiting")}
             </StatusText>
           )}
-          {run.engineFailed && (
+          {(run.engineFailed || run.engineRetry) && (
             <StatusText tone="warning" testId={`${ID}-engine-unavailable`}>
-              {t("accuracyTrainer.session.engine.unavailable")}
+              {t(run.engineFailed ? "accuracyTrainer.session.engine.unavailable" : "accuracyTrainer.session.engine.notAsked")}
             </StatusText>
+          )}
+          {run.engineRetry && (
+            // Graded without its engine (CTA-250): asked once more, a new Evaluate Position job.
+            <Box>
+              <Button variant="outlined" size="small" onClick={() => run.evaluateAgain(run.key)} data-testid={`${ID}-evaluate-again`}>
+                {t("accuracyTrainer.session.engine.evaluateAgain")}
+              </Button>
+            </Box>
           )}
           {grade !== null && grade.passed && (
             <>

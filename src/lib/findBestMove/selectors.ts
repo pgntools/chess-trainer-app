@@ -162,6 +162,20 @@ export const engineOfferedAt = (record: FindBestMoveRecord, key: PositionKey): b
   );
 };
 
+/**
+ * **Whether to offer *Evaluate again* at a position** (CTA-250): graded
+ * without its engine where the lines are too few (`needsEngine`) — its
+ * search lost (`failed`: the job failed, was cancelled or deleted), or never
+ * asked (`idle`, the offer declined) and nothing to compare (`target` 0). A
+ * search that landed, a pass or a position still answering offers nothing.
+ */
+export const engineRetryOfferedAt = (record: FindBestMoveRecord, key: PositionKey): boolean => {
+  const engine = record.positions.get(key)?.engine;
+  const training = trainingPositionOf(record, key);
+  if (phaseOf(record, key) !== "graded" || training === undefined || !needsEngine(training, record.wanted)) return false;
+  return engine?.kind === "failed" || (engine?.kind === "idle" && gradeOf(record, key)?.target === 0);
+};
+
 /** **The next position**: the first key after `current`, in the manifest's order, still open — `undefined` when none is (the summary's turn). */
 export const nextOpen = (record: FindBestMoveRecord): PositionKey | undefined =>
   record.keys.find((key) => key > record.current && record.positions.get(key)?.answer.kind === "open");
