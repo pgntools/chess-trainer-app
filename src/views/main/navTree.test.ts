@@ -550,12 +550,12 @@ describe("the Accuracy Trainer folder (CTA-238)", () => {
     expect(ids.indexOf("accuracy-trainer")).toBe(ids.indexOf("engine") + 1);
     expect(navFolders().find((folder) => folder.id === "accuracy-trainer")?.labelKey).toBe("nav.folders.accuracyTrainer");
     expect(navItemsInFolder("accuracy-trainer")).toEqual([
-      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v3", labelKey: "nav.findBestMoveV3", experimental: true }),
+      expect.objectContaining({ to: "/accuracy-trainer/find-best-move-v4", labelKey: "nav.findBestMoveV4", experimental: true }),
     ]);
     const folder = navTree().find((node) => node.id === "accuracy-trainer");
     expect(folder?.kind).toBe("folder");
     // One screen, still a folder: the top level never folds into its screen.
-    expect(folder?.children?.map((child) => child.to)).toEqual(["/accuracy-trainer/find-best-move-v3"]);
-    expect(folderPath("/accuracy-trainer/find-best-move-v3")).toEqual(["accuracy-trainer"]);
+    expect(folder?.children?.map((child) => child.to)).toEqual(["/accuracy-trainer/find-best-move-v4"]);
+    expect(folderPath("/accuracy-trainer/find-best-move-v4")).toEqual(["accuracy-trainer"]);
   });
 });

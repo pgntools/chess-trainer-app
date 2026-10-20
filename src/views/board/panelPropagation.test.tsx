@@ -69,19 +69,24 @@ import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
-import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
-import { sessionStartTreeOf } from "../accuracyTrainer/findBestMoveV3/sessionCase";
+import FindBestMove from "../accuracyTrainer/findBestMoveV4/FindBestMove";
+import { sessionFromGame } from "../../lib/findBestMove/start";
+import { sessionTreeOf } from "../../lib/findBestMove/store";
+import { answerWordsOf } from "../../lib/findBestMove/words";
 
-/** A Find Best Move session's Case (CTA-239) — the screen resumes one, its PGN the whole session. */
-const FIND_BEST_MOVE_CASE = gameCaseOf(
-  { id: "session", projectId: "p", name: "Alice – Bob — Find Best Move" },
-  sessionStartTreeOf(
-    { name: "Alice – Bob", tree: parsePgnTree("1. e4 { [%eval 0.30] } (1. d4 { [%eval 0.25] }) 1... e5 *") },
-    "all",
-    { moves: 3, engine: false, showArrows: true },
-  )!,
+/** A Find Best Move session (CTA-244) — the record the screen reads from its Case's tags, and that Case. */
+const FIND_BEST_MOVE_RECORD = sessionFromGame({
+  tree: parsePgnTree("1. e4 { [%eval 0.30] } (1. d4 { [%eval 0.25] }) 1... e5 *"),
+  name: "Alice – Bob",
+  side: "both",
+  settings: { moves: 3, engine: false, arrows: true },
+})!;
+const FIND_BEST_MOVE_CASE = gameCaseOf({ id: "session", projectId: "p", name: "Alice – Bob — Find Best Move" }, sessionTreeOf(FIND_BEST_MOVE_RECORD, {}));
+const FIND_BEST_MOVE_WORDS = answerWordsOf();
+const noWrite = async () => undefined;
+const FindBestMoveSession = () => (
+  <FindBestMove caseRecord={FIND_BEST_MOVE_CASE} record={FIND_BEST_MOVE_RECORD} issues={[]} dispatch={noWrite} words={FIND_BEST_MOVE_WORDS} writeFailed={false} />
 );
-const FindBestMoveV3Session = () => <FindBestMoveV3 resume={FIND_BEST_MOVE_CASE} />;
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -129,7 +134,7 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
  * all the same.
  */
 const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
-  { name: "Accuracy Trainer — Find Best Move v3", panelId: "find-best-move-v3-panel", Screen: FindBestMoveV3Session },
+  { name: "Accuracy Trainer — Find Best Move v4", panelId: "find-best-move-v4-panel", Screen: FindBestMoveSession },
 ];
 
 const renderBoard = (Screen: () => ReactNode) =>

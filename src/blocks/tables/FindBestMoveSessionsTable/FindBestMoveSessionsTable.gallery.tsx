@@ -4,9 +4,9 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "../../../design-system/components/table
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { DataTableSort } from "../../../design-system/patterns/tables";
-import { findBestMoveSessionFirstDirection, type FindBestMoveSessionColumn, type FindBestMoveSessionRow } from "../../../lib/findBestMoveSessionRows";
+import { findBestMoveSessionFirstDirection, type FindBestMoveSessionColumn, type FindBestMoveSessionRow } from "../../../lib/findBestMove/rows";
 import type { BlockFamilyId } from "../../families";
-import { LONG_ROWS, manyRows, SESSION_ROWS } from "./fixtures";
+import { LONG_ROWS, OLDER_ROW, manyRows, SESSION_ROWS } from "./fixtures";
 import FindBestMoveSessionsTable from "./FindBestMoveSessionsTable";
 
 type DemoState = { sort: DataTableSort<FindBestMoveSessionColumn>; page: number; rowsPerPage: number; picked: Set<string> };
@@ -64,6 +64,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Empty", render: () => demo([]) },
     { name: "One row", render: () => demo(SESSION_ROWS.slice(0, 1)) },
     { name: "A case that is not a session, alone", render: () => demo(SESSION_ROWS.slice(-1)) },
+    { name: "An older session (v3) beside a plain case", render: () => demo([OLDER_ROW, ...SESSION_ROWS.slice(-1)]) },
     { name: "A long name and Hebrew (switch the direction to RTL)", render: () => demo(LONG_ROWS) },
     { name: "1,000 sessions", render: () => demo(THOUSAND) },
   ],

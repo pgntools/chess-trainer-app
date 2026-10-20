@@ -5,19 +5,30 @@ import type { JobEnginePreset } from "../../engineJobSettings";
 import { positionResultFrom, type RanEngine } from "../computerAnalysis/core";
 
 /**
- * **Evaluate Position** (CTA-238, `analysis.evaluate-position`) — pure: one
- * position searched once, for the Accuracy Trainer's Find Best Move. The
- * reference is `.claude/rules/jobs.md` §3 and `accuracy-trainer.md` §7.
+ * **Evaluate Position** (CTA-238; its input a session's position key since
+ * CTA-244, `analysis.evaluate-session-position`) — pure: one position
+ * searched once, for the Accuracy Trainer's Find Best Move. The reference is
+ * `.claude/rules/jobs.md` §3.2 and `accuracy-trainer.md`.
  *
- * The trainer queues it when the reader starts analysing a position (their
- * first move there) that has fewer of the engine's lines than they asked
- * for; its search is the top bar's Engine menu's, its MultiPV the lines
- * asked for. Its result is a data output the trainer grades with, and the
- * lines are written into the session's Case at the position (the kind's
- * adapter, `kind.ts`). No engine, store, runtime or React here.
+ * The trainer queues it when the reader starts on a position (their first
+ * move there, or a check) that has fewer of the engine's lines than they
+ * asked for; its search is the top bar's Engine menu's, its MultiPV the lines
+ * asked for. Its result is a data output, and the session's record takes it
+ * (`engineSearched`, the kind's adapter, `kind.ts`). No engine, store,
+ * runtime or React here.
+ *
+ * **v3's jobs** (`analysis.evaluate-position`, whose input named a SAN path
+ * into the movetext) are a retired kind: kept, never run, Delete alone
+ * (`kinds/index.ts`).
  */
 
-export const EVALUATE_POSITION_KIND = "analysis.evaluate-position";
+export const EVALUATE_POSITION_KIND = "analysis.evaluate-session-position";
+
+/** v3's kind — retired in CTA-244, its stored jobs kept, never run. */
+export const RETIRED_EVALUATE_POSITION_KIND = "analysis.evaluate-position";
+
+/** The input's shape — bumped from v3's (a SAN path) to the session key (CTA-244); another version is refused. */
+export const EVALUATE_POSITION_INPUT_VERSION = 2;
 
 /** Its state's shape — bump when it changes. */
 export const EVALUATE_POSITION_STATE_VERSION = 1;
@@ -29,14 +40,15 @@ export const EVALUATE_POSITION_RESULT_SCHEMA = "analysis.evaluate-position.resul
 export type EvaluatePositionSearch = Pick<ComputerAnalysisOptions, "threads" | "hashMb" | "depth" | "moveTimeMs" | "multiPv">;
 
 export type EvaluatePositionInput = {
-  /** The session's Case — the job's subject, and where its lines are written. */
+  version: typeof EVALUATE_POSITION_INPUT_VERSION;
+  /** The session's Case — the job's subject, and whose record takes its search. */
   caseId: string;
+  /** The session's position — its key (the ply of its move in the recorded game). */
+  key: number;
   /** The job's title ("Evaluate position — Alice – Bob, 12. White"). */
   name: string;
   /** The position searched. */
   fen: string;
-  /** Its SAN path from the Case's start — where in the Case its lines go. */
-  path: readonly string[];
   /** The move to find, as the live progress names it ("12. White"). */
   label: string;
   /** The engine, a registry id (`lib/engines/`). */
@@ -72,22 +84,26 @@ const fenFrom = (value: unknown): string | undefined => {
 };
 
 /**
- * **The input, read leniently** (`parseInput`): `undefined` without the Case
- * or a position that reads; the search as the computer analysis's options
- * read it — each number held to its bounds, the engine's own for Threads and
- * Hash — and the engine the default where none is named. Never throws.
+ * **The input, read leniently** (`parseInput`): `undefined` for another
+ * version, without the Case, its key or a position that reads; the search as
+ * the computer analysis's options read it — each number held to its bounds,
+ * the engine's own for Threads and Hash — and the engine the default where
+ * none is named. Never throws.
  */
 export const parseEvaluatePositionInput = (value: unknown): EvaluatePositionInput | undefined => {
-  if (!isRow(value) || typeof value.caseId !== "string" || value.caseId === "") return undefined;
+  if (!isRow(value) || value.version !== EVALUATE_POSITION_INPUT_VERSION) return undefined;
+  if (typeof value.caseId !== "string" || value.caseId === "") return undefined;
+  if (typeof value.key !== "number" || !Number.isInteger(value.key) || value.key < 1) return undefined;
   const fen = fenFrom(value.fen);
   if (fen === undefined) return undefined;
   const search = isRow(value.search) ? value.search : {};
   const options = computerAnalysisOptionsFrom({ ...search, ...(typeof value.engine === "string" && value.engine !== "" ? { engine: value.engine } : {}) });
   return {
+    version: EVALUATE_POSITION_INPUT_VERSION,
     caseId: value.caseId,
+    key: value.key,
     name: typeof value.name === "string" ? value.name : "",
     fen,
-    path: Array.isArray(value.path) ? value.path.filter((san): san is string => typeof san === "string") : [],
     label: typeof value.label === "string" ? value.label : "",
     engine: options.engine,
     preset: presetFrom(value.preset),

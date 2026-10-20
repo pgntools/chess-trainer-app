@@ -3,7 +3,8 @@ import FormatListBulletedRoundedIcon from "@mui/icons-material/FormatListBullete
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import { Link as RouterLink, useParams, useSearchParams } from "react-router";
+import Button from "@mui/material/Button";
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
@@ -13,7 +14,7 @@ import { caseDisplayName } from "../../blocks/tables";
 import { CaseDetails, type CaseDetailsTab } from "../../blocks/panels";
 import { CaseSiblings } from "../../blocks/trees";
 import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
-import { StatusText } from "../../design-system/components/feedback";
+import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { SwitchField } from "../../design-system/components/forms";
 import { MissState } from "../../design-system/components/states";
 import { sortRows } from "../../design-system/components/tables";
@@ -38,6 +39,9 @@ import {
   type CaseDisplay,
   type CaseState,
 } from "../../lib/analysisProjects";
+import { findBestMoveSessionPath } from "../../lib/findBestMove/paths";
+import { isSessionTags } from "../../lib/findBestMove/pgn";
+import { duplicateSessionAsPlainCase } from "../../lib/findBestMove/store";
 import { ANALYSIS_CASE_ENTITY } from "../../lib/jobs/entityTypes";
 import { analysisOf } from "../../lib/jobs/kinds/computerAnalysis/core";
 import { readComputerAnalysisJob } from "../../lib/jobs/kinds/computerAnalysis/kind";
@@ -45,6 +49,7 @@ import { arrowWidthSourcesIn, engineLineWeights } from "../../lib/nextMoveWeight
 import { evalSeriesOf } from "../../lib/computerAnalysisTree";
 import { emptyTree, mainlineGame, sanPathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
+import { readPgnTags } from "../../lib/pgn";
 import { slugify } from "../../lib/pgnText";
 import BoardShell from "../board/core/BoardShell";
 import { useAnalysisSession } from "../board/core/useAnalysisSession";
@@ -121,19 +126,30 @@ type CaseBoardProps = {
  * reopening the Case finds it where it was left. There is no Save button and
  * no saved / saving status — the header speaks only when the browser refuses
  * a write.
+ *
+ * **A Find Best Move session's Case opens read-only** (CTA-244, S3 — its
+ * tags say a session, `isSessionTags`): the board navigates, but takes no
+ * move, no edit and no evaluation, and nothing is autosaved — the trainer
+ * is the session's one writer, so an edit here would only be replaced by its
+ * next write. A notice says so, offering *Resume in Find Best Move* (a dev
+ * build's — the trainer is dev-only) and *Duplicate as a plain Case* (a copy
+ * without the session's tags, an ordinary game).
  */
 export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = false }: CaseBoardProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [start] = useState(() => {
     const tree = caseTree(record) ?? emptyTree();
-    return { tree, nodeId: caseNode(record, tree), orientation: record.orientation };
+    return { tree, nodeId: caseNode(record, tree), orientation: record.orientation, readOnly: isSessionTags(readPgnTags(record.pgn)) };
   });
+  const { readOnly } = start;
+  const [duplicateFailed, setDuplicateFailed] = useState(false);
   const session = useAnalysisSession({
     tree: start.tree,
     nodeId: start.nodeId ?? undefined,
     orientation: start.orientation,
-    // Write evaluations into the game: the Case's own, kept with its display (CTA-199) — the search settings are the reader's global ones.
-    settings: { ...DEFAULT_ANALYSIS_SETTINGS, writeEvals: record.display.writeEvals },
+    // Write evaluations into the game: the Case's own, kept with its display (CTA-199) — the search settings are the reader's global ones; a session's never.
+    settings: { ...DEFAULT_ANALYSIS_SETTINGS, writeEvals: !readOnly && record.display.writeEvals },
   });
   const { core, engine } = session;
   const currentOpening = useCurrentOpening(core.fen);
@@ -207,13 +223,14 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
     },
     [record.id],
   );
-  useAutosave({ enabled: true, record: state, save });
+  // A session's Case is the trainer's to write (S3): nothing here is kept.
+  useAutosave({ enabled: !readOnly, record: state, save });
 
   const explorer = useVariationsExplorer({
     testId: "analysis-case",
     source: core,
     evalsByFen: engine.evalsByFen,
-    onEditTree: core.replaceTree,
+    ...(readOnly ? {} : { onEditTree: core.replaceTree }),
     playChances: false,
     annotations: true,
     moveMarks: display.showMoveMarks,
@@ -232,6 +249,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
         core={core}
         score={topLine?.score ?? null}
         showEvalBar={session.engineOn && display.showEvalBar}
+        allowDragging={!readOnly}
         playerPlates={playerPlates}
         boardOptions={boardOptions}
         overlay={explorer.overlay}
@@ -270,13 +288,15 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
                   </StatusText>
                 )}
               </Box>
-              <PlayToggleButton
-                testId="analysis-case-play"
-                engineOn={session.engineOn}
-                playing={session.playing}
-                thinking={session.thinking}
-                onToggle={session.togglePlaying}
-              />
+              {!readOnly && (
+                <PlayToggleButton
+                  testId="analysis-case-play"
+                  engineOn={session.engineOn}
+                  playing={session.playing}
+                  thinking={session.thinking}
+                  onToggle={session.togglePlaying}
+                />
+              )}
               {/* The engine's on / off — a small switch; its other choices are the Case view's Settings tab's. */}
               <Box sx={{ flexShrink: 0 }}>
                 <SwitchField
@@ -305,7 +325,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
           showVariations: display.showVariations,
           requestedMultiPv: session.settings.multiPv,
           engineOn: session.engineOn,
-          onPlayVariation: core.playVariation,
+          ...(readOnly ? {} : { onPlayVariation: core.playVariation }),
           activeTab: tab,
           onTabChange: setTab,
           keepMounted: KEEP_MOUNTED,
@@ -327,6 +347,37 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
           ],
           footer: (
             <>
+              {readOnly && (
+                <Box sx={{ px: 1 }}>
+                  <InlineAlert severity="info" dense testId="analysis-case-session-notice">
+                    {t("analysisV2.workspace.session.notice")}
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 0.5 }}>
+                      {import.meta.env.DEV && (
+                        <Button size="small" component={RouterLink} to={findBestMoveSessionPath(record.id)} data-testid="analysis-case-session-resume">
+                          {t("analysisV2.workspace.session.resume")}
+                        </Button>
+                      )}
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          void duplicateSessionAsPlainCase(record, t("analysisV2.case.copyName", { name })).then((copy) => {
+                            setDuplicateFailed(copy === undefined);
+                            if (copy !== undefined) navigate(casePath(copy.projectId, copy.id));
+                          })
+                        }
+                        data-testid="analysis-case-session-duplicate"
+                      >
+                        {t("analysisV2.workspace.session.duplicate")}
+                      </Button>
+                    </Box>
+                    {duplicateFailed && (
+                      <StatusText tone="error" testId="analysis-case-session-duplicate-problem">
+                        {t("analysisV2.workspace.session.duplicateProblem")}
+                      </StatusText>
+                    )}
+                  </InlineAlert>
+                </Box>
+              )}
               {explorer.annotations}
               {session.playing && (
                 <EngineThinking

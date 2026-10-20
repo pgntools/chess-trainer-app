@@ -9,7 +9,7 @@ import { COMPUTER_ANALYSIS_ERRORS, COMPUTER_ANALYSIS_KIND } from "./computerAnal
 import { isRegisteredJobKind, jobKinds, jobKindLocaleKey, JOB_KIND_LOCALE_KEYS, RETIRED_JOB_KIND_LOCALE_KEYS } from ".";
 import { DEFAULT_REPERTOIRE_EVALUATION_SETTINGS, REPERTOIRE_EVALUATION_KIND } from "./repertoireEvaluation/core";
 import { REPERTOIRE_EVALUATION_ERRORS } from "./repertoireEvaluation/kind";
-import { EVALUATE_POSITION_KIND } from "./evaluatePosition/core";
+import { EVALUATE_POSITION_INPUT_VERSION, EVALUATE_POSITION_KIND } from "./evaluatePosition/core";
 import { EVALUATE_POSITION_ERRORS } from "./evaluatePosition/kind";
 
 /*
@@ -38,10 +38,11 @@ const SAMPLES: Record<string, unknown> = {
     ...DEFAULT_REPERTOIRE_EVALUATION_SETTINGS,
   },
   [EVALUATE_POSITION_KIND]: {
+    version: EVALUATE_POSITION_INPUT_VERSION,
     caseId: "c",
+    key: 1,
     name: "Evaluate position — A game, 1. White",
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-    path: [],
     label: "1. White",
     engine: "stockfish-19-lite",
     preset: null,

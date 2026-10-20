@@ -1,41 +1,37 @@
 import { describe, expect, it } from "vitest";
 
-import { trainingPositionsOf } from "./accuracyTrainer";
-import { answerPosition, sessionBaseTree, startSession } from "./findBestMoveSession";
-import { withSessionRecord } from "./findBestMoveSessionPgn";
-import { findBestMoveSessionFirstDirection, findBestMoveSessionRowOf, sortedFindBestMoveSessions, type FindBestMoveSessionRow } from "./findBestMoveSessionRows";
-import { treeToPgn } from "./gameTree";
-import { parsePgnTree } from "./pgn";
+import { ANALYSED_PGN, PLAIN_WORDS, applied, sessionOfPgn } from "../../test/findBestMoveKit";
+import { readPgnTags } from "../pgn";
+import { sessionEvents as e } from "./reducer";
+import { findBestMoveSessionFirstDirection, findBestMoveSessionRowOf, sortedFindBestMoveSessions, type FindBestMoveSessionRow } from "./rows";
+import { sessionPgnOf } from "./store";
 
-/* The Find Best Move sessions lobby's rows (CTA-239): each session Case's PGN read, and their order. */
+/* The Find Best Move sessions lobby's rows (CTA-239; from the tags alone since CTA-244): each session Case's tags read, and their order. */
 
-const ANALYSED = `[White "Alice"]
-[Black "Bob"]
-
-1. e4 { [%eval 0.30,20] } (1. d4 { [%eval 0.25,20] }) 1... e5 { [%eval 0.30,20] } (1... c5 { [%eval 0.35,20] }) 2. Nf3 *`;
-
-const sessionPgn = (answers: (readonly string[] | null)[]): string => {
-  const source = parsePgnTree(ANALYSED);
-  const base = sessionBaseTree(source);
-  const started = startSession({ caseRef: { projectId: "p", caseId: "c" }, side: "w", game: "Alice – Bob", positions: trainingPositionsOf(source), wanted: 2, tree: base })!;
-  const session = answers.reduce((each, given, at) => (given === null ? each : { ...answerPosition({ ...each, index: at }, given), index: 0 }), started);
-  return treeToPgn(withSessionRecord(base, { ...session, engine: false, showArrows: true }));
-};
+const UPDATED = "2026-10-19T10:00:00.000Z";
 
 describe("findBestMoveSessionRowOf", () => {
-  it("reads a session Case's side, moves to find and progress from its PGN", () => {
-    const row = findBestMoveSessionRowOf({ id: "a", pgn: sessionPgn([["e4", "d4"], []]), updatedAt: "2026-10-19T10:00:00.000Z" }, "Alice – Bob — Find Best Move");
+  it("reads a session Case's side, moves to find and progress from its tags", () => {
+    const record = applied(sessionOfPgn(ANALYSED_PGN, { side: "w" }), [e.answer(1, ["e4", "d4"]), e.next(), e.pass(3)]);
+    const row = findBestMoveSessionRowOf({ id: "a", pgn: sessionPgnOf(record, readPgnTags(ANALYSED_PGN), PLAIN_WORDS), updatedAt: UPDATED }, "Alice – Bob — Find Best Move");
     expect(row).toEqual({
       id: "a",
       name: "Alice – Bob — Find Best Move",
-      updatedAt: "2026-10-19T10:00:00.000Z",
+      updatedAt: UPDATED,
       session: { side: "w", wanted: 2, progress: { total: 2, answered: 1, passed: 1, found: 2, inPlace: 2, target: 2, done: true } },
     });
   });
 
-  it("keeps a Case that is no session — a plain game, or a PGN that will not read — without one", () => {
-    expect(findBestMoveSessionRowOf({ id: "b", pgn: ANALYSED, updatedAt: "2026-10-19T10:00:00.000Z" }, "Plain").session).toBeUndefined();
-    expect(findBestMoveSessionRowOf({ id: "c", pgn: "1. e5 *", updatedAt: "2026-10-19T10:00:00.000Z" }, "Broken").session).toBeUndefined();
+  it("reads the tags alone — a movetext that will not parse does not matter", () => {
+    const pgn = sessionPgnOf(sessionOfPgn(ANALYSED_PGN), {}, PLAIN_WORDS);
+    const broken = `${pgn.slice(0, pgn.indexOf("\n\n"))}\n\n1. e5 *`;
+    expect(findBestMoveSessionRowOf({ id: "b", pgn: broken, updatedAt: UPDATED }, "Broken").session?.progress.total).toBe(3);
+  });
+
+  it("keeps a Case that is no session without one, and says an older session is one", () => {
+    expect(findBestMoveSessionRowOf({ id: "c", pgn: ANALYSED_PGN, updatedAt: UPDATED }, "Plain")).toEqual({ id: "c", name: "Plain", updatedAt: UPDATED });
+    const v3 = `[FindBestMove "1"]\n\n1. e4 { [%fbm game:e4 state:open] } *`;
+    expect(findBestMoveSessionRowOf({ id: "d", pgn: v3, updatedAt: UPDATED }, "Old")).toEqual({ id: "d", name: "Old", updatedAt: UPDATED, older: true });
   });
 });
 

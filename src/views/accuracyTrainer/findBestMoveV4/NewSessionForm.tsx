@@ -14,8 +14,12 @@ import { parseFen } from "../../../lib/fen";
 import { START_POSITION } from "../../../lib/positionEditor";
 import PositionEditor from "../../shared/positionEditor/PositionEditor";
 import { usePositionEditor } from "../../shared/positionEditor/usePositionEditor";
+import type { FindBestMoveRecord } from "../../../lib/findBestMove/model";
+import { sessionFromGame, sessionFromPosition, sourceHeadersOf, type NewSessionSettings } from "../../../lib/findBestMove/start";
+import { createSessionCase } from "../../../lib/findBestMove/store";
+import { answerWordsOf } from "../../../lib/findBestMove/words";
+import type { GameHeaders } from "../../../lib/gameModel";
 import { sessionPath } from "./paths";
-import { createSessionCase, positionSessionTreeOf, sessionStartTreeOf, type NewSessionSettings } from "./sessionCase";
 import SessionSetup from "./SessionSetup";
 import { setupReadingOf, type SessionSource } from "./sessionSetup";
 
@@ -25,7 +29,7 @@ type FormTab = (typeof FORM_TABS)[number];
 /** How many best moves may be asked for — the Engine menu's own range of lines. */
 const MOVES_BOUNDS = { min: 1, max: 10 } as const;
 
-const DEFAULT_SETTINGS: NewSessionSettings = { moves: 3, engine: false, showArrows: true };
+const DEFAULT_SETTINGS: NewSessionSettings = { moves: 3, engine: false, arrows: true };
 
 /** The widest the editor's board grows in the panel — a small board, as on Play with Engine's form. */
 const EDITOR_BOARD_MAX_PX = 360;
@@ -42,9 +46,10 @@ const EDITOR_BOARD_MAX_PX = 360;
  * plain game trains —, *Show next-move arrows*) — and a full-width **Start**
  * under all three (**Resume** for a session's PGN), off while nothing is
  * there to ask, or the position cannot be answered (said, with why). Start
- * makes the session's Case, its PGN the whole session
- * (`sessionStartTreeOf` / `positionSessionTreeOf`, `createSessionCase`), and
- * opens it at its address; a refused write is said above it.
+ * makes the session (`sessionFromGame` / `sessionFromPosition`, or the
+ * loaded session's own record), its Case (`createSessionCase`: the record in
+ * its PGN's tags, the movetext projected), and opens it at its address; a
+ * refused write is said above it.
  */
 function NewSessionForm() {
   const { t } = useTranslation();
@@ -76,24 +81,31 @@ function NewSessionForm() {
 
   const start = async () => {
     if (starting || !startable) return;
-    let tree;
-    let name;
+    let record: FindBestMoveRecord | undefined;
+    let headers: GameHeaders = {};
+    let name: string | undefined;
     if (customFen !== undefined) {
       name = t("accuracyTrainer.sessions.form.positionName", {
         side: t(customFen.split(" ")[1] === "b" ? "accuracyTrainer.position.black" : "accuracyTrainer.position.white"),
       });
-      tree = positionSessionTreeOf(customFen, name, settings);
+      record = sessionFromPosition({ fen: customFen, name, settings });
     } else if (source !== null) {
       name = source.name;
-      tree = sessionStartTreeOf(source, side, settings);
+      // A session's own PGN resumes as it was left, a new Case of its own (R6); a game starts a fresh one.
+      record =
+        setup.session ??
+        sessionFromGame({ tree: source.tree, name, side: side === "all" ? "both" : side === "white" ? "w" : "b", settings });
+      headers = setup.session === undefined || setup.session === null ? sourceHeadersOf(source.tree.headers) : source.tree.headers;
     }
-    if (tree === undefined || name === undefined) return;
+    if (record === undefined || name === undefined) return;
     setStarting(true);
     setProblem(undefined);
     const made = await createSessionCase({
-      tree,
+      record,
+      headers,
       projectName: t("accuracyTrainer.session.projectName"),
       caseName: t("accuracyTrainer.session.caseName", { name }),
+      words: answerWordsOf(t),
     });
     setStarting(false);
     if (made === undefined) setProblem(t("accuracyTrainer.session.caseProblem"));
@@ -167,8 +179,8 @@ function NewSessionForm() {
               size="small"
               testIdOn="control"
               testId="new-session-arrows"
-              checked={settings.showArrows}
-              onChange={(showArrows) => setSettings((current) => ({ ...current, showArrows }))}
+              checked={settings.arrows}
+              onChange={(arrows) => setSettings((current) => ({ ...current, arrows }))}
               label={t("accuracyTrainer.details.arrows")}
               help={t("accuracyTrainer.details.arrowsHelp")}
             />

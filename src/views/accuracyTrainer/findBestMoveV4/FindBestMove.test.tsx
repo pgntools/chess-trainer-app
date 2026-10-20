@@ -4,14 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import i18n from "../../../i18n";
-import { addAnalysisCases, loadAnalysisCases } from "../../../lib/analysisCaseStore";
+import { addAnalysisCases, loadAnalysisCases, settledAnalysisCases } from "../../../lib/analysisCaseStore";
 import { gameCaseOf } from "../../../lib/analysisProjects";
 import { createAnalysisProject, loadAnalysisProjects } from "../../../lib/analysisProjectStore";
-import { parsePgnTree } from "../../../lib/pgn";
+import { sessionEvents as e } from "../../../lib/findBestMove/reducer";
+import { createSessionCase } from "../../../lib/findBestMove/store";
+import { parsePgnTree, readPgnTags } from "../../../lib/pgn";
 import { EVALUATE_POSITION_KIND } from "../../../lib/jobs/kinds/evaluatePosition/core";
 import { jobRuntime } from "../../../lib/jobs/runtime";
 import { legalMove } from "../../../test/answeringEngine";
 import { expectNoAxeViolations } from "../../../test/axe";
+import { PLAIN_WORDS, RUY_LOPEZ_38, applied, sessionOfPgn } from "../../../test/findBestMoveKit";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
@@ -57,16 +60,17 @@ vi.mock("react-chessboard", async () => {
   };
 });
 
-import FindBestMoveV3Route from "./FindBestMoveV3Route";
+import FindBestMoveRoute from "./FindBestMoveRoute";
 import SessionsLobby from "./SessionsLobby";
 
 /*
-  Find Best Move v3 (CTA-238, experimental, dev-only): a game loaded, a side
-  picked; at each position an analysis board showing every move before it and
-  none after — moves, side lines, comments, glyphs — the reader's lines from
-  it their moves, in order, checked against the top N (the tree's lines, and
-  the engine's); the session a Case. The pure parts are `lib/findBestMoveSession.test.ts` and
-  `lib/accuracyTrainer.test.ts`; this is the screen.
+  Find Best Move v4 (CTA-238, rebuilt in CTA-244 — experimental, dev-only): a
+  game loaded, a side picked; at each position an analysis board showing
+  every move before it and none after, the reader's lines from it their
+  moves, in order, checked against the top N (the game's lines, and the
+  engine's); the session a Case whose tags hold it. The pure parts are
+  `lib/findBestMove/*.test.ts`; this is the screen. Every action is a write
+  through the Case store, so what follows one is waited for.
 */
 
 /** White's 1. e4 and 2. Qh5, Black's 1... e5 — each with the engine's lines. */
@@ -79,15 +83,18 @@ const ANALYSED = `[White "Alice"]
 2. Qh5 { [%eval -1.50,20] } (2. Nf3 { [%eval 0.30,20] }) (2. Bc4 { [%eval 0.20,20] }) 2... Nc6 *`;
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 const AFTER_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+const ID = "find-best-move-v4";
+const LOBBY = "/accuracy-trainer/find-best-move-v4";
 
 /**
  * The screen at an address — the lobby, its New session form beside the
  * table, to start with; a session's own (`…/<caseId>`) to resume one — the
  * game's moves between positions played out at once: `stepDelayMs` for the
- * test that watches them.
+ * tests that watch them.
  */
-const mount = (stepDelayMs = 0, at = "/accuracy-trainer/find-best-move-v3") =>
+const mount = (stepDelayMs = 0, at = LOBBY) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[at]}>
@@ -95,8 +102,8 @@ const mount = (stepDelayMs = 0, at = "/accuracy-trainer/find-best-move-v3") =>
           <RightPanelProvider>
             <BoardLeftPanelOutlet compact={false} />
             <Routes>
-              <Route path="/accuracy-trainer/find-best-move-v3/:caseId" element={<FindBestMoveV3Route stepDelayMs={stepDelayMs} />} />
-              <Route path="/accuracy-trainer/find-best-move-v3" element={<SessionsLobby />} />
+              <Route path={`${LOBBY}/:caseId`} element={<FindBestMoveRoute stepDelayMs={stepDelayMs} />} />
+              <Route path={LOBBY} element={<SessionsLobby />} />
             </Routes>
             <RightPanelOutlet />
           </RightPanelProvider>
@@ -137,12 +144,15 @@ const editorDrag = (pieceType: string, from: string, to: string | null) =>
     });
   });
 
+/** The header's "Position n of m · …", once the screen reads it — a write has to land first. */
+const atPosition = (text: string) => waitFor(() => expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent(text));
+
 const startWith = async (user: ReturnType<typeof userEvent.setup>, side: "White" | "Black" | "Both", pgn = ANALYSED) => {
   await load(user, pgn);
   await user.click(screen.getByRole("button", { name: side }));
   await user.click(screen.getByRole("button", { name: "Start" }));
   // Start makes the session's Case first.
-  await screen.findByTestId("find-best-move-v3-progress");
+  await screen.findByTestId(`${ID}-progress`);
 };
 
 /** The session's one Case, as stored. */
@@ -151,13 +161,20 @@ const sessionCase = async () => {
   return (await loadAnalysisCases()).find((each) => each.projectId === project?.id);
 };
 
+/** The session Case's PGN, once it holds `text`. */
+const pgnHolds = (...texts: string[]) =>
+  waitFor(async () => {
+    const pgn = (await sessionCase())?.pgn ?? "";
+    for (const text of texts) expect(pgn).toContain(text);
+  });
+
 beforeEach(async () => {
   await i18n.changeLanguage("en");
   FakeEngine.reset();
   downloaded.pgns = [];
 });
 
-describe("Find Best Move v3 (CTA-238)", () => {
+describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
   it("starts from the lobby's New session form — Game, Board editor and Settings tabs, Start under them", async () => {
     mount();
     expect(screen.getByRole("heading", { level: 2, name: "New session" })).toBeInTheDocument();
@@ -173,16 +190,17 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
-    expect(screen.getByTestId("find-best-move-v3-experimental")).toHaveTextContent("Experimental");
+    expect(screen.getByTestId(`${ID}-experimental`)).toHaveTextContent("Experimental");
     // 1. e4: the start, nothing of the game shown.
     expect(boardOptions().position).toBe(START);
     expect(screen.queryByTestId("move-ply-1")).not.toBeInTheDocument();
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
+    await screen.findByTestId(`${ID}-graded-headline`);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     // 2. Qh5's position: the game's 1. e4 e5 there, the board on it; Qh5 and Nc6 hidden.
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    await atPosition("Position 2 of 2 · 2. White");
     expect(boardOptions().position).toBe(AFTER_E5);
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
     expect(screen.getByTestId("move-ply-2")).toHaveTextContent("e5");
@@ -197,6 +215,24 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(boardOptions().allowDragging).toBe(true);
     expect(drag("f1", "c4")).toBe(true);
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
+    await expectNoAxeViolations();
+  });
+
+  it("offers no edit outside the position — the session's moves are not the reader's", async () => {
+    const user = userEvent.setup();
+    mount();
+    await startWith(user, "White");
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await atPosition("Position 2 of 2");
+    drag("f1", "c4");
+    // An earlier move of the game: no move menu, no comment editing on it.
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByTestId("move-menu-comment")).not.toBeInTheDocument();
+    await user.click(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByRole("button", { name: /add a comment/i })).not.toBeInTheDocument();
+    // The reader's own move: the menu is there.
+    fireEvent.contextMenu(screen.getByTestId("move-ply-3"));
+    expect(screen.getByTestId("move-menu-comment")).toBeInTheDocument();
   });
 
   it("is an analysis board at the position: moves both sides, side lines, comments and glyphs", async () => {
@@ -215,7 +251,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.type(screen.getByTestId("comment-dialog-text"), "Take the centre.");
     await user.click(screen.getByTestId("comment-dialog-save"));
     await user.click(screen.getByTestId("move-ply-1"));
-    expect(screen.getByTestId("find-best-move-v3-annotations")).toHaveTextContent("Take the centre.");
+    expect(screen.getByTestId(`${ID}-annotations`)).toHaveTextContent("Take the centre.");
 
     // A glyph, from the move menu.
     fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
@@ -225,20 +261,21 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4!");
 
     // Each line from the position is one of the reader's moves, in the lines' order; a reply within one is none.
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. e4");
     await user.click(screen.getByTestId("board-control-first"));
     drag("d2", "d4");
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4 2. d4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. e4 2. d4");
     // Promoted, d4 is the reader's first.
     fireEvent.contextMenu(screen.getByTestId(/^tree-move-/));
     fireEvent.click(screen.getByTestId("move-menu-promote"));
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. d4 2. e4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. d4 2. e4");
     expect(screen.getByRole("button", { name: "Results (2)" })).toBeEnabled();
     expect(FakeEngine.instances).toHaveLength(0);
-    await expectNoAxeViolations();
+    // The work is kept in the Case's tags, its comment and glyph with it.
+    await pgnHolds('[FindBestMoveWork_1 "1. d4 (1. e4 $1 { Take the centre. } 1... e5)"]');
   });
 
-  it("checks the moves found against the top N, in order — reveals the lines, goes on, and keeps the session's work in its Case", async () => {
+  it("checks the moves found against the top N, in order — reveals the lines, goes on, and keeps the session in its Case", async () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
@@ -257,40 +294,35 @@ describe("Find Best Move v3 (CTA-238)", () => {
     drag("g1", "f3");
     await user.click(screen.getByRole("button", { name: "Results (3)" }));
     expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("Every best move found, each in its place — 3 of 3.");
-    expect(screen.getByTestId("find-best-move-v3-graded-order-d4")).toHaveTextContent("2In place");
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("Every best move found, each in its place — 3 of 3.");
+    expect(screen.getByTestId(`${ID}-graded-order-d4`)).toHaveTextContent("2In place");
 
     await user.click(screen.getByRole("button", { name: "Next" }));
-    // The earlier position's work is before this one: shown.
+    await atPosition("Position 2 of 2");
+    // The earlier position's lines are before this one: shown.
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
     // The top 2 here are Nf3, Bc4: both found, the wrong way round.
     drag("f1", "c4");
     await user.click(screen.getByTestId("move-ply-2"));
     drag("g1", "f3");
-    // A comment before the position — kept with the rest.
-    fireEvent.contextMenu(screen.getByTestId("move-ply-2"));
-    await user.click(screen.getByTestId("move-menu-comment"));
-    await user.type(screen.getByTestId("comment-dialog-text"), "The only reply.");
-    await user.click(screen.getByTestId("comment-dialog-save"));
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 2 of the top 2 — 0 in their place.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 2 of the top 2 — 0 in their place.");
 
     await user.click(screen.getByRole("button", { name: "Summary" }));
-    expect(screen.getByTestId("find-best-move-v3-report-measures-foundRate")).toHaveTextContent("100% (5 of 5)");
-    expect(screen.getByTestId("find-best-move-v3-report-measures-inPlaceRate")).toHaveTextContent("60% (3 of 5)");
-    expect(screen.getByTestId("find-best-move-v3-report-measures-perfect")).toHaveTextContent("1");
+    expect(screen.getByTestId(`${ID}-report-measures-foundRate`)).toHaveTextContent("100% (5 of 5)");
+    expect(screen.getByTestId(`${ID}-report-measures-inPlaceRate`)).toHaveTextContent("60% (3 of 5)");
+    expect(screen.getByTestId(`${ID}-report-measures-perfect`)).toHaveTextContent("1");
 
-    // The Case: the game's moves as its mainline, the reader's lines and comment, each answer on its position.
-    await waitFor(async () => {
-      const pgn = (await sessionCase())?.pgn ?? "";
-      expect(pgn).toContain("{ Find Best Move: 1. e4 (#1, Best), 2. d4 (#2, Good), 3. Nf3 (#3, Good) — 3 of the top 3, 3 in place }");
-      expect(pgn).toContain("{ The only reply. }");
-      expect(pgn).toContain("{ Find Best Move: 1. Bc4 (#2, Good), 2. Nf3 (#1, Best) — 2 of the top 2, 0 in place } 2. Qh5");
-    });
+    // The Case: the game's moves as its mainline, each answer on its move — no machine command anywhere.
+    await pgnHolds(
+      "{ Find Best Move: 1. e4 (#1, Best), 2. d4 (#2, Good), 3. Nf3 (#3, Good) — 3 of the top 3, 3 in place }",
+      "2. Qh5 { [%eval -1.50] } { Find Best Move: 1. Bc4 (#2, Good), 2. Nf3 (#1, Best) — 2 of the top 2, 0 in place }",
+    );
+    expect((await sessionCase())?.pgn).not.toContain("[%fbm");
 
     // Back to the first position from the summary: graded, as answered.
     await user.click(screen.getByRole("button", { name: "Open 1. e4" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 2");
+    await atPosition("Position 1 of 2");
     expect(boardOptions().position).toBe(START);
     expect(boardOptions().boardOrientation).toBe("white");
   });
@@ -299,13 +331,13 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "Black");
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 1 · 1… Black");
+    expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent("Position 1 of 1 · 1… Black");
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(screen.getByRole("button", { name: "Pass" }));
     expect(screen.getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("find-best-move-v3-report-measures-passed")).toHaveTextContent("1");
+    await waitFor(() => expect(screen.getByTestId(`${ID}-report-measures-passed`)).toHaveTextContent("1"));
     // A pass is put off for later: its best moves hidden there too.
-    expect(screen.getByTestId("find-best-move-v3-report-table-row-0")).not.toHaveTextContent("e5, c5");
+    expect(screen.getByTestId(`${ID}-report-table-row-2`)).not.toHaveTextContent("e5, c5");
   });
 
   it("goes on from a pass at once, and plays the game's moves to the next position out one by one", async () => {
@@ -318,10 +350,13 @@ describe("Find Best Move v3 (CTA-238)", () => {
     try {
       // A pass: on to 2. Qh5's position — the board starts where it was, then 1. e4, then 1... e5, a second apart.
       fireEvent.click(screen.getByRole("button", { name: "Pass" }));
-      expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+      await act(async () => {
+        await settledAnalysisCases();
+      });
+      expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent("Position 2 of 2 · 2. White");
       expect(boardOptions().position).toBe(START);
       act(() => vi.advanceTimersByTime(1000));
-      expect(boardOptions().position).toBe("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
+      expect(boardOptions().position).toBe(AFTER_E4);
       act(() => vi.advanceTimersByTime(1000));
       expect(boardOptions().position).toBe(AFTER_E5);
       expect(boardOptions().allowDragging).toBe(true);
@@ -337,11 +372,48 @@ describe("Find Best Move v3 (CTA-238)", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
       fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+      await act(async () => {
+        await settledAnalysisCases();
+      });
       act(() => vi.advanceTimersByTime(1000));
       // The reader steps back to the start: the rest is theirs.
       fireEvent.click(screen.getByTestId("board-control-first"));
       act(() => vi.advanceTimersByTime(3000));
       expect(boardOptions().position).toBe(START);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("caps the replay: a gap of more than two plies jumps to the last two", async () => {
+    // White's moves 1 and 5 alone: a gap of eight plies.
+    const full = sessionOfPgn(RUY_LOPEZ_38, { side: "w", settings: { engine: true } });
+    const record = { ...full, keys: [1, 9], positions: new Map([...full.positions].filter(([key]) => key === 1 || key === 9)) };
+    const made = await createSessionCase({ record, headers: readPgnTags(RUY_LOPEZ_38), projectName: "Find Best Move", caseName: "Capped", words: PLAIN_WORDS });
+    mount(1000, `${LOBBY}/${made!.caseId}`);
+    await screen.findByTestId(`${ID}-progress`);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+      await act(async () => {
+        await settledAnalysisCases();
+      });
+      const fenAfter = (plies: number) => {
+        const tree = parsePgnTree(RUY_LOPEZ_38);
+        let nodes = tree.moves;
+        let fen = tree.startFen;
+        for (let at = 0; at < plies; at += 1) {
+          fen = nodes[0].fen;
+          nodes = nodes[0].children;
+        }
+        return fen;
+      };
+      // From 1 to 9: the board starts at ply 6, and plays 7 and 8 out.
+      expect(boardOptions().position).toBe(fenAfter(6));
+      act(() => vi.advanceTimersByTime(1000));
+      expect(boardOptions().position).toBe(fenAfter(7));
+      act(() => vi.advanceTimersByTime(1000));
+      expect(boardOptions().position).toBe(fenAfter(8));
     } finally {
       vi.useRealTimers();
     }
@@ -357,7 +429,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(boardOptions().arrows).toEqual([expect.objectContaining({ startSquare: "e2", endSquare: "e4" })]);
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(screen.getByRole("switch", { name: "Show next-move arrows" }));
-    expect(boardOptions().arrows).toEqual([]);
+    await waitFor(() => expect(boardOptions().arrows).toEqual([]));
   });
 
   it("takes a plain game once the engine is on — loaded before or after the switch", async () => {
@@ -373,21 +445,21 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
   });
 
-  it("asks the engine where the lines are too few: a job on the first move, the choice graded once it ends, its line kept", async () => {
+  it("asks the engine where the lines are too few: a job on the first move, the choice graded once it ends, its lines in the session", async () => {
     const user = userEvent.setup();
     mount();
     await switchEngine(user);
     await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     expect(jobRuntime().snapshot() ?? []).toEqual([]);
 
-    // The first move queues the position's search — on the session's Case, MultiPV the lines needed.
+    // The first move queues the position's search — on the session's Case, its key, MultiPV the lines needed.
     const best = legalMove(START);
     drag(best.slice(0, 2), best.slice(2, 4));
     await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
     const job = jobRuntime().snapshot()![0];
     expect(job.title).toBe("Evaluate position — Carol – Dan, 1. White");
     expect(job.subjects[0]).toEqual({ type: "analysis-case", id: (await sessionCase())?.id });
-    expect(job.input).toMatchObject({ fen: START, path: [], search: { multiPv: 3 } });
+    expect(job.input).toMatchObject({ version: 2, fen: START, key: 1, search: { multiPv: 3 } });
 
     // Another move at the position — a side line — asks nothing more.
     await user.click(screen.getByTestId("board-control-first"));
@@ -396,9 +468,9 @@ describe("Find Best Move v3 (CTA-238)", () => {
 
     // Checked: graded against the engine's line once its search ends — its one line the one to find, and the reader's first.
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
-    expect(await screen.findByTestId("find-best-move-v3-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
     expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
-    await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain("[%eval 0.20,20]"));
+    await pgnHolds(`engine:searched/${job.id}`, "[%eval 0.20]");
   });
 
   it("lists the reader's moves on the left panel's Moves tab — moved up or down, deleted, on the board too — and checks them in that order", async () => {
@@ -407,7 +479,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await startWith(user, "White");
     // A session opens on the left panel's Your moves.
     expect(screen.getByRole("tab", { name: "Your moves" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toHaveTextContent("No move yet");
+    expect(screen.getByTestId(`${ID}-details-moves-empty`)).toHaveTextContent("No move yet");
 
     // Three lines from the start position: Nf3, d4, e4 — in the order played.
     drag("g1", "f3");
@@ -428,16 +500,16 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByRole("button", { name: "Delete Nf3" }));
     expect(items()).toEqual(["1.e4", "2.d4"]);
     // The board's tree followed: the footer's moves, and the mainline the reader's first.
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4 2. d4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. e4 2. d4");
     expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4");
 
     // Checked in that order: both of the top 3 found, each in its place — the tab now every line, the reader's marked.
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
     expect(screen.queryByRole("button", { name: /^Move |^Delete / })).not.toBeInTheDocument();
-    expect(screen.getByTestId("find-best-move-v3-details-moves-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
-    expect(screen.getByTestId("find-best-move-v3-details-line-1")).toHaveTextContent("Yours #1In place");
-    expect(screen.getByTestId("find-best-move-v3-details-line-3")).not.toHaveTextContent("Yours");
+    expect(screen.getByTestId(`${ID}-details-moves-headline`)).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
+    expect(screen.getByTestId(`${ID}-details-line-1`)).toHaveTextContent("Yours #1In place");
+    expect(screen.getByTestId(`${ID}-details-line-3`)).not.toHaveTextContent("Yours");
   });
 
   it("shows on Your moves the position the board stands at — stepping back to an earlier one, its moves graded among every line", async () => {
@@ -449,17 +521,19 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByTestId("board-control-first"));
     drag("g1", "f3");
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
+    await screen.findByTestId(`${ID}-graded-headline`);
     await user.click(screen.getByRole("button", { name: "Next" }));
+    await atPosition("Position 2 of 2");
 
     // On 2. Qh5's position: its own moves, none yet.
-    const label = () => screen.getByTestId("find-best-move-v3-details-moves-label");
+    const label = () => screen.getByTestId(`${ID}-details-moves-label`);
     expect(label()).toHaveTextContent("Position 2 of 2 · 2. White");
-    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toHaveTextContent("No move yet");
+    expect(screen.getByTestId(`${ID}-details-moves-empty`)).toHaveTextContent("No move yet");
 
     // Back to the start: the first position's moves, graded, every line shown with the reader's marked.
     await user.click(screen.getByTestId("board-control-first"));
     expect(label()).toHaveTextContent("Position 1 of 2 · 1. White");
-    expect(screen.getByTestId("find-best-move-v3-details-moves-headline")).toHaveTextContent("You found 2 of the top 3 — 1 in their place.");
+    expect(screen.getByTestId(`${ID}-details-moves-headline`)).toHaveTextContent("You found 2 of the top 3 — 1 in their place.");
     const lines = within(screen.getByRole("list", { name: "The engine's lines, best first, your moves marked" })).getAllByRole("listitem");
     expect(lines.map((line) => line.textContent)).toEqual([
       "1.e4GameThe move played in the game+0.30 · −0Yours #1In placeBest",
@@ -471,10 +545,10 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(label()).toHaveTextContent("Position 1 of 2");
     await user.click(screen.getByTestId("move-ply-2"));
     expect(label()).toHaveTextContent("Position 2 of 2");
-    expect(screen.getByTestId("find-best-move-v3-details-moves-empty")).toBeInTheDocument();
+    expect(screen.getByTestId(`${ID}-details-moves-empty`)).toBeInTheDocument();
   });
 
-  it("answers a passed position later: back to it, Answer it now, moves, Check — then on to the position left, its work kept", async () => {
+  it("answers a passed position later: back to it, Answer it now, moves, Results — then on to the position left, its work kept", async () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
@@ -482,23 +556,23 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByRole("button", { name: "Pass" }));
 
     // On 2. Qh5's position, a move of the reader's; then back to the start — the passed one.
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");
+    await atPosition("Position 2 of 2");
     drag("f1", "c4");
     await user.click(screen.getByTestId("board-control-first"));
-    expect(screen.getByTestId("find-best-move-v3-details-moves-label")).toHaveTextContent("Position 1 of 2");
-    expect(screen.getByTestId("find-best-move-v3-details-moves-passed")).toBeInTheDocument();
+    expect(screen.getByTestId(`${ID}-details-moves-label`)).toHaveTextContent("Position 1 of 2");
+    expect(screen.getByTestId(`${ID}-details-moves-passed`)).toBeInTheDocument();
     // Its lines stay hidden.
     expect(screen.queryByRole("list", { name: "The engine's lines, best first, your moves marked" })).not.toBeInTheDocument();
-    await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain("{ Find Best Move: passed }"));
+    await pgnHolds("{ Find Best Move: passed }");
 
     // Answer it now: the position on screen again, nothing of the game after it.
     await user.click(screen.getByRole("button", { name: "Answer it now" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 2 · 1. White");
+    await atPosition("Position 1 of 2 · 1. White");
     expect(boardOptions().position).toBe(START);
     expect(screen.queryByTestId("move-ply-1")).not.toBeInTheDocument();
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
     // The pass's comment gone, the new answer in its place.
     await waitFor(async () => {
       const pgn = (await sessionCase())?.pgn ?? "";
@@ -508,8 +582,8 @@ describe("Find Best Move v3 (CTA-238)", () => {
 
     // Next: back to the position left, the reader's Bc4 there still.
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2");
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. Bc4");
+    await atPosition("Position 2 of 2");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. Bc4");
   });
 
   it("lists every position answered or passed on Results — a click back to its result, or to answer a passed one", async () => {
@@ -519,19 +593,24 @@ describe("Find Best Move v3 (CTA-238)", () => {
     // 1. e4's position: e4 — the 1st of the top 3. 2. Qh5's: passed — the last, so on to the summary.
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
+    await screen.findByTestId(`${ID}-graded-headline`);
     await user.click(screen.getByRole("button", { name: "Next" }));
+    await atPosition("Position 2 of 2");
     await user.click(screen.getByRole("button", { name: "Pass" }));
 
     await user.click(screen.getByRole("tab", { name: "Results" }));
     const list = () => within(screen.getByRole("list", { name: "The positions answered or passed" }));
-    expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
-      "Open 1. White — 1/3 · 1 in place",
-      "Answer 2. White now — passed",
-    ]);
+    await waitFor(() =>
+      expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
+        "Open 1. White — 1/3 · 1 in place",
+        "Answer 2. White now — passed",
+      ]),
+    );
 
     // The passed one: the board on it, to answer.
     await user.click(list().getByRole("button", { name: "Answer 2. White now — passed" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Results (0)" })).toBeInTheDocument());
+    expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent("Position 2 of 2 · 2. White");
     expect(boardOptions().position).toBe(AFTER_E5);
     expect(drag("g1", "f3")).toBe(true);
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
@@ -543,9 +622,9 @@ describe("Find Best Move v3 (CTA-238)", () => {
 
     // The answered one: its result.
     await user.click(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 2");
+    await atPosition("Position 1 of 2");
     expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
+    expect(screen.getByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
     expect(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" })).toHaveAttribute("aria-current", "true");
     // The reopened one, left unanswered: passed again, still there to answer.
     expect(list().getByRole("button", { name: "Answer 2. White now — passed" })).toBeInTheDocument();
@@ -586,31 +665,29 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(boardOptions().position).toBe(START);
     expect(newMove).toBeDisabled();
     drag("d2", "d4");
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. e4 2. d4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. e4 2. d4");
 
     // Next: graded and on to 2. Qh5's position on Moves — no Result tab on the way.
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    await atPosition("Position 2 of 2 · 2. White");
     expect(screen.getByRole("tab", { name: "Moves" })).toHaveAttribute("aria-selected", "true");
     expect(boardOptions().position).toBe(AFTER_E5);
     // The answer kept: on Results, and in the Case.
     await user.click(screen.getByRole("tab", { name: "Results" }));
     expect(within(screen.getByRole("list", { name: "The positions answered or passed" })).getByRole("button", { name: "Open 1. White — 2/3 · 2 in place" })).toBeInTheDocument();
-    await waitFor(async () =>
-      expect((await sessionCase())?.pgn ?? "").toContain("{ Find Best Move: 1. e4 (#1, Best), 2. d4 (#2, Good) — 2 of the top 3, 2 in place }"),
-    );
+    await pgnHolds("{ Find Best Move: 1. e4 (#1, Best), 2. d4 (#2, Good) — 2 of the top 3, 2 in place }");
 
     // The last position: Next goes to the summary, the answer there.
     drag("g1", "f3");
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("find-best-move-v3-report-measures-foundRate")).toHaveTextContent("60% (3 of 5)");
+    await waitFor(() => expect(screen.getByTestId(`${ID}-report-measures-foundRate`)).toHaveTextContent("60% (3 of 5)"));
     // Once answered the row is Next / Summary alone.
     expect(screen.queryByRole("button", { name: "New move" })).not.toBeInTheDocument();
-    expect(screen.getByTestId("find-best-move-v3-next")).toHaveTextContent("Summary");
+    expect(screen.getByTestId(`${ID}-next`)).toHaveTextContent("Summary");
   });
 
-  it("keeps the whole session in its Case's PGN — and a reload of its address resumes it exactly", async () => {
+  it("keeps the whole session in its Case's tags — and a reload of its address resumes it exactly", async () => {
     const user = userEvent.setup();
     const { unmount } = mount();
     await startWith(user, "White");
@@ -619,26 +696,21 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByTestId("board-control-first"));
     drag("d2", "d4");
     await user.click(screen.getByRole("button", { name: "Results (2)" }));
+    await screen.findByTestId(`${ID}-graded-headline`);
     await user.click(screen.getByRole("button", { name: "Next" }));
+    await atPosition("Position 2 of 2");
     drag("f1", "c4");
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(screen.getByRole("switch", { name: "Show next-move arrows" }));
-    await waitFor(async () => {
-      const pgn = (await sessionCase())?.pgn ?? "";
-      expect(pgn).toContain('[FindBestMove "1"]');
-      expect(pgn).toContain('[FindBestMovePosition "2"]');
-      expect(pgn).toContain('[FindBestMoveArrows "off"]');
-      expect(pgn).toContain("state:answered answer:e4,d4");
-      expect(pgn).toContain("work:Bc4]");
-    });
+    await pgnHolds('[FindBestMove "2"]', '[FindBestMoveCurrent "3"]', '[FindBestMoveArrows "off"]', "state:answered answer:e4,d4", '[FindBestMoveWork_3 "2. Bc4"]');
     const caseId = (await sessionCase())!.id;
     unmount();
 
     // The session's address, read afresh: the position on screen, the reader's move there, the settings.
-    mount(0, `/accuracy-trainer/find-best-move-v3/${caseId}`);
-    expect(await screen.findByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    mount(0, `${LOBBY}/${caseId}`);
+    expect(await screen.findByTestId(`${ID}-progress`)).toHaveTextContent("Position 2 of 2 · 2. White");
     expect(boardOptions().position).toBe(AFTER_E5);
-    expect(screen.getByTestId("find-best-move-v3-candidates")).toHaveTextContent("Your moves: 1. Bc4");
+    expect(screen.getByTestId(`${ID}-candidates`)).toHaveTextContent("Your moves: 1. Bc4");
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByRole("switch", { name: "Show next-move arrows" })).not.toBeChecked();
@@ -647,22 +719,33 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByRole("tab", { name: "Results" }));
     const results = within(screen.getByRole("list", { name: "The positions answered or passed" }));
     await user.click(results.getByRole("button", { name: "Open 1. White — 2/3 · 2 in place" }));
-    expect(screen.getByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
     // Its lines are the Case's variations, each with its eval.
     expect((await sessionCase())?.pgn).toContain("(1. Nf3 { [%eval 0.20] })");
+    await expectNoAxeViolations();
   });
 
-  it("downloads the session's PGN — the whole session, as its Case keeps it", async () => {
+  it("says once what of a session could not be read — kept, open", async () => {
+    const record = sessionOfPgn(ANALYSED);
+    const made = await createSessionCase({ record, headers: readPgnTags(ANALYSED), projectName: "Find Best Move", caseName: "Lost one", words: PLAIN_WORDS });
+    const stored = (await loadAnalysisCases()).find((each) => each.id === made!.caseId)!;
+    await addAnalysisCases([{ ...stored, id: "lost", pgn: stored.pgn.split("\n").filter((line) => !line.startsWith("[FindBestMove_2 ")).join("\n") }]);
+    mount(0, `${LOBBY}/lost`);
+    expect(await screen.findByTestId(`${ID}-read-issue`)).toHaveTextContent("1 position of this session could not be read in full");
+    expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent("Position 1 of 3");
+  });
+
+  it("downloads the session's PGN — the record projected now, the board's work in", async () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Download the session's PGN" }));
     expect(downloaded.pgns).toHaveLength(1);
-    expect(downloaded.pgns[0]).toContain('[FindBestMove "1"]');
-    expect(downloaded.pgns[0]).toContain("work:e4]");
+    expect(downloaded.pgns[0]).toContain('[FindBestMove "2"]');
+    expect(downloaded.pgns[0]).toContain('[FindBestMoveWork_1 "1. e4"]');
     // The way back to the sessions.
-    expect(screen.getByRole("link", { name: "Back to the sessions" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v3");
+    expect(screen.getByRole("link", { name: "Back to the sessions" })).toHaveAttribute("href", LOBBY);
   });
 
   it("resumes a session's PGN loaded in the setup — a new session, where it was left", async () => {
@@ -671,8 +754,9 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await startWith(user, "White");
     drag("e2", "e4");
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
+    await screen.findByTestId(`${ID}-graded-headline`);
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain('[FindBestMovePosition "2"]'));
+    await pgnHolds('[FindBestMoveCurrent "3"]');
     const pgn = (await sessionCase())!.pgn;
     unmount();
 
@@ -681,7 +765,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Alice – Bob — a Find Best Move session: 1 of 2 positions answered or passed.");
     expect(screen.getByRole("button", { name: "Both" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Resume" }));
-    expect(await screen.findByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 2 of 2 · 2. White");
+    expect(await screen.findByTestId(`${ID}-progress`)).toHaveTextContent("Position 2 of 2 · 2. White");
     const project = (await loadAnalysisProjects()).find((each) => each.name === "Find Best Move");
     expect((await loadAnalysisCases()).filter((each) => each.projectId === project?.id)).toHaveLength(2);
   });
@@ -690,13 +774,22 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const project = (await createAnalysisProject("Find Best Move", null))!;
     const record = gameCaseOf({ id: "plain", projectId: project.id, name: "By hand" }, parsePgnTree(ANALYSED));
     await addAnalysisCases([record]);
-    mount(0, "/accuracy-trainer/find-best-move-v3/plain");
-    expect(await screen.findByTestId("find-best-move-v3-not-resumable")).toHaveTextContent("holds no Find Best Move session this version can resume");
+    mount(0, `${LOBBY}/plain`);
+    expect(await screen.findByTestId(`${ID}-not-resumable`)).toHaveTextContent("holds no Find Best Move session this version can resume");
     expect(screen.getByRole("link", { name: "Open the case in Analysis" })).toHaveAttribute("href", `/analysis/projects/${project.id}/cases/plain`);
     await expectNoAxeViolations();
   });
 
-  it("keeps an engine search's lines in the session's PGN — a reload grades the same and asks the engine nothing more", async () => {
+  it("says an older session (v3's) is one, never converted — open it in Analysis", async () => {
+    const project = (await createAnalysisProject("Find Best Move", null))!;
+    const v3 = parsePgnTree(`[FindBestMove "1"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 { [%fbm game:e4 state:open] } *`);
+    await addAnalysisCases([gameCaseOf({ id: "older", projectId: project.id, name: "Old" }, v3)]);
+    mount(0, `${LOBBY}/older`);
+    expect(await screen.findByTestId(`${ID}-not-resumable`)).toHaveTextContent("an older Find Best Move session (v3)");
+    expect((await loadAnalysisCases()).find((each) => each.id === "older")?.pgn).toContain("[%fbm");
+  });
+
+  it("keeps an engine search's lines in the session — a reload grades the same and asks the engine nothing more", async () => {
     const user = userEvent.setup();
     const { unmount } = mount();
     await switchEngine(user);
@@ -704,17 +797,30 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const best = legalMove(START);
     drag(best.slice(0, 2), best.slice(2, 4));
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
-    expect(await screen.findByTestId("find-best-move-v3-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
     const jobId = jobRuntime().snapshot()![0].id;
-    await waitFor(async () => expect((await sessionCase())?.pgn ?? "").toContain(`searched:${jobId}]`));
+    await pgnHolds(`engine:searched/${jobId}`);
     const caseId = (await sessionCase())!.id;
     unmount();
 
-    mount(0, `/accuracy-trainer/find-best-move-v3/${caseId}`);
-    expect(await screen.findByTestId("find-best-move-v3-graded-headline")).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    mount(0, `${LOBBY}/${caseId}`);
+    expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByRole("switch", { name: "Use the engine" })).toBeChecked();
     expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
+  });
+
+  it("grades with the lines there are, and says so, when the engine's job is gone", async () => {
+    // A session whose position waits for a job the runtime never had.
+    const record = applied(sessionOfPgn('[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *', { side: "w", settings: { engine: true, moves: 1 } }), [
+      e.firstMove(1),
+      e.engineQueued(1, "nojob"),
+      e.answer(1, ["e4"]),
+    ]);
+    const made = await createSessionCase({ record, headers: {}, projectName: "Find Best Move", caseName: "Gone job", words: PLAIN_WORDS });
+    mount(0, `${LOBBY}/${made!.caseId}`);
+    expect(await screen.findByTestId(`${ID}-engine-unavailable`, {}, { timeout: 10_000 })).toHaveTextContent("The engine could not search this position");
+    await waitFor(async () => expect((await loadAnalysisCases()).find((each) => each.id === made!.caseId)?.pgn).toContain("engine:failed/nojob"));
   });
 
   it("starts a session from a position set in the Board editor — one position, the engine finding its lines", async () => {
@@ -728,17 +834,15 @@ describe("Find Best Move v3 (CTA-238)", () => {
     expect(screen.getByTestId("new-session-custom-position")).toHaveTextContent(fen);
     await user.click(screen.getByRole("button", { name: "Start" }));
 
-    expect(await screen.findByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 1 · 1. White");
+    expect(await screen.findByTestId(`${ID}-progress`)).toHaveTextContent("Position 1 of 1 · 1. White");
     expect(boardOptions().position).toBe(fen);
     expect(screen.getByRole("heading", { level: 2, name: "Position — White to move" })).toBeInTheDocument();
     // No line of its own: the engine is asked, and the moves graded against its.
     const best = legalMove(fen);
     drag(best.slice(0, 2), best.slice(2, 4));
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
-    expect(await screen.findByTestId("find-best-move-v3-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
-    const pgn = (await sessionCase())?.pgn ?? "";
-    expect(pgn).toContain('[FindBestMoveEngine "on"]');
-    expect(pgn).not.toContain("game:");
+    expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    await pgnHolds('[FindBestMoveEngine "on"]', '[FindBestMoveGame ""]', '[FindBestMoveKeys "1"]');
   });
 
   it("keeps Start off, and says why, while the Board editor's position cannot be answered", async () => {
@@ -756,8 +860,8 @@ describe("Find Best Move v3 (CTA-238)", () => {
   });
 
   it("says a session that is not there", async () => {
-    mount(0, "/accuracy-trainer/find-best-move-v3/gone");
-    expect(await screen.findByTestId("find-best-move-v3-missing")).toHaveTextContent("There is no such session");
-    expect(screen.getByRole("link", { name: "Back to the sessions" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v3");
+    mount(0, `${LOBBY}/gone`);
+    expect(await screen.findByTestId(`${ID}-missing`)).toHaveTextContent("There is no such session");
+    expect(screen.getByRole("link", { name: "Back to the sessions" })).toHaveAttribute("href", LOBBY);
   });
 });

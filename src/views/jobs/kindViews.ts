@@ -31,8 +31,8 @@ const JOB_KIND_VIEWS: Readonly<Record<string, JobKindViews>> = {
     Data: RepertoireEvaluationData,
     liveSummary: engineLiveSummary,
   },
-  // CTA-238: queued by Find Best Move alone (no New-job form); its result is the trainer's, its lines the
-  // session Case's. Dev-only, as its kind.
+  // CTA-238: queued by Find Best Move alone (no New-job form); its result the session's record takes (CTA-244).
+  // Dev-only, as its kind.
   ...(import.meta.env.DEV ? { [EVALUATE_POSITION_KIND]: { Live: EngineLiveView, liveSummary: engineLiveSummary } } : {}),
 };
 

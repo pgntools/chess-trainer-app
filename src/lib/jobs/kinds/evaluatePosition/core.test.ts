@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  EVALUATE_POSITION_INPUT_VERSION,
   EVALUATE_POSITION_STATE_VERSION,
   parseEvaluatePositionInput,
   parseEvaluatePositionResult,
@@ -8,8 +9,8 @@ import {
 } from "./core";
 
 /*
-  Evaluate Position's core (CTA-238): its input and state read leniently,
-  its data output read back.
+  Evaluate Position's core (CTA-238; the input a session's key since
+  CTA-244): its input and state read leniently, its data output read back.
 */
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -19,19 +20,21 @@ describe("parseEvaluatePositionInput", () => {
   it("reads an input, the search held to its bounds", () => {
     expect(
       parseEvaluatePositionInput({
+        version: EVALUATE_POSITION_INPUT_VERSION,
         caseId: "c1",
+        key: 3,
         name: "Evaluate position — Alice – Bob, 1. White",
         fen: START,
-        path: ["e4", 3, "e5"],
         label: "1. White",
         engine: "stockfish-19-lite",
         preset: { id: "p", name: "Deep", values: { Contempt: 10, Bad: {} } },
         search: { depth: 22, moveTimeMs: 2000, threads: 1, hashMb: 32, multiPv: 999 },
       }),
     ).toMatchObject({
+      version: EVALUATE_POSITION_INPUT_VERSION,
       caseId: "c1",
+      key: 3,
       fen: START,
-      path: ["e4", "e5"],
       label: "1. White",
       engine: "stockfish-19-lite",
       preset: { id: "p", name: "Deep", values: { Contempt: 10 } },
@@ -39,11 +42,18 @@ describe("parseEvaluatePositionInput", () => {
     });
   });
 
-  it("refuses an input with no Case or no position that reads, and fills the rest", () => {
-    expect(parseEvaluatePositionInput({ fen: START })).toBeUndefined();
-    expect(parseEvaluatePositionInput({ caseId: "c", fen: "not a fen" })).toBeUndefined();
+  it("refuses an input with no Case, key or position that reads, and fills the rest", () => {
+    const version = EVALUATE_POSITION_INPUT_VERSION;
+    expect(parseEvaluatePositionInput({ version, key: 1, fen: START })).toBeUndefined();
+    expect(parseEvaluatePositionInput({ version, caseId: "c", key: 1, fen: "not a fen" })).toBeUndefined();
+    expect(parseEvaluatePositionInput({ version, caseId: "c", key: 0, fen: START })).toBeUndefined();
+    expect(parseEvaluatePositionInput({ version, caseId: "c", fen: START })).toBeUndefined();
     expect(parseEvaluatePositionInput(null)).toBeUndefined();
-    expect(parseEvaluatePositionInput({ caseId: "c", fen: START })).toMatchObject({ name: "", path: [], label: "", preset: null });
+    expect(parseEvaluatePositionInput({ version, caseId: "c", key: 1, fen: START })).toMatchObject({ name: "", label: "", preset: null });
+  });
+
+  it("refuses v3's input — a SAN path, no version: its jobs are a retired kind's", () => {
+    expect(parseEvaluatePositionInput({ caseId: "c", fen: START, path: ["e4"], label: "1. Black" })).toBeUndefined();
   });
 });
 

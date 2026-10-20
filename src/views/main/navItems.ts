@@ -74,8 +74,8 @@ export const navItems = (): readonly NavItem[] => [
   ...(import.meta.env.DEV
     ? [
         {
-          to: "/accuracy-trainer/find-best-move-v3",
-          labelKey: "nav.findBestMoveV3",
+          to: "/accuracy-trainer/find-best-move-v4",
+          labelKey: "nav.findBestMoveV4",
           icon: TrackChangesRoundedIcon,
           folder: "accuracy-trainer",
           experimental: true,

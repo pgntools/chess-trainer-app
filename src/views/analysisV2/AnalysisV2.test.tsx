@@ -22,9 +22,11 @@ import {
 } from "../../lib/analysisProjectStore";
 import { gameCaseOf, positionCaseOfFen, type AnalysisCase } from "../../lib/analysisProjects";
 import { loadUploadedCollections, loadUploadedGames, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
-import { parsePgnTree, parsePgnTrees } from "../../lib/pgn";
+import { sessionTreeOf } from "../../lib/findBestMove/store";
+import { parsePgnTree, parsePgnTrees, readPgnTags } from "../../lib/pgn";
 import { downloadBinaryFile, downloadPgn } from "../../lib/pgnExport";
 import { expectNoAxeViolations } from "../../test/axe";
+import { PLAIN_WORDS, sessionOfPgn } from "../../test/findBestMoveKit";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions, engineJobsStub, FakeEngine } from "../board/boardTestHarness";
 import EngineGateHost from "../board/core/EngineGateHost";
@@ -1104,6 +1106,40 @@ describe("a Project's Cases (CTA-186)", () => {
 });
 
 describe("a Case's board (CTA-186)", () => {
+  it("opens a Find Best Move session's Case read-only — no move, edit or evaluation, nothing saved — with Resume and a plain copy (CTA-244)", async () => {
+    const project = (await createAnalysisProject("Find Best Move", null))!;
+    const record = sessionOfPgn(GAME, { settings: { engine: true } });
+    const made = gameCaseOf({ id: "fbm", projectId: project.id, name: "Carlsen – Caruana — Find Best Move" }, sessionTreeOf(record, readPgnTags(GAME), PLAIN_WORDS), {
+      writeEvals: false,
+    });
+    await addAnalysisCases([made]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/fbm`);
+    expect(await screen.findByTestId("analysis-case-session-notice")).toHaveTextContent("This case is a Find Best Move session — read-only here");
+    // The board navigates but takes no move; no menu, no Play.
+    expect(boardOptions().allowDragging).toBe(false);
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+    expect(screen.queryByTestId("analysis-case-play")).toBeNull();
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    await act(async () => {
+      await settledAnalysisCases();
+    });
+    // Nothing written: the step, the place, the tree are the trainer's to keep.
+    expect(analysisCasesSnapshot()!.find((each) => each.id === "fbm")).toMatchObject({ pgn: made.pgn, path: [], updatedAt: made.updatedAt });
+    expect(screen.getByRole("link", { name: "Resume in Find Best Move" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v4/fbm");
+
+    // A plain copy: the readable game, none of the session's tags — opened.
+    await user.click(screen.getByRole("button", { name: "Duplicate as a plain case" }));
+    await waitFor(() => expect(where()).toMatch(new RegExp(`^/analysis/projects/${project.id}/cases/(?!fbm)`)));
+    const copy = analysisCasesSnapshot()!.find((each) => each.id !== "fbm")!;
+    expect(copy.name).toBe("Carlsen – Caruana — Find Best Move (copy)");
+    expect(copy.pgn).not.toContain("FindBestMove");
+    expect(copy.pgn).toContain('[White "Carlsen"]');
+    expect(await screen.findByTestId("board")).toBeInTheDocument();
+    expect(screen.queryByTestId("analysis-case-session-notice")).toBeNull();
+  });
+
   it("autosaves every move, the place and the orientation — and a reload finds them", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id)]);
