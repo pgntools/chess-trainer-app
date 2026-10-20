@@ -174,7 +174,8 @@ never reach it but through `store.ts`.
 - **Engine** (left `idle` unless the session's engine is on — `settings.engine`,
   the `FindBestMoveEngine` tag — and the top lines are fewer than N,
   `needsEngine`): `idle` → `wanted` (a first move there, or a
-  check — persisted, so a reload still queues it) → `queued(jobId)` →
+  check — persisted, so a reload still queues it; **when** is the session's
+  `settings.engineStart`, below) → `queued(jobId)` →
   `searched(jobId)` (its lines merged — `withEngineResult`'s rule) or
   `failed`. `searched` and `failed` are terminal: **a position's engine is
   never asked twice**, by the type. A pass never waits.
@@ -186,12 +187,25 @@ never reach it but through `store.ts`.
   lists applied in one write: Next while answering `[workRecorded, answer,
   next]`, Pass `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
   reopen]`.
+- **When the engine starts thinking** (CTA-247 — `settings.engineStart`, the
+  `FindBestMoveEngineStart` tag, the Settings tab's radio): **`move`** (*On
+  the first move played* — the default, and every session from before it):
+  `firstMove` and the grading (`answer` — Results, or Next while answering)
+  both want the engine, so the search runs while the reader analyses;
+  **`grade`** (*After Next is clicked*): `firstMove` is no event, only the
+  grading wants it — the answer then waits for its search (`waiting`). A
+  pass wants it under neither. Changed at any time (`settingsChanged({
+  engineStart })`, one write); it changes the setting alone — a position
+  already `wanted`, `queued` or `searched` keeps its engine, never asked
+  twice.
 - **The engine offered** (CTA-245): a first move at a position whose engine
   *would* be wanted were the session's engine on (`engineOfferedAt` — it
   off, the answer open or reopened, the engine `idle`, `needsEngine`) opens
   a dialog, *Use the engine?*: **Use the engine** is one write,
   `[settingsChanged({ engine: true }), firstMove(key)]` — the engine on for
-  the session and the position `wanted`; **Go on without it** leaves both,
+  the session and the position `wanted` (under `grade` the `firstMove` is
+  no event: the position's search waits for its grading, CTA-247); the
+  offer opens on the first move under both; **Go on without it** leaves both,
   the answer graded against the lines there are (none: "nothing to compare",
   `target` 0). Asked once per position while the screen is up; **a Pass
   never asks**. **The offer is the only way a game's session turns its
@@ -253,6 +267,7 @@ Analysis autosave — can reach the session (`pgn.test.ts` holds them to it).
 | `FindBestMoveSide` | `white`, `black` or `both` |
 | `FindBestMoveMoves` | N, 1–10 (unreadable: 3) |
 | `FindBestMoveEngine`, `FindBestMoveArrows` | `on` / `off` |
+| `FindBestMoveEngineStart` | `move` / `grade` — when a position's engine search starts (CTA-247); absent (a session from before it) or unknown, `move` |
 | `FindBestMoveGame` | the recorded game's SANs, space-separated (empty for a session from a position); its start the `SetUp` / `FEN` pair |
 | `FindBestMoveKeys` | the manifest, ascending, comma-separated |
 | `FindBestMoveCurrent` | the position on screen, a key |
@@ -376,8 +391,11 @@ at — answering, its moves to reorder or delete; waiting; graded, every line
 with the reader's marked; passed, with *Answer it now*; not answered yet),
 **Results** (in game order, the one the board stands at current; a click back
 to each — a passed one to answer it now) and **Settings** (*Moves to find*
-locked, *Show next-move arrows* — no engine switch since CTA-246: the offer
-alone turns it on).
+locked, *Show next-move arrows*, *Engine starts thinking* — on the first
+move played, or after Next is clicked, a `RadioGroupField`, CTA-247
+(`engineStart` / `onEngineStartChange`, `useFindBestMove`'s
+`changeEngineStart`) — no engine switch since CTA-246: the offer alone turns
+it on).
 
 ## 9. Extending it
 
