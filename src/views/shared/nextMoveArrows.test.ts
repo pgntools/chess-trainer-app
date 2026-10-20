@@ -7,6 +7,7 @@ import {
   NEXT_MOVE_ARROW_PALETTES,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
   SIDELINE_NEXT_MOVE_ARROW_COLOR,
+  distinctArrows,
   nextMoveArrowsOf,
 } from "./nextMoveArrows";
 
@@ -56,5 +57,23 @@ describe("nextMoveArrowsOf", () => {
       const all = [colors.mainline, colors.sideline, colors.hovered, UNTAGGED_NEXT_MOVE_ARROW_COLOR];
       expect(new Set(all.map((color) => color.toLowerCase())).size).toBe(4);
     }
+  });
+});
+
+describe("distinctArrows", () => {
+  it("keeps the later of two arrows between the same squares, in its place", () => {
+    const arrows = [
+      { startSquare: "e2", endSquare: "e4", color: "blue" },
+      { startSquare: "g1", endSquare: "f3", color: "blue" },
+      { startSquare: "e2", endSquare: "e4", color: "green" },
+      { startSquare: "e4", endSquare: "e2", color: "red" },
+    ];
+    expect(distinctArrows(arrows)).toEqual([arrows[1], arrows[2], arrows[3]]);
+  });
+
+  it("gives the same arrows back when none share squares", () => {
+    const arrows = [{ startSquare: "a2", endSquare: "a4", color: "blue" }];
+    expect(distinctArrows(arrows)).toEqual(arrows);
+    expect(distinctArrows([])).toEqual([]);
   });
 });

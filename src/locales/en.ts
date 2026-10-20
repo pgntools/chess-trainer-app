@@ -43,8 +43,8 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
-    /** The Accuracy Trainer's Find Best Move v3 (`/accuracy-trainer/find-best-move-v3`, CTA-238) — experimental and dev-only. */
-    findBestMoveV3: "Find Best Move v3",
+    /** The Accuracy Trainer's Find Best Move v4 (`/accuracy-trainer/find-best-move-v4`, CTA-238, CTA-244) — experimental and dev-only. */
+    findBestMoveV4: "Find Best Move v4",
     /** The chip on an experimental screen's row (CTA-238). */
     experimental: "Experimental",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
@@ -213,9 +213,9 @@ const en = {
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
     /** The Accuracy Trainer's exercise (CTA-238), dev-only. */
-    findBestMoveV3: "Find Best Move v3",
+    findBestMoveV4: "Find Best Move v4",
     /** A Find Best Move session, or the setup of a new one (CTA-239). */
-    findBestMoveV3Session: "Find Best Move session",
+    findBestMoveV4Session: "Find Best Move session",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -256,8 +256,8 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
-    findBestMoveV3: "Analyse each position of a game on a board of your own — side lines, comments, glyphs — then choose your move and see how it measures against the engine's lines.",
-    findBestMoveV3Session: "A Find Best Move session: each position of a game answered on a board of your own, its whole progress kept in its PGN — resume it, or download it.",
+    findBestMoveV4: "Analyse each position of a game on a board of your own — side lines, comments, glyphs — then choose your moves and see how they measure against the engine's lines.",
+    findBestMoveV4Session: "A Find Best Move session: each position of a game answered on a board of your own, its whole progress kept in its PGN's tags — resume it, or download it.",
     analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
@@ -606,11 +606,20 @@ const en = {
       downloadRow: "Download the PGN of {{name}}",
       openCaseRow: "Open {{name}} in Analysis",
       unreadable: "{{name}} holds no session this version can resume — open it in Analysis.",
+      /** A Case of an older session (Find Best Move v3, CTA-244) — never converted. */
+      older: "{{name}} is an older Find Best Move session (v3) — it does not resume here; open it in Analysis.",
       /** The session screen's header. */
       back: "Back to the sessions",
       download: "Download the session's PGN",
       downloadProblem: "The browser refused the download.",
       notResumable: "This case holds no Find Best Move session this version can resume — made before sessions were kept in their PGN, or by hand. Open it in Analysis to see it.",
+      /** A session of v3's format (CTA-244): known, never resumed. */
+      olderSession: "This case is an older Find Best Move session (v3), which this version does not resume. Open it in Analysis to see it.",
+      /** Some of a session's positions read leniently (CTA-244) — kept, said once. */
+      readIssue_one: "{{count}} position of this session could not be read in full — it is kept, open to be answered again.",
+      readIssue_other: "{{count}} positions of this session could not be read in full — they are kept, open to be answered again.",
+      /** A write the browser refused — the screen stays as it was. */
+      writeProblem: "The session could not be saved — the browser refused the write. Nothing changed.",
       openCase: "Open the case in Analysis",
     },
     setup: {
@@ -717,6 +726,8 @@ const en = {
       /** The answer as the Case's comment on the position says it. */
       answer: {
         passed: "Find Best Move: passed",
+        /** Answered, its engine still searching (CTA-244). */
+        waiting: "Find Best Move: {{moves}} — waiting for the engine",
         moves: "Find Best Move: {{moves}} — {{found}} of the top {{count}}, {{inPlace}} in place",
         move: "{{order}}. {{san}} (#{{rank}}, {{verdict}})",
         moveOutside: "{{order}}. {{san}} (not among the lines)",
@@ -3088,6 +3099,8 @@ const en = {
      */
     retiredKinds: {
       collectionMerge: "Merge collections (retired)",
+      /** Find Best Move v3's Evaluate Position jobs (CTA-244) — dev-only, as the kind was. */
+      evaluatePositionV3: "Evaluate position — Find Best Move v3 (retired)",
     },
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
@@ -3095,11 +3108,11 @@ const en = {
       /** Evaluate Position (CTA-238): one position searched, queued by the Accuracy Trainer's Find Best Move. */
       evaluatePosition: {
         name: "Evaluate position",
-        description: "The engine searches one position of a Find Best Move session — as many lines as the session asks for — and its lines are written into the session's case.",
+        description: "The engine searches one position of a Find Best Move session — as many lines as the session asks for — and its lines go into the session, its case's PGN.",
         errors: {
           engine: "The engine gave no evaluation of the position.",
           storage: "The session's case could not be written — the browser refused.",
-          target: "The session's case is gone — it was deleted.",
+          target: "The session's case is gone — deleted — or holds no session any more.",
         },
       },
       /** The computer analysis (CTA-188 — Jobs V2's, the Jobs module's kind since CTA-221): New job's form, its parameters, its results. */
@@ -3923,6 +3936,13 @@ const en = {
       },
       engine: "Engine",
       problem: "Not saved — the browser refused it.",
+      /** A Find Best Move session's Case, opened read-only (CTA-244). */
+      session: {
+        notice: "This case is a Find Best Move session — read-only here: the trainer keeps it, and would replace an edit made here. Resume it in the trainer, or duplicate it as a plain case to work on it.",
+        resume: "Resume in Find Best Move",
+        duplicate: "Duplicate as a plain case",
+        duplicateProblem: "The copy could not be made — the browser refused the write.",
+      },
     },
     /** A Case's Jobs tab (CTA-188; the Jobs module's `EntityJobs` since CTA-221). */
     caseJobs: {

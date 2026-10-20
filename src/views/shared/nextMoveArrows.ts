@@ -109,3 +109,16 @@ export const nextMoveArrowsOf = (
     color:
       node.id === hoveredId ? colors.hovered : index === 0 ? colors.mainline : colors.sideline,
   }));
+
+/**
+ * **One arrow to a pair of squares** (CTA-244): the board keys its arrows by
+ * their squares, and a pair handed over twice — a next move that is also a
+ * graded one, two promotions of one pawn — leaves one of them drawn when the
+ * arrows are cleared. Where two share squares the **later** one is kept, in
+ * its place in the list, as the explorer's own shapes already do.
+ */
+export const distinctArrows = (arrows: readonly Arrow[]): Arrow[] =>
+  arrows.filter(
+    (arrow, index) =>
+      !arrows.some((later, at) => at > index && later.startSquare === arrow.startSquare && later.endSquare === arrow.endSquare),
+  );

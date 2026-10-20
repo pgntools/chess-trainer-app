@@ -17,7 +17,11 @@ import {
   findBestMoveSessionFirstDirection,
   findBestMoveSessionRowOf,
   type FindBestMoveSessionRow,
-} from "../../../lib/findBestMoveSessionRows";
+} from "../../../lib/findBestMove/rows";
+import { sessionRecordOf } from "../../../lib/findBestMove/pgn";
+import { sessionPgnOf, sessionProjectOf } from "../../../lib/findBestMove/store";
+import { answerWordsOf } from "../../../lib/findBestMove/words";
+import { readPgnTags } from "../../../lib/pgn";
 import { downloadPgn } from "../../../lib/pgnExport";
 import { casePath } from "../../analysisV2/paths";
 import { useAnalysisCases, useAnalysisProjects } from "../../analysisV2/useAnalysisProjects";
@@ -25,10 +29,9 @@ import { useOwnPageHeading } from "../../main/pageTitle";
 import { RightPanel } from "../../main/rightPanel";
 import NewSessionForm from "./NewSessionForm";
 import { sessionPath } from "./paths";
-import { sessionProjectOf } from "./sessionCase";
 
 /**
- * **Find Best Move's sessions** (CTA-239) — `/accuracy-trainer/find-best-move-v3`,
+ * **Find Best Move's sessions** (CTA-239; v4's since CTA-244) — `/accuracy-trainer/find-best-move-v4`,
  * dev-only with the rest of the trainer: every Case of the *Find Best Move*
  * project — each a session whose PGN holds it whole — as a table
  * (`FindBestMoveSessionsTable`: name, side, moves to find, progress, found,
@@ -38,8 +41,10 @@ import { sessionProjectOf } from "./sessionCase";
  * confirmation (`DeleteManyDialog` → `removeAnalysisCases`, their unfinished
  * jobs with them). The right-hand panel is the **New session** form
  * (`NewSessionForm`), as the Lobby's is Play with Engine's new-game form. A
- * Case that is no session keeps its row, not resumable. The rows are read from the Cases'
- * PGNs (`lib/findBestMoveSessionRows.ts`) on each change of the store.
+ * Case that is no session keeps its row, not resumable — an older session
+ * (v3's) says so and opens in Analysis. The rows are read from the Cases'
+ * tags (`lib/findBestMove/rows.ts`) on each change of the store; a download
+ * projects a session from its record (`sessionPgnOf`), so it is current.
  */
 function SessionsLobby() {
   useOwnPageHeading();
@@ -69,7 +74,12 @@ function SessionsLobby() {
 
   const download = (row: FindBestMoveSessionRow) => {
     const record = records.find((each) => each.id === row.id);
-    if (record !== undefined) setDownloadFailed(!downloadPgn("find-best-move", [record.pgn]));
+    if (record === undefined) return;
+    const tags = readPgnTags(record.pgn);
+    const session = sessionRecordOf(tags);
+    // A session's file is projected from its record now; any other Case's is its PGN as kept.
+    const pgn = session === undefined ? record.pgn : sessionPgnOf(session.record, tags, answerWordsOf(t));
+    setDownloadFailed(!downloadPgn("find-best-move", [pgn]));
   };
 
   const remove = async () => {

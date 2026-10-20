@@ -110,6 +110,25 @@ describe("useVariationsExplorer — the opt-in parts", () => {
     expect(screen.queryByTestId("move-menu-chances")).toBeNull();
   });
 
+  it("offers its edits only where editableAt says so (CTA-244) — the list's and the map's menus, the comment block", () => {
+    const onEditTree = vi.fn();
+    // Only the moves after 1. e4 e5 are editable — as Find Best Move's board, the position's own lines alone.
+    const position = at(tree, "e4", "e5");
+    const editableAt = (id: string | null) => id !== null && id !== position && id !== at(tree, "e4");
+    const { unmount } = mount({ onEditTree, editableAt, map: {}, annotations: true, nodeId: at(tree, "e4") });
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+    fireEvent.contextMenu(screen.getByTestId(`x-map-go-${at(tree, "e4")}`));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+    expect(screen.queryByTestId("x-annotations-add")).toBeNull();
+    fireEvent.contextMenu(screen.getByTestId("move-ply-3"));
+    expect(screen.getByTestId("move-menu")).toBeInTheDocument();
+    unmount();
+    // Where it is editable, the comment block edits too (2. f4 carries a comment).
+    mount({ onEditTree, editableAt, annotations: true, nodeId: at(tree, "e4", "e5", "f4") });
+    expect(screen.getByTestId("x-annotations-add")).toBeInTheDocument();
+  });
+
   it("renders the map and the comment block when asked for", () => {
     mount({ map: {}, annotations: true, nodeId: at(tree, "e4") });
     expect(screen.getByTestId("x-map")).toBeInTheDocument();
@@ -468,6 +487,21 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     expect(parts.arrows).toEqual([]);
     fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
     expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+  });
+
+  it("forgets a hover once the board has moved on — no arrow for a chip that is gone", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    const view = (nodeId: string) => (
+      <AppThemeWithLang>
+        <Weighted nodeId={nodeId} arrows={{ show: false, widthSource: "games", palette: "lichess" }} />
+      </AppThemeWithLang>
+    );
+    const { rerender } = render(view(at(tagged, "e4", "e5")));
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
+    expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+    // The chip clicked, the board on the next node: the pointer never left, and the arrow is not drawn there.
+    rerender(view(at(tagged, "e4", "e5", "f4")));
+    expect(parts.arrows).toEqual([]);
   });
 
   it("colours eval arrows by quality: the best group mainline and widest, the worse thinner by loss (CTA-180)", () => {

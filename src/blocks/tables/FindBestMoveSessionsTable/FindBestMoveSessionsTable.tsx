@@ -14,7 +14,7 @@ import {
   sortedFindBestMoveSessions,
   type FindBestMoveSessionColumn,
   type FindBestMoveSessionRow,
-} from "../../../lib/findBestMoveSessionRows";
+} from "../../../lib/findBestMove/rows";
 
 export type FindBestMoveSessionsTableProps = {
   /** Every session of the project, every page of them. The table orders them by the sort (`sortedFindBestMoveSessions`). */
@@ -71,9 +71,10 @@ function TwoLines({ main, detail }: { main: string; detail: string }) {
  * screen's Delete picked; each row's **Open in Analysis** (its Case) and
  * **Download PGN**. A Case that holds no session this version reads keeps its
  * row, which says so across the columns — picked, opened in Analysis and
- * downloaded like any other.
+ * downloaded like any other; an older session (Find Best Move v3's,
+ * `older`) says it is one (CTA-244).
  *
- * Presentational: the rows (`lib/findBestMoveSessionRows.ts`), the sort, the
+ * Presentational: the rows (`lib/findBestMove/rows.ts`), the sort, the
  * page, the picks, the links and the download are props; its words are the
  * trainer's (`accuracyTrainer.sessions.*`).
  */
@@ -177,7 +178,11 @@ function FindBestMoveSessionsTable({
       rowLink={(row) => (row.session === undefined ? undefined : sessionLink(row))}
       linkColumn="name"
       rowLinkLabel={(row) => t("accuracyTrainer.sessions.open", { name: row.name })}
-      rowNote={(row) => (row.session === undefined ? t("accuracyTrainer.sessions.unreadable", { name: row.name }) : undefined)}
+      rowNote={(row) =>
+        row.session !== undefined
+          ? undefined
+          : t(row.older === true ? "accuracyTrainer.sessions.older" : "accuracyTrainer.sessions.unreadable", { name: row.name })
+      }
       rowActions={(row) => (
         <>
           <IconAction label={t("accuracyTrainer.sessions.openCaseRow", { name: row.name })} link={caseLink(row)} testId={`${testId}-case-${row.id}`}>

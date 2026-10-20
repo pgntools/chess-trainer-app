@@ -1,10 +1,8 @@
 import type { JobError, JobKind, JobOutput } from "@pgntools/jobs-runtime";
 
-import { mergeIntoAnalysisCase } from "../../../analysisCaseStore";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, turnOf, type PositionResult } from "../../../computerAnalysis";
-import { withPositionEngineLines } from "../../../findBestMoveSession";
-import { treeToPgn } from "../../../gameTree";
-import { parsePgnTree } from "../../../pgn";
+import { sessionEvents } from "../../../findBestMove/reducer";
+import { editSessionCase } from "../../../findBestMove/store";
 import { EngineSessionError, type EngineSessionDeps } from "../../engineSession";
 import { ENGINE_HEARTBEAT_MS, ENGINE_RETRY, endEngineRun, EngineServerUnreachableError, engineRunOf, evaluateInRun } from "../engineRuns";
 import {
@@ -18,22 +16,23 @@ import {
 } from "./core";
 
 /**
- * **The Evaluate Position kind** (CTA-238, `analysis.evaluate-position`) —
- * one position searched once, through the run's engine session
- * (`engineRuns.ts`); engine lane. Queued by the Accuracy Trainer's Find
- * Best Move v2 alone — `appliesTo` is empty, so no New-job dialog offers it.
+ * **The Evaluate Position kind** (CTA-238; `analysis.evaluate-session-position`
+ * since CTA-244) — one position searched once, through the run's engine
+ * session (`engineRuns.ts`); engine lane. Queued by the Accuracy Trainer's
+ * Find Best Move alone — `appliesTo` is empty, so no New-job dialog offers it.
  *
  * - **One step**: the search (MultiPV the lines asked for, to the depth
  *   asked — no early stop), its result the state. Small enough to start
  *   again: not resumable from a checkpoint, and **re-queued by itself** after
  *   a lost lease (`autoResume`) rather than waiting for Resume.
- * - **Outputs**: the result (data, `analysis.evaluate-position.result@1`) —
- *   what the trainer grades with — then its lines written into the session's
- *   Case at the position (`mergeIntoAnalysisCase`, the job's id among the
- *   Case's `merges`, so the trainer's autosave never writes the Case from
- *   before them back; applied twice, written once).
- * - **Errors**: `engine`, `storage`, `target` (the Case gone); an engine
- *   server gone away is retried.
+ * - **Outputs**: the result (data, `analysis.evaluate-position.result@1`),
+ *   then **the session's record takes it** — `editSessionCase(caseId,
+ *   [engineSearched(key, jobId, result)])`, the session's one writer: the
+ *   lines merged into the position's in its tags, the movetext re-derived.
+ *   The event is idempotent — applied twice, written once — and commutes
+ *   with the screen's writes; it lands with the trainer closed too.
+ * - **Errors**: `engine`, `storage`, `target` (the Case gone, or no longer
+ *   a session); an engine server gone away is retried.
  */
 
 export const EVALUATE_POSITION_ERRORS = ["engine", "storage", "target"] as const;
@@ -129,20 +128,10 @@ export const evaluatePositionKind = ({ engine }: EvaluatePositionKindDeps = {}):
 
   applyOutput: async (plan, input, ctx): Promise<JobOutput> => {
     if (plan.kind === "data") return { key: plan.key, kind: "data", schema: plan.schema, value: plan.value };
-    // The lines at the position, into the Case as the store holds it now — once: the job's id is the merge's.
-    const problem = await mergeIntoAnalysisCase(
-      input.caseId,
-      ctx.jobId,
-      (pgn) => {
-        try {
-          return treeToPgn(withPositionEngineLines(parsePgnTree(pgn), input.path, plan.result));
-        } catch {
-          return undefined;
-        }
-      },
-      ctx.now(),
-    );
+    // The search into the session's record as its Case holds it now — an event, so a second apply writes nothing.
+    const problem = await editSessionCase(input.caseId, [sessionEvents.engineSearched(input.key, ctx.jobId, plan.result)], { now: ctx.now() });
     if (problem === "gone") throw new EvaluatePositionError("target", "The session's case is gone.");
+    if (problem === "not-a-session") throw new EvaluatePositionError("target", "The case holds no session.");
     if (problem !== undefined) throw new EvaluatePositionError("storage", "The case could not be written.");
     return { key: plan.key, kind: "entity", ref: { type: "analysis-case", id: input.caseId }, label: input.name };
   },

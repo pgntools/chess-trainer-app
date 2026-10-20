@@ -2,54 +2,53 @@
 paths:
   - "src/views/accuracyTrainer/**"
   - "src/lib/accuracyTrainer*"
-  - "src/lib/findBestMoveSession*"
+  - "src/lib/findBestMove/**"
   - "src/lib/jobs/kinds/evaluatePosition/**"
   - "src/blocks/panels/GradedLines/**"
   - "src/blocks/panels/AccuracySessionReport/**"
   - "src/blocks/panels/AccuracyTrainerDetails/**"
   - "src/blocks/tables/FindBestMoveSessionsTable/**"
+  - "src/test/findBestMoveKit.ts"
 ---
 
-# Accuracy Trainer — Find Best Move (CTA-238, experimental, dev-only; its sessions kept in their PGN, CTA-239)
+# Accuracy Trainer — Find Best Move v4 (CTA-238; rebuilt in CTA-244 from the CTA-243 design note; experimental, dev-only)
 
 A sidebar folder of its own, **Accuracy Trainer**, for exercises that grade
 the reader's moves against an engine's. Today it holds one: **Find Best Move
-v3** — `/accuracy-trainer/find-best-move-v3`. **The exercise: find the N best
+v4** — `/accuracy-trainer/find-best-move-v4`. **The exercise: find the N best
 moves of each position, in the right order** (N, *Moves to find*, 3 to
 start). The reader loads a game, picks a side, and at each of that side's
 positions analyses on a board of their own — every move before the position
 shown, none after — each line they play from the position one of their
-moves, the lines' order their ranking; **Results** compares them with the top N
-(the game's computer analysis, or the engine's own search): which were found,
-which in their right place, each one's rank and loss; then Next — or **Next**
-straight away, which grades them and goes on without the result (CTA-240) —
-and a summary at the end. **A session is an Analysis Case whose PGN holds it
-whole** (CTA-239, §7): reloaded, opened from the **sessions lobby** — the
-route itself, `/accuracy-trainer/find-best-move-v3` (§8) — downloaded as a
-`.pgn` and loaded back, it resumes where it was left; a session's own address
-is `/accuracy-trainer/find-best-move-v3/<caseId>`, and a new one is started
-from the lobby's **New session** form, in its right-hand panel — as Play with
-Engine's Lobby holds its new-game form.
+moves, the lines' order their ranking; **Results** compares them with the top
+N (the game's computer analysis, or the engine's own search): which were
+found, which in their right place, each one's rank and loss; then Next — or
+**Next** straight away, which grades them and goes on without the result —
+and a summary at the end. **A session is an Analysis Case whose PGN's tags
+hold it whole** (§5): reloaded, opened from the **sessions lobby** (§7),
+downloaded as a `.pgn` and loaded back, it resumes where it was left; a
+session's own address is `/accuracy-trainer/find-best-move-v4/<caseId>`.
 
-(v1 — several moves suggested on a board that snapped back — and v2 — the
-first analysis board, its own tree per position — were deleted when v3
-replaced them; v3 is v2's behaviour on a cleaner model, plus the moves before
-each position.)
+**The design is [`docs/design/find-best-move-v4.md`](../../docs/design/find-best-move-v4.md)**
+(CTA-243): its §3 the requirements R1–R26, §4 the session model, §5 the PGN
+format, §6 the board / record / Case boundary, §7 the hook's split. This file
+is the build's reference; read the note for the why.
 
-> **v4 is designed** (CTA-243, [`docs/design/find-best-move-v4.md`](../../docs/design/find-best-move-v4.md)).
-> It is a clean slate: the session in PGN tags alone, the movetext a projection
-> never read back, per-position records keyed by ply, and an explicit state
-> machine. Read the note before extending v3's session or its PGN format.
+(v1 and v2 were deleted when v3 replaced them; **v3 — its session's machine
+data in `[%fbm]` movetext commands — was removed in CTA-244**: a foreign
+`[%eval]` prepended into a command's comment made positions vanish, "the
+38-to-35 bug". A v3 session Case keeps its lobby row as *an older session*,
+opens in Analysis, and is never converted — R26 dropped.)
 
 > **Dev-only.** The routes — the lobby and a session's — are in `routes.tsx`'s `devRoutes` (`React.lazy`
 > imports under `import.meta.env.DEV`), the folder and the nav entry spreads in
 > `navFolders.ts` / `navItems.ts` under the same flag, and so is the Evaluate
-> Position job kind (`lib/jobs/kinds/index.ts`, `views/jobs/kindViews.ts`): a
-> production build has no code of any of it, only the catalog strings. For the
-> same reason it has **no line in `e2e/a11y/routes.ts`** (that pass runs on the
-> production build). Shipping it: the route into `appRoutes`, the folder's,
-> the entry's and the kind's spreads dropped, the a11y route added, and
-> `dist/` grepped for `find-best-move` and `evaluate-position`.
+> Position job kind (`lib/jobs/kinds/index.ts`, `views/jobs/kindViews.ts`) and
+> v3's retired kind's name: a production build has no code of any of it, only
+> the catalog strings. For the same reason it has **no line in
+> `e2e/a11y/routes.ts`**. Shipping it: the route into `appRoutes`, the
+> folder's, the entry's and the kind's spreads dropped, the a11y route added,
+> and `dist/` grepped for `find-best-move` and `evaluate-session-position`.
 
 ---
 
@@ -57,37 +56,34 @@ each position.)
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/accuracyTrainer.ts` | **The grading**, pure: `trainingPositionsOf` (the positions a tree trains — `unevaluated` keeps those with no engine line), `sessionPositionsOf`, `withEngineResult` (an engine search merged into a position's lines), `needsEngine`, `targetOf` (the N a position asks for), `gradeSuggestion` / `gradePosition` (the reader's moves in their order against the top N), `sessionSummaryOf`, `sanLineOf`, `moveSquaresOf`, `bareSan`. |
-| `src/lib/findBestMoveSession.ts` | **The session**, pure: `FindBestMoveSession` (its side, the game's name, its N fixed — `wanted` — and which positions' lines already hold their search, `searched`) and its transitions (`startSession`, `openPosition`, `answerPosition`, `withPositionJob`, `nextUnanswered`, `leavePosition`, `reopenPassed`, `resumeSession` — CTA-239); the Case's tree (`sessionBaseTree`, `caseTreeOf`, `withSessionAnnotations`, `withPositionEngineLines`, `withPositionLines` — a graded position's lines hung as variations, CTA-239); a position's view (`positionViewOf` — the session's commands taken off the board, `withoutSessionCommands`; `candidatesOf` — the reader's moves in their order, `workOf` — their lines there, `reorderedCandidates` / `withoutCandidate` — one moved or deleted, `isAtPosition`, `positionAtPath` — the trained position the board stands at). |
-| `src/lib/findBestMoveSessionPgn.ts` | **The session in its PGN** (CTA-239, §7), pure: `withSessionRecord` (the session's tags and each position's `[%fbm …]` written into its tree), `sessionRecordOf` (read back — `undefined` for a PGN that is no session), `isSessionTree`, `sessionProgressOf` (the lobby's counts). |
-| `src/lib/findBestMoveSessionRows.ts` | **The lobby's rows** (CTA-239, §8), pure: `findBestMoveSessionRowOf` (a session Case's PGN read), `sortedFindBestMoveSessions`, the columns and their first directions. |
-| `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
-| `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
-| `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header (the way back to the lobby, New session, Download PGN) and footer, the left panel; a Case that holds no session said so. |
-| `…/FindBestMoveV3Route.tsx` | A session's route (CTA-239): the Cases read and the screen mounted keyed by the Case (`resume`), a Case not there said. |
-| `…/SessionsLobby.tsx` | **The sessions lobby** (CTA-239, §8): the project's Cases as `FindBestMoveSessionsTable`, Delete picked, Download PGN; its right-hand panel the New session form. |
-| `…/NewSessionForm.tsx` | **The New session form** (CTA-239, the lobby's right-hand panel): Game (`SessionSetup`), Board editor (the shared `PositionEditor` — a session from a position) and Settings (*Moves to find*, *Use the engine*, *Show next-move arrows*) tabs, a full-width Start (Resume) under all three — the Case made (`sessionStartTreeOf` / `positionSessionTreeOf`, `createSessionCase`), then opened. `…/sessionSetup.ts` its reading of what is loaded (`setupReadingOf`: a session PGN, or the positions to train, and whether Start can go). |
-| `…/paths.ts` | The addresses: the lobby, `sessionPath(caseId)`. |
-| `…/SessionSetup.tsx` | The form's Game tab: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one) or an Analysis Case (`CasePickerDialog`, the Projects and Cases stores read only while it is open), the side — and a session's own PGN known by its tags (CTA-239). |
-| `…/sessionCase.ts` | The session's Case made: the tree it starts from (`sessionStartTreeOf` — a session PGN as it is, or a game's mainline with a new session written in), the *Find Best Move* project found or made (`sessionProjectOf`, the lobby's too), a Case of the session's PGN. |
-| `…/useEvaluatePositionJobs.ts` | The screen's side of the job kind: queue one (the Engine menu's search), read each job's state and result, the done ones' ids (the Case's merges). |
-| `…/Main.tsx`, `…/LobbyMain.tsx` | Layout-only wrappers (`find-best-move-v3-wrapper`, `find-best-move-sessions-wrapper`). |
-| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the session's summary; the left panel (the game, its Case, Settings); the lobby's table (CTA-239). |
-| Tests | `lib/accuracyTrainer.test.ts`, `lib/findBestMoveSession.test.ts`, `lib/findBestMoveSessionPgn.test.ts` (the format: the round trip, a PGN that is no session, the leniency, the board without the commands — CTA-239), `lib/findBestMoveSessionRows.test.ts`, `lib/jobs/kinds/evaluatePosition/*.test.ts`, `findBestMoveV3/FindBestMoveV3.test.tsx` (mounted through the lobby and its route: started from the form, a reload resuming, Download, a session PGN resumed from the form, a Case that is no session, one not there), `findBestMoveV3/SessionsLobby.test.tsx`, the blocks' own, the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
+| `src/lib/accuracyTrainer.ts` | **The grading**, pure (§1–§2): `trainingPositionsOf`, `sessionPositionsOf`, `trainingPositionFrom`, `withEngineResult`, `needsEngine`, `targetOf`, `gradeSuggestion` / `gradePosition`, `sessionSummaryOf`, `moveSquaresOf`, `bareSan`. Reused by v4 as is. |
+| `src/lib/findBestMove/model.ts` | **The record** (§3): `FindBestMoveRecord`, `PositionRecord`, the two axes `AnswerState` / `EngineState`, the position key; the recorded game replayed once (`replayGame`), a key's path, FEN and game move, `trainingPositionOf` (the grading's `TrainingPosition`, derived, never stored), `storedLinesOf`. |
+| `src/lib/findBestMove/reducer.ts` | **The transitions** (§3.2): `sessionReducer`, `reduceSession`, the events `sessionEvents.*` — an event that does not apply answers the same record. |
+| `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
+| `src/lib/findBestMove/pgn.ts` | **The format, version 2** (§5): `isSessionTags` (the one predicate — Analysis's S3 reads it), `isOlderSessionTags`, `withoutSessionTags`, `sessionTagsOf` / `withSessionTags`, `sessionRecordOf` (lenient: `SessionIssue`s), the work fragment (`workFragmentOf`, `workFromFragment`). |
+| `src/lib/findBestMove/projection.ts` | **The projections** (§4, §5.3): `sessionMovetextOf` (the readable game), `boardTreeOf` (the board at a position), `workOf`, `candidatesOf`, `reorderedCandidates`, `withoutCandidate`, `isAtPosition`, `isWorkNode` (S5's predicate); `AnswerWords`. |
+| `src/lib/findBestMove/start.ts` | A session from a game (`sessionFromGame`) or one position (`sessionFromPosition`); `sourceHeadersOf` (the game's tags but its analysis's). |
+| `src/lib/findBestMove/store.ts` | **The one writer** (§6): `editSessionCase`, `sessionTreeOf` / `sessionPgnOf`, `sessionProjectOf`, `createSessionCase` (S4's `writeEvals: false`), `duplicateSessionAsPlainCase` (S3). |
+| `src/lib/findBestMove/rows.ts` | **The lobby's rows** (§7), from the tags alone: `findBestMoveSessionRowOf` (`older` for a v3 session), `sortedFindBestMoveSessions`, the columns. |
+| `src/lib/findBestMove/words.ts`, `paths.ts` | The answers worded from the catalog (`answerWordsOf`); the addresses (`FIND_BEST_MOVE_PATH`, `findBestMoveSessionPath` — in `lib/` so Analysis can name them). |
+| `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind**, `analysis.evaluate-session-position` — [`jobs.md`](./jobs.md) §3.2. |
+| `src/views/accuracyTrainer/findBestMoveV4/` | **The screen** (§8): `useSessionCase.ts` (persistence), `useSessionBoard.ts` (the board), `useReplay.ts` (the replay), `useSessionEngine.ts` (the engine jobs), `useFindBestMove.ts` (their composition, the actions), `FindBestMove.tsx` (composition alone), `FindBestMoveRoute.tsx` (a session's arrival), `SessionsLobby.tsx`, `NewSessionForm.tsx`, `SessionSetup.tsx` + `sessionSetup.ts` (the form's Game tab and its reading), `paths.ts`, `Main.tsx` / `LobbyMain.tsx` (layout-only). |
+| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the summary; the left panel (the game, its Case, Your moves, Results, Settings); the lobby's table (`older` rows said). |
+| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts` (a retired v3 job too); `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
 
-Routes and nav: `/accuracy-trainer/find-best-move-v3` — the sessions lobby, the
-table in the board square and the New session form in the right-hand panel,
-`pages.findBestMoveV3` (and `pageDescriptions.findBestMoveV3`) — and
-`/accuracy-trainer/find-best-move-v3/:caseId` — a session, a board route,
-`pages.findBestMoveV3Session` (CTA-239); the dev-only top-level folder
-`accuracy-trainer` (`nav.folders.accuracyTrainer`, after the Engine — a
-top-level folder with one screen stays a folder), its screen
-`nav.findBestMoveV3`, marked `experimental` (`NavItem.experimental`, carried by
-`navTree.ts`, drawn by `Sidebar.tsx` as a chip, `nav.experimental`; the
-screen's header carries the same chip). `options.id` `find-best-move-v3`.
-Locale keys: `accuracyTrainer.*` (`setup`, `casePicker`, `position`,
-`session`, `details`, `lines`, `report`, and the lobby's and a session's own
-`sessions` — CTA-239), in both catalogs.
+Routes and nav: `/accuracy-trainer/find-best-move-v4` — the sessions lobby,
+the table in the board square and the New session form in the right-hand
+panel, `pages.findBestMoveV4` (and `pageDescriptions.findBestMoveV4`) — and
+`/accuracy-trainer/find-best-move-v4/:caseId` — a session, a board route,
+`pages.findBestMoveV4Session`; the dev-only top-level folder
+`accuracy-trainer` (`nav.folders.accuracyTrainer`), its screen
+`nav.findBestMoveV4`, marked `experimental` (`NavItem.experimental`, a chip
+in the sidebar, `nav.experimental`; the screen's header carries the same
+chip). `options.id` `find-best-move-v4`. Locale keys: `accuracyTrainer.*`
+(`setup`, `casePicker`, `position`, `session` — its `answer.*` the movetext's
+words —, `details`, `lines`, `report`, `sessions` — the lobby's and a
+session's own, `older` / `olderSession`, `readIssue`, `writeProblem`), and
+Analysis's notice `analysisV2.workspace.session.*`, in both catalogs.
 
 ---
 
@@ -137,266 +133,224 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   best loss where known; the inaccuracies, mistakes, blunders and moves not
   among the lines.
 
-## 3. The session — one tree, the Case's
+## 3. The session — a record, keyed by ply
 
-**The Case's tree is the session's one truth** (`lib/findBestMoveSession.ts`).
+All of it pure (`src/lib/findBestMove/`); React, the stores and the router
+never reach it but through `store.ts`.
 
-- **Start** (`startSession`, then `createSessionCase`) makes a Case in **one**
-  project, *Find Best Move* (`accuracyTrainer.session.projectName`, at the top
-  level — found by its name, else made, `sessionProjectOf`), named "<game> — Find Best Move",
-  holding **the game's mainline alone** (`sessionBaseTree`: its moves and
-  tags, none of its comments, NAGs, side lines or analysis tags) **with the
-  new session written in** (CTA-239, §7 — its tags and each position's
-  command, the positions' lines among them: the source's analysis is not in
-  the tree, so it is in the commands) — then opens it at its address, where
-  the screen resumes it from that PGN as a reload would (§8). Start is the
-  lobby's New session form's. A refused write is said above its Start, and
-  nothing starts.
-- **A position's view** (`positionViewOf`): the Case's tree **with the
-  position's continuation set aside** — its node's children: the game's next
-  move and everything after it, the engine's lines there, the answers further
-  on. The board opens on that tree, on the position (`goToNode`), facing the
-  side to move. **Every move before the position shows** — the game's moves,
-  and the session's work at earlier positions (the reader's lines, the
-  engine's, the answers).
-- **The Case's tree now** (`caseTreeOf`): the board's tree with the
-  continuation put back — the hidden moves first, so the game's move stays the
-  mainline, then the reader's moves from the position merged in by SAN — and
-  the session's annotations written (`withSessionAnnotations`: each done job's
-  engine lines, each graded answer as a comment on its position; idempotent).
-  **Everything the reader does is kept** — at the position and before it (a
-  comment on an earlier move, a side line there) — **but for a board that lost
-  the position** (a *Delete from here* before it would take the rest of the
-  game with it): that board's tree is not kept, the tree the position opened
-  on is.
-- **The reader's own lines at each position** (`work`): kept on their own
-  when the position is left (`leavePosition`, the board's moves from it) and
-  put back on the board when it opens again (`openPosition`). The Case holds
-  them too, merged — with the game's own moves where they meet (the reader
-  played the game's move), so there they cannot be told apart, and the view
-  hides everything under the position: the game's continuation and the
-  engine's lines stay hidden, the reader's lines come back.
-- **Autosaved** (`useAutosave` → `saveCaseState`) on every change, its merges
-  the done jobs' ids (§4) and the ones the Case held when it was read — **and
-  the session itself with it** (`withSessionRecord`, CTA-239): every change of
-  the session's state is a change of the Case's PGN, so nothing of it lives
-  only in memory. **Opening** another position (`openPosition`) takes the
-  Case's tree as it stands now. **The board never holds the session's
-  commands** (`positionViewOf` → `withoutSessionCommands`): they would give
-  the answer away in a comment dialog; the writer puts them back on every save.
-- **The answer** is written once it is graded — never while it waits, so a
-  comment is never rewritten: "Find Best Move: 1. e4 (#1, Best), 2. Nf3 (#3,
-  Good), 3. h3 (not among the lines) — 2 of the top 3, 1 in place", "Find
-  Best Move: passed" (`accuracyTrainer.session.answer.*`). **With it, the
-  position's lines** (CTA-239, `withPositionLines`): every line graded
-  against, hung as a variation with its `[%eval]` — so the Case shows them to
-  any PGN reader; a pass's stay out of the tree, hidden.
+### 3.1 The record
 
-- **On to the next position** — Next after a check; or a Pass, or **Next
-  while answering** (CTA-240, the hook's `checkAndNext`: the moves graded as
-  Results grades them — the answer written once, `goOn(answerPosition(…))`,
-  the engine asked as `answer` asks it — the Result tab never opened, the
-  answer in Results and the summary as any other's), which **go on at once** (the summary after the last): the board starts at the position
-  just answered and **plays the game's moves to the next one out, one every
-  second** (`STEP_DELAY_MS`, the hook's `stepDelayMs` — the screen's prop, a
-  test's own): the reader's side's game move, then the reply. A step that
-  finds the board moved by the reader stops the rest. Opening a position
-  from the summary or *Answer it now* jumps straight there.
-- **A pass is "later"** — put off, not given up: its lines stay hidden (Your
-  moves shows it passed; the summary's best moves for it "–"; no answer
-  arrow), and **Answer it now** — on Your moves when the board is back at it
-  (or on Result, opened from the summary) — opens it again as the
-  position on screen (`reopenPassed` over the Case's tree as it stands, the
-  one on screen left first), the pass and its comment taken back
-  (`withoutPositionComment`). After Results, Next goes on to the next position
-  still to answer — the one the reader left, their lines there back. An
-  answer with moves is final.
+- **A position's identity is its key** (`PositionKey`): the ply of its move
+  in the session's **recorded game** — the start FEN and the mainline's SANs,
+  copied when the session starts and never edited after. Not an index, not a
+  FEN (a FEN repeats), not a tree node (ids do not survive a PGN). Order is
+  the keys' numeric order.
+- **The manifest** (`keys`) is fixed at start (R5): no later edit adds, drops
+  or reorders a position. `current` is always one of them.
+- **One `PositionRecord` per key**: its `lines` (every line graded against —
+  the source's, then the engine's merged in; they only grow), its `answer`
+  and `engine` axes, and its `work` (the reader's own lines there, a tree
+  from its FEN — comments and glyphs with them).
+- **A `TrainingPosition` is derived** (`trainingPositionOf`) from the game and
+  the lines, so it cannot drift from them; `gradePosition` takes it.
 
-## 4. The engine — the Evaluate Position job
+### 3.2 The two axes, and the reducer
 
-The left panel's **Use the engine** (off); the lines it is asked for are the
-moves to find, N.
+- **Answer**: `open` → `answered(moves)` (one or more, final) or `passed`;
+  `passed` → `reopened` (*Answer it now*, only ever `current`) → `answered`
+  or `passed` again.
+- **Engine** (left `idle` unless *Use the engine* is on and the top lines are
+  fewer than N, `needsEngine`): `idle` → `wanted` (a first move there, or a
+  check — persisted, so a reload still queues it) → `queued(jobId)` →
+  `searched(jobId)` (its lines merged — `withEngineResult`'s rule) or
+  `failed`. `searched` and `failed` are terminal: **a position's engine is
+  never asked twice**, by the type. A pass never waits.
+- **`sessionReducer(record, event)`**, pure; an event that does not apply
+  returns the **same record by reference**, so "changed" is `!==` and a write
+  of nothing writes nothing. `goTo` is the only way `current` changes, and it
+  **leaves** the position on screen first — a reopened pass left unanswered is
+  passed again, in that one place. The flow's compound actions are event
+  lists applied in one write: Next while answering `[workRecorded, answer,
+  next]`, Pass `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
+  reopen]`.
+- **The invariants** (held by a seeded random walk in `reducer.test.ts`):
+  `current ∈ keys` and `positions` has exactly the keys; at most one
+  `reopened`, and it is `current`; an answer is non-empty and never changes;
+  the engine axis never leaves `searched` / `failed` nor re-enters `idle`; the
+  lines only grow, only through a search; work is a tree from its position.
 
-- **On, the setup takes any game** (`unevaluated`). A game loaded before the
-  switch is kept, and whether it trains is read from it as it stands, so the
-  switch takes it — and off again refuses it, the refusal naming the way out.
-- **A position with fewer top lines than N** (`needsEngine`) is searched
-  by an **Evaluate Position job** ([`jobs.md`](./jobs.md) §3.2) — queued by
-  the reader's **first move there** (the hook's wrapped `onPieceDrop` /
-  `resolvePromotion`, a move made on or inside the position), or by a check
-  (Results, or Next while answering) if none was; once per position — a check while it is being queued already
-  waits for it. Its search is the top bar's Engine menu's (the
-  board's engine and its selected preset, depth, move time, Threads, Hash),
-  MultiPV N. The footer says while it searches.
-- **A check waits for its search**: the Result tab says so, and the moves are
-  graded against the position with the engine's lines once the job ends. A job
-  that fails, is cancelled or gone: graded with the tree's lines alone, and
-  said. A pass never waits.
-- **The job and the autosave never undo each other**: the job writes its lines
-  into the stored Case under its id (`merges`); the session's state carries
-  the ids of the jobs it has seen done — and, read back, every merge the Case
-  held — so `saveCaseState` writes no tree from before them, and its own tree
-  holds the same lines.
-- **A job over is written as such** (CTA-239): its search's lines go into the
-  position's stored lines and its command names it `searched:` — so a session
-  read back grades the same, never waits for it again, and never asks for
-  another, even once the runtime has forgotten the job. A job still running
-  is `job:`, and a session read back waits for it as before.
+### 3.3 What the panels read
 
-## 5. The screen
+`phaseOf` — one pure function of the two axes: `answering` (the one on
+screen, open or reopened), `unanswered`, `waiting` (answered, its engine
+`wanted` / `queued`), `graded` (`engineFailedAt` flags one graded without its
+engine), `passed`. `gradeOf` (a pass grades as one, for the summary),
+`resultsOf` (every answered or passed position and the one being answered,
+in game order), `summaryOf`, `progressOf` (the lobby's — from the record
+alone, so it is what the screen says), `nextOpen` (**the first `open` key
+after `current`** in the manifest), `positionAtPath` (the trained position
+the board stands at, never past `current`), and `replayPlan(record, from,
+to)` — the recorded game's SANs between two keys, **capped at
+`REPLAY_MAX_PLIES` = 2**: a longer gap (where positions between were not
+trained) starts two plies short of `to`.
 
-- **Composition alone** (`FindBestMoveV3.tsx`): the hook decides; the screen
-  places. `BoardShell` over the core with the hook's wrapped drops, the
-  explorer (`useVariationsExplorer` with editing on, `playChances: false`,
-  `annotations`, `arrows: { show }`, `map: { linked: true }` —
-  [`tree-views.md`](./tree-views.md)), no engine of its own.
-- **The board moves** only on the position or inside a line from it while the
-  position is answered (`isAtPosition`); once answered, anywhere.
-- **The reader's moves** (`candidatesOf`): **each line they play from the
-  position is one, the lines' order their ranking** — a new line goes last,
-  and the move menu's *Promote variation* / *Make main line* reorder them; a
-  reply inside a line is analysis, not a move of theirs. The footer lists
-  them ("Your moves: 1. Nf3 2. d4 3. c4") over the row **New move · Pass ·
-  Results (n) · Next** (CTA-240): **New move** takes the board back to the
-  position's node (`newMove`, off while it stands there — `onPosition`, the
-  node itself, not `atPosition`'s lines from it), so the next move played is
-  a new line; **Results** (outlined, off with none) grades and opens Result;
-  **Next** (contained, off with none) grades and goes on.
-- **The right panel**: **Moves · Map ·
-  Result** (off until answered) **· Summary**; the header — the way back to
-  the sessions (CTA-239), the *Experimental* chip, "Position 3 of 12 · 12.
-  White", then at its end **New session** (an icon, CTA-240 — back to the
-  lobby, where its form is) and **Download the session's PGN** (its Case's PGN as the autosave
-  writes it); the footer — the
-  comment block, the next-moves bar (Moves), the instructions, the reader's
-  moves and the engine's word while answering, New move · Pass · Results ·
-  Next while answering, or Next / Summary once answered. **Result** (`GradedLines`): the headline (found, in place;
-  every one in place; none; a pass), the lines best first — rank, move, eval,
-  loss, the reader's rank for it (*In place*), its verdict — a line under the
-  top N.
-- **The arrows**: the explorer's; once graded, on the position itself, the
-  top N in green and the reader's moves outside them in red over them.
-- **The left panel** (`AccuracyTrainerDetails`, `BoardLeftPanel` with
-  `keepShell`; a drawer under the breakpoint, opened from the header): the
-  game's name (the exercise's before), the session's Case linked, then tabs —
-  **Your moves** (where a session opens) — **the trained position the board
-  stands at** (`positionAtPath`: the position on screen inside its lines, an
-  earlier one when the reader steps back to it or past it), named ("Position
-  1 of 12 · 1. White"): being answered, the reader's moves in their order,
-  each **moved up or down** or **deleted** on the board itself
-  (`reorderedCandidates`, `withoutCandidate` through `core.replaceTree`: a
-  move is its line, so its line moves or goes with it); checked, **every one
-  of the engine's lines best first — rank, move, eval, loss — the reader's
-  moves marked** in it (*Yours #n*, *In place*, the verdict), a bolder line
-  closing the top N, the reader's moves none of the lines has after it, and
-  the headline (`gradeHeadlineOf`, `GradedLines`'); checked and waiting for
-  the engine, the moves and a word; an earlier position skipped, not answered
-  yet. **Results**: every position answered or passed — and the one being
-  answered now, *Answering now* — in game order, one row each: the move, the
-  game's move, the score (found / in place, *Perfect*), *waiting for the
-  engine*, or *Passed · Answer it*; the one the board stands at current. A
-  click goes back to it: an answered one opened on its result (Result), a
-  passed one to answer it now (`answerAgain`, Moves), the one being answered
-  the board back on it — straight there, nothing played out. **A pass
-  reopened stays in its place**: answered now while it is on screen, and
-  **left unanswered it is passed again** (`reopened`, `leavePosition`). And **Settings** — *Moves to
-  find* (locked while a session runs), *Show next-move arrows*, *Use the
-  engine*. (Named *Your moves*, not *Moves*: the right panel's Moves is the
-  move list.)
+## 4. The board — a projection of the record
 
-## 6. Extending it
+- **`boardTreeOf(record, key)`**: the recorded game up to the position; at
+  every earlier position its graded lines with their `[%eval]`, its answer
+  worded and the reader's work there — as the movetext projects them; at the
+  position, **its work alone** (anything earlier that ran on through it is
+  cut there). Loaded when `current` changes (and as the screen mounts), facing
+  the side to move.
+- **One thing is read back**: the position's subtree, the reader's work
+  (`workOf` → `workRecorded`) — written a moment after the board changes and
+  always first in an action's event list. The board is never written to the
+  Case as a tree; a board move serialises nothing.
+- **Where it moves** (R9): on the position or inside a line from it
+  (`isAtPosition`). **Where it edits** (R7, S5): strictly under the position
+  (`isWorkNode` → the explorer's `editableAt`) — the move menu, the comment
+  block and shape drawing are offered nowhere else, so the session's own
+  moves are never the reader's to change, and nothing is silently lost.
 
-- **A new measure**: a field of `SessionSummary` (`sessionSummaryOf`), its
-  test, a row in `AccuracySessionReport` and its key.
-- **Another grading rule**: in `gradeSuggestion` / `gradePosition`, pure, with
-  its test; the blocks read the grade.
-- **Another session step** (a hint, a retry): a transition in
-  `lib/findBestMoveSession.ts`, its test, an action of the hook.
-- **A new piece of session state** (CTA-239): a field of the session, its
-  tag or command field written and read in `lib/findBestMoveSessionPgn.ts`
-  (absent reads as its default — no version bump while an older PGN still
-  reads), §7's table, and the round-trip test. Bump `SESSION_FORMAT_VERSION`
-  only for a change an older reader would misread; a PGN of another version
-  is no session to this build.
+## 5. The session in its PGN — format 2, tags alone
 
-## 7. The session in its PGN (CTA-239)
-
-**The Case is the session**: its PGN holds everything the session is —
-`lib/findBestMoveSessionPgn.ts` writes it on every autosave
-(`withSessionRecord`) and reads it back (`sessionRecordOf`); no store, no
-database, no field of the Case's own. Readable in any PGN viewer: the game,
-the reader's variations, the engine's lines with their `[%eval]`, the answers
-as comments; the trainer's machine data is in tags and one `[%fbm]` command
-per position alone (`readComment` shows it as no chip — [`pgn-annotations.md`](./pgn-annotations.md) §2).
+**Every byte of session state is in the header**; the movetext holds none of
+it and is never read by the session. No movetext writer — the Analysis
+engine's `[%eval]`, a job's engine line, a typed comment, a promotion, the
+Analysis autosave — can reach the session (`pgn.test.ts` holds them to it).
 
 | Tag | Value |
 | --- | --- |
-| `FindBestMove` | The format's version, `1` — **what makes a PGN a session**; another version is none to this build |
+| `FindBestMove` | `2` — **what makes a PGN a session**; any other value (v3's `1`) is none (`isOlderSessionTags`: an older session) |
+| `FindBestMoveName` | the game's name (job titles, the lobby) |
 | `FindBestMoveSide` | `white`, `black` or `both` |
-| `FindBestMoveMoves` | N, the moves to find (1–10; unreadable: 3) |
-| `FindBestMoveEngine`, `FindBestMoveArrows` | `on` / `off` — *Use the engine*, *Show next-move arrows* |
-| `FindBestMovePosition` | The position on screen, 1-based |
-| `FindBestMoveStatus` | `ongoing` / `done` — for a reader of the file; the session reads it from its positions |
-| `FindBestMoveGame` | The game's name (its jobs' titles) |
+| `FindBestMoveMoves` | N, 1–10 (unreadable: 3) |
+| `FindBestMoveEngine`, `FindBestMoveArrows` | `on` / `off` |
+| `FindBestMoveGame` | the recorded game's SANs, space-separated (empty for a session from a position); its start the `SetUp` / `FEN` pair |
+| `FindBestMoveKeys` | the manifest, ascending, comma-separated |
+| `FindBestMoveCurrent` | the position on screen, a key |
+| `FindBestMoveStatus` | `ongoing` / `done` — written, never read |
+| `FindBestMove_<key>` | `state:` (`open` / `answered` / `passed` / `reopened`) `answer:` (`Nf3,d4`) `lines:` (`<moves dot-joined>/<White's score: cp or #N>/<l listed, p the game's move>`, the game's move by itself alone) `engine:` (`wanted`, `queued/<id>`, `searched/<id>`, `failed[/<id>]`; absent idle) — fields absent when empty |
+| `FindBestMoveWork_<key>` | the reader's lines there, a PGN movetext fragment from its FEN on one line (`treeToPgn`'s own writing — comments and glyphs ride along; `"` and `\` escaped, S1) |
 
-**A position's command** — `[%fbm …]`, the first comment on the move the
-position follows (the game's opening comment for the start); the positions
-are the moves carrying one, in game order. Its fields, `key:value`,
-space-separated, absent when empty:
+- **Every write drops every `FindBestMove*` tag** and writes the record whole
+  (`withSessionTags`), so stale data lives until the next write at most.
+- **Reading is lenient about fields, strict about structure**
+  (`sessionRecordOf` → `{ record, issues }`): no `FindBestMove "2"`, a game
+  that does not replay, or no manifest — no session; a manifest key whose tag
+  is lost — **kept, open**, said (never skipped: the count is the
+  manifest's); a key naming no position of the game — left out, said; a field
+  that does not parse — its default, said; a work fragment that does not
+  parse — none, said; `reopened` off screen — `passed`; `current` outside the
+  manifest — the first open key. The screen says the issues once
+  (`accuracyTrainer.sessions.readIssue`).
+- **The movetext is a projection** (`sessionMovetextOf`): the recorded game as
+  the mainline under the source's own tags; at a graded position every line
+  hung as a variation, its first move carrying its `[%eval]`, then the answer
+  worded on the game's move ("Find Best Move: 1. e4 (#1, Best), … — 2 of the
+  top 3, 1 in place"); at a waiting one "… — waiting for the engine"; at a
+  pass "Find Best Move: passed", its lines hidden; at every position the
+  reader's work grafted in. Re-derived on every write, never read back — so
+  an answer comment is rewritten freely, and a foreign edit lasts until the
+  next write. Its words are the catalog's in the writer's language
+  (`answerWordsOf`).
+- **Download** (the screen's and the lobby's) projects from the record at
+  that moment — the screen's with the board's work in — so the file is
+  current even where the stored movetext lags.
+- **Extending it**: a new piece of state is a field of the record, its tag or
+  field written and read in `pgn.ts` (absent reads as its default — no bump
+  while an older PGN still reads), §5's table, and the round-trip test. Bump
+  `SESSION_FORMAT_VERSION` only for a change an older reader would misread.
 
-| Field | Value |
-| --- | --- |
-| `game:` | The game's move there — absent for a session from a position alone |
-| `state:` | `open` (not answered), `answered`, `passed`, `reopened` (a pass being answered again — only on screen; anywhere else read as a pass) |
-| `answer:` | The reader's moves in their order, `Nf3,d4,c4` |
-| `lines:` | **Every line the position is graded against** — the source's analysis and the engine's search together — each `<moves>/<score>/<flags>`: its moves from the position dot-joined (the game's move by its first alone), its score in White's view (centipawns, `#N` a mate), `l` one of the engine's listed lines, `p` the game's move: `e4/30/lp,d4.d5.c4/25/l`. A position rebuilt from them (`trainingPositionFrom`) is the one the source gave. |
-| `work:` | **The reader's own lines there** — each line to a leaf dot-joined, the leaves `\|`-separated in the tree's order (`Nf3.d5\|Nf3.Nf6\|d4`): their first moves' order is their ranking. Read back, each move takes the comments and glyphs the Case holds for it, but an `[%eval]`. |
-| `job:` / `searched:` | Its Evaluate Position job — `searched:` once it is done, its lines in `lines:`: waited for no more. A job that failed stays `job:`, read back as it reads live (graded with the lines there are, said) |
+## 6. Who writes the Case — one writer
 
-**Why the lines and the work are written out**: the Case's tree alone cannot
-tell them apart — the source's analysis is not in it, and a reader's line, an
-engine's line and the game's continuation merge where they share a move. So
-grading is reproduced from the command, never re-read from the tree.
+**`editSessionCase(caseId, events)`** (`store.ts`), over S2's
+`editAnalysisCasePgn`: inside the Case store's queued write it reads the
+record from the tags (`readPgnTags`, no movetext parse), reduces, and writes
+the PGN only when the record changed. **Both writers use it** — the screen
+(every action) and the Evaluate Position job (`engineSearched`) — and each
+applies an event to the record stored at that moment, so **their writes
+commute**: no `merges`, no "behind a merge". Two tabs converge through the
+engine unit's echo (an idempotent `engineSearched`); a job's search lands
+with the trainer closed. `"gone"` / `"not-a-session"` for a Case not there or
+no longer a session; a refused write leaves the screen as it was, and says so
+(`accuracyTrainer.sessions.writeProblem`).
 
-## 8. The lobby and resuming (CTA-239)
+**A session Case opened in Analysis is read-only** (S3, R24 —
+`CaseWorkspace`'s `CaseBoard`, `isSessionTags`): the board navigates but takes
+no move, no edit, no Play and no evaluation, and autosaves nothing; a notice
+offers *Resume in Find Best Move* (dev builds) and *Duplicate as a plain
+case* (`duplicateSessionAsPlainCase`: the readable game, none of the session's
+tags). Its Case is made with `display.writeEvals` off (S4) besides.
 
-- **The lobby** (`/accuracy-trainer/find-best-move-v3`, `SessionsLobby`): every
+## 7. The lobby, a new session, resuming
+
+- **The lobby** (`/accuracy-trainer/find-best-move-v4`, `SessionsLobby`): every
   Case of the *Find Best Move* project (`sessionProjectOf`, by name in the
-  reader's language, as Start finds it) as `FindBestMoveSessionsTable` — Name
-  (its link resumes it), Side, Moves to find, Progress (answered or passed of
-  all; how many each), Found (the best moves found of those to find, how many
-  in place — over the graded positions, a check still waiting for its search
-  not yet), Status (*Ongoing* / *Done* — nothing left to answer), Updated;
-  every header sorts, newest first, the sort and page the URL's; each row's
-  Open in Analysis and Download PGN; picks deleted together after one
-  confirmation (`removeAnalysisCases` — their unfinished jobs with them).
-  **The right-hand panel is the New session form** (`NewSessionForm`, as the
-  Lobby's new-game form is Play with Engine's): **Game** — the game loaded
-  (a PGN uploaded or pasted, or a Case picked) and the side —, **Board
-  editor** — the shared position editor ([`position-editor.md`](./position-editor.md)):
-  a position other than the standard start is the session's, over any game
-  loaded (the Game tab says so, the FEN with *Edit* and *Use a game
-  instead*), Start off with why while it cannot be answered (illegal, or no
-  move for the side to move) — and **Settings** — *Moves to find*, *Use the engine* (with it on, a game with no
-  engine lines trains too), *Show next-move arrows* — with a full-width
-  **Start** under all three, off while there is nothing to ask; it makes the
-  session's Case and opens it. A Case there that holds no session (one
-  from before CTA-239, one put there by hand) keeps its row, which says so —
-  it opens in Analysis and downloads, but does not resume.
-- **Resuming** (`…/<caseId>`, `FindBestMoveV3Route`): the Cases read, the
-  screen mounts keyed by the Case and reads its PGN once
-  (`sessionRecordOf` → `resumeSession`): the position on screen opened (on
-  its Result tab when it is answered), the reader's lines there back on the board, the settings (*Moves to find*
-  locked, *Use the engine*, the arrows) as they were, every answer graded as
-  before. A Case that holds no session says so with its link into Analysis;
-  one not there says so with the way back.
-- **A session from a position** (`positionSessionTreeOf`): the position
-  alone, no game — **one position**, the side to move's, named "Position —
-  White to move", **no line of its own**: the engine finds them (the
-  session's *Use the engine* on, whatever the form's switch said), and its
-  command has no `game:` (the panels show "–" for the game's move).
+  reader's language) as `FindBestMoveSessionsTable` — Name (its link resumes
+  it), Side, Moves to find, Progress, Found, Status, Updated; sortable, newest
+  first, the sort and page the URL's; each row's Open in Analysis and
+  Download PGN; picks deleted together after one confirmation
+  (`removeAnalysisCases` — their unfinished jobs with them). **Rows are read
+  from the tags alone**. A Case that holds no session keeps its row, which
+  says so; **an older session** (v3's) says it is one — it opens in Analysis
+  and downloads as kept, but does not resume.
+- **The New session form** (`NewSessionForm`, the lobby's right-hand panel):
+  **Game** (a PGN uploaded or pasted — a file of several picks one — or a
+  Case picked; the side), **Board editor** (a position other than the
+  standard start is the session's — one position, the side to move's, no line
+  of its own: the engine finds them, its switch on whatever the form said —
+  Start off with why while it cannot be answered) and **Settings** (*Moves to
+  find*, *Use the engine* — on, a game with no engine lines trains —, *Show
+  next-move arrows*), a full-width **Start** under all three. Start makes
+  the session (`sessionFromGame` / `sessionFromPosition`) and its Case
+  (`createSessionCase`) and opens it.
 - **A session PGN loaded in the form** (a downloaded one, or a session Case
-  picked): known by its tags — said as a session, how far it got, the side
-  toggle off — and **Resume**, in Start's place, keeps it as it is, a **new**
-  Case in the project, opened where it was left. A plain game starts a fresh
-  session.
+  picked): known by its tags, said with how far it got, the side toggle off —
+  **Resume** in Start's place makes a **new** Case of it, where it was left
+  (R6). An older session's PGN is said as one this version cannot read.
+- **A session's address** (`FindBestMoveRoute`): the Cases read first, then
+  the screen keyed by the Case; a Case not there, one that holds no session
+  and an older session each say so, with the way on.
+
+## 8. The screen — four units over the reducer
+
+| Unit | Owns |
+| --- | --- |
+| `useSessionCase(caseId)` | the Case store's snapshot, the record parsed from its tags (memoised on the Case's row), `dispatch(events)` through `editSessionCase`, the write problem |
+| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove`); the debounced `workRecorded` and `flushWork`; the replay's start |
+| `useReplay` | the timers: the board put on the plan's start, then one ply every `stepDelayMs` (`STEP_DELAY_MS`, 1 s — a prop for tests), stopped once the reader moves the board. No chess |
+| `useSessionEngine` | an Evaluate Position job queued for every `wanted` position (the Engine menu's search, MultiPV N; an in-flight set so no render queues twice), then `engineQueued` / `engineFailed`; the queued jobs watched and echoed — `engineSearched` with a done job's result, `engineFailed` for one failed, cancelled or gone |
+
+`useFindBestMove` composes them and names the actions (each one event list,
+one write, the board's work flushed first); `FindBestMove.tsx` places what it
+returns. **Results** (outlined) grades and opens Result; **Next** while
+answering grades and goes on; **Pass** puts it off and goes on — both play
+the game's moves to the next position out (capped); **New move** takes the
+board back to the position node; a click on Results or the summary goes
+straight there. The right panel: **Moves · Map · Result** (off until
+answered) **· Summary**; the header — back to the sessions, the
+*Experimental* chip, "Position 3 of 12 · 12. White", New session (an icon) and
+Download PGN; the footer — a read issue, a refused write, the comment block,
+the next-moves bar, the instructions, the reader's moves, the engine's word,
+then New move · Pass · Results (n) · Next, or Next / Summary once answered.
+**The arrows**: the explorer's; once graded, on the position itself, the top
+N in green and the reader's moves outside them in red. **The left panel**
+(`AccuracyTrainerDetails`, a drawer under the breakpoint): the game's name,
+its Case linked, then **Your moves** (the trained position the board stands
+at — answering, its moves to reorder or delete; waiting; graded, every line
+with the reader's marked; passed, with *Answer it now*; not answered yet),
+**Results** (in game order, the one the board stands at current; a click back
+to each — a passed one to answer it now) and **Settings** (*Moves to find*
+locked, *Show next-move arrows*, *Use the engine*).
+
+## 9. Extending it
+
+- **A new measure**: a field of `SessionSummary` (`sessionSummaryOf`), its
+  test, a row in `AccuracySessionReport` and its key.
+- **Another grading rule**: in `gradeSuggestion` / `gradePosition`, pure,
+  with its test; the blocks read the grade.
+- **Another session step** (a hint, a retry): an event of the reducer — its
+  table row, the invariants walk's generator, its test — an action of
+  `useFindBestMove`. Never a field the screen keeps beside the record.
+- **A new piece of session state**: §5's last point.

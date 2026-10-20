@@ -521,9 +521,11 @@ const caseOf = (
 });
 
 /** **A Game Case** of one parsed game — it opens at the start, facing White (a game does not turn the board). */
-export const gameCaseOf = (made: NewCase, tree: GameTree): AnalysisCase => {
+export const gameCaseOf = (made: NewCase, tree: GameTree, display?: Partial<CaseDisplay>): AnalysisCase => {
   const pgn = treeToPgn(tree);
-  return caseOf(made, "game", { kind: "pgn", pgn, startPath: [], fen: tree.startFen }, tree, [], "white");
+  const record = caseOf(made, "game", { kind: "pgn", pgn, startPath: [], fen: tree.startFen }, tree, [], "white");
+  // How its board draws, where the maker says (CTA-244 — a Find Best Move session's, evaluations not written); absent, the defaults.
+  return display === undefined ? record : { ...record, display: { ...record.display, ...display } };
 };
 
 /** **A Position Case** of a FEN (already checked with `parseFen`) — facing the side to move. */

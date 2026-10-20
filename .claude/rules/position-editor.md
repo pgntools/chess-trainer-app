@@ -148,12 +148,12 @@ editor with a FEN field and a `.pgn` pick in its `controls` row and
 `forms={["position"]}`; it went with its module in CTA-192. Those props stay,
 for the next host.
 
-**The Accuracy Trainer's New session form** (CTA-239,
-`views/accuracyTrainer/findBestMoveV3/NewSessionForm.tsx`, dev-only) hosts it
+**The Accuracy Trainer's New session form** (CTA-239; v4's since CTA-244,
+`views/accuracyTrainer/findBestMoveV4/NewSessionForm.tsx`, dev-only) hosts it
 as the Lobby's does: a **Board editor** tab beside Game and Settings, the
 editor unpinned (`usePositionEditor()`), a position other than the standard
 start the session's — gated on `isValid`, `parseFen` and a move for the side
-to move ([`accuracy-trainer.md`](./accuracy-trainer.md) §8).
+to move ([`accuracy-trainer.md`](./accuracy-trainer.md) §7).
 
 ---
 

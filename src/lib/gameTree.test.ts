@@ -319,6 +319,15 @@ describe("treeToPgn", () => {
     expect(pgn).toContain("1. e4 e5 2. Nf3 Nc6 1-0");
   });
 
+  it("escapes a quote and a backslash in a tag value, as the reader reads them back (CTA-244)", () => {
+    const { tree } = opening();
+    const value = 'The "Open" \\ round 2';
+    const pgn = treeToPgn({ ...tree, headers: { Event: value } });
+
+    expect(pgn).toContain('[Event "The \\"Open\\" \\\\ round 2"]');
+    expect(parsePgnTree(pgn).headers.Event).toBe(value);
+  });
+
   it("writes side lines in parentheses and renumbers after them", () => {
     const { tree: line } = opening();
     const afterE4 = mainline(line)[0];

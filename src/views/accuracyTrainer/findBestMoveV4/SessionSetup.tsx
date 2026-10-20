@@ -12,6 +12,7 @@ import { StatusText } from "../../../design-system/components/feedback";
 import { FieldLabel, SideToggle, type SideValue } from "../../../design-system/components/forms";
 import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../../lib/analysisCaseStore";
 import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../../lib/analysisProjectStore";
+import { progressOf } from "../../../lib/findBestMove/selectors";
 import type { GameTree } from "../../../lib/gameTree";
 import { parsePgnTree } from "../../../lib/pgn";
 import { readRepertoireText } from "../../../lib/savedRepertoires";
@@ -157,8 +158,8 @@ function SessionSetup({ source, onSource, setup, engine, side, onSide }: Session
         <StatusText tone="success" testId="accuracy-setup-loaded">
           {t("accuracyTrainer.setup.loadedSession", {
             name: source.name,
-            count: session.positions.length,
-            done: session.answers.filter((given) => given !== null).length,
+            count: session.keys.length,
+            done: progressOf(session).answered + progressOf(session).passed,
           })}
         </StatusText>
       )}

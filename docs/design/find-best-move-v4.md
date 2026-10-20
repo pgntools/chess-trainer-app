@@ -1,5 +1,15 @@
 # Find Best Move v4 — requirements and architecture (CTA-243)
 
+> **Status: built in CTA-244**, which also removed v3. The build's reference is
+> [`accuracy-trainer.md`](../../.claude/rules/accuracy-trainer.md). Where it
+> settled something this note left open: the Evaluate Position kind took a
+> new id, `analysis.evaluate-session-position`, so that v3's
+> `analysis.evaluate-position` jobs read as a retired kind's (kept, never run,
+> Delete alone — S6); an answer comment sits on the game's move at its
+> position (the position itself where it has none, as in a session from a
+> position); a manifest key past the game's end is left out, said, since no
+> board can show it.
+
 A design note: no production code ships with it. It reviews the Find Best
 Move v3 session (the Accuracy Trainer, dev-only —
 [`accuracy-trainer.md`](../../.claude/rules/accuracy-trainer.md)) end to end,

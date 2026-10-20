@@ -97,6 +97,14 @@ export type VariationsExplorerOptions = {
    */
   onEditTree?: (next: GameTree) => void;
   /**
+   * **Where editing is offered** (CTA-244, Find Best Move's board: the
+   * position's own lines alone) — with `onEditTree`, the move menu (list and
+   * map), the comment block's add / edit / delete and the drawing of shapes
+   * are offered only at a node (`null` the start) it answers `true` for.
+   * Absent, every node, as before. Keep it stable (`useCallback`).
+   */
+  editableAt?: (nodeId: string | null) => boolean;
+  /**
    * Whether the move menu offers *Play chances…* (on by default) — a board
    * with no trainer to play by them (the Analysis Board, CTA-73) turns it off.
    */
@@ -167,6 +175,7 @@ export function useVariationsExplorer({
   evalsByFen,
   extensionIds,
   onEditTree,
+  editableAt,
   playChances: offerPlayChances,
   annotations: showAnnotations = false,
   moveMarks = true,
@@ -177,11 +186,13 @@ export function useVariationsExplorer({
   const { t } = useTranslation();
   const { tree, nodeId, goToNode } = source;
 
-  const [hovered, setHovered] = useState<VariationNode | null>(null);
+  const [hoveredNode, setHovered] = useState<VariationNode | null>(null);
   const continuations = useMemo(
     () => (nodeId === null ? tree.moves : (findNode(tree, nodeId)?.children ?? [])),
     [tree, nodeId],
   );
+  // The bar's chips are the continuations: a hover on one that is gone — the board moved on under a still pointer, no mouseleave coming — is none.
+  const hovered = hoveredNode === null ? null : (continuations.find((node) => node.id === hoveredNode.id) ?? null);
   // The chances the overlay's arrows are sized by and the bar's percentages
   // print by — only where the branch on screen carries an explicit `prc`
   // mark; with none anywhere the green/blue pair stands. Read off the
@@ -241,7 +252,9 @@ export function useVariationsExplorer({
     state once written. A board that does not edit keeps the library's
     temporary drawing.
   */
-  const drawsIntoComments = onEditTree !== undefined && showAnnotations;
+  // Editing here at all: an editing board, at a node it offers edits on.
+  const editsHere = onEditTree !== undefined && editableAt?.(nodeId) !== false;
+  const drawsIntoComments = editsHere && showAnnotations;
   const [gesture, setGesture] = useState<ShapeGesture | null>(null);
   // A release anywhere ends the gesture; one on a square has drawn first
   // (React's handlers run before the window's).
@@ -429,7 +442,7 @@ export function useVariationsExplorer({
             ),
         };
   const commentEditing: CommentEditing | undefined =
-    onEditTree === undefined
+    !editsHere
       ? undefined
       : {
           onAdd: () => setCommentEdit({ nodeId, kind: "comments", index: null }),
@@ -469,6 +482,7 @@ export function useVariationsExplorer({
         extensionIds={extensionIds}
         evalsByFen={evalsByFen}
         onEditTree={onEditTree}
+        editableAt={editableAt}
         playChances={offerPlayChances}
         mask={mask}
       />
@@ -483,6 +497,7 @@ export function useVariationsExplorer({
           nodeId={map.nodeId === undefined ? nodeId : map.nodeId}
           onSelectNode={map.linked === true ? goToNode : undefined}
           onEditTree={onEditTree}
+          editableAt={editableAt}
           playChances={offerPlayChances}
           mask={mask}
         />

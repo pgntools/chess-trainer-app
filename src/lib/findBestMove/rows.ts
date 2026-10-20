@@ -1,14 +1,16 @@
-import type { TrainingSide } from "./accuracyTrainer";
-import type { AnalysisCase } from "./analysisProjects";
-import { sessionProgressOf, sessionRecordOf, type SessionProgress } from "./findBestMoveSessionPgn";
-import { parsePgnTree } from "./pgn";
+import type { TrainingSide } from "../accuracyTrainer";
+import type { AnalysisCase } from "../analysisProjects";
+import { readPgnTags } from "../pgn";
+import { isOlderSessionTags, sessionRecordOf } from "./pgn";
+import { progressOf, type SessionProgress } from "./selectors";
 
 /**
- * **The Find Best Move sessions lobby's rows** (CTA-239) — pure: one row per
- * Case of the *Find Best Move* project, its session read from its PGN
- * (`lib/findBestMoveSessionPgn.ts`), and the table's sort. A Case that is not
- * a session — one from before CTA-239, or one put in the project by hand —
- * keeps its row, not resumable.
+ * **The Find Best Move sessions lobby's rows** (CTA-239; read from the tags
+ * alone since CTA-244) — pure: one row per Case of the *Find Best Move*
+ * project, its session read from its PGN's tags (`readPgnTags`, no movetext
+ * parse — `pgn.ts`), and the table's sort. A Case that is not a session keeps
+ * its row, not resumable; an **older session** (v3's format) says so, and
+ * opens in Analysis.
  */
 
 /** The lobby's columns, in order — the whitelist `?sort=` is read against. */
@@ -26,18 +28,17 @@ export type FindBestMoveSessionRow = {
   updatedAt: string;
   /** What its PGN says — absent for a Case that is not a session: it cannot be resumed. */
   session?: { side: TrainingSide; wanted: number; progress: SessionProgress };
+  /** A session of an older format (Find Best Move v3's) — never converted: it opens in Analysis. */
+  older?: true;
 };
 
-/** **A session Case's row** — its PGN read and its progress counted; a Case whose PGN is no session has none. */
+/** **A session Case's row** — its tags read and its progress counted; a Case whose tags are no session has none. */
 export const findBestMoveSessionRowOf = (record: Pick<AnalysisCase, "id" | "pgn" | "updatedAt">, name: string): FindBestMoveSessionRow => {
   const row = { id: record.id, name, updatedAt: record.updatedAt };
-  let session;
-  try {
-    session = sessionRecordOf(parsePgnTree(record.pgn));
-  } catch {
-    return row;
-  }
-  return session === undefined ? row : { ...row, session: { side: session.side, wanted: session.wanted, progress: sessionProgressOf(session) } };
+  const tags = readPgnTags(record.pgn);
+  const read = sessionRecordOf(tags);
+  if (read !== undefined) return { ...row, session: { side: read.record.side, wanted: read.record.wanted, progress: progressOf(read.record) } };
+  return isOlderSessionTags(tags) ? { ...row, older: true } : row;
 };
 
 /** A row's value for a column — `undefined` where it has none (a Case that is not a session), which sorts last. */

@@ -1,4 +1,4 @@
-import type { FindBestMoveSessionRow } from "../../../lib/findBestMoveSessionRows";
+import type { FindBestMoveSessionRow } from "../../../lib/findBestMove/rows";
 
 /*
   The sessions lobby's sample rows (CTA-239), typed with `src/lib/`'s own row,
@@ -44,6 +44,9 @@ export const SESSION_ROWS: readonly FindBestMoveSessionRow[] = [
   }),
   row("old", "Fischer – Spassky — Find Best Move", "2026-10-01T12:00:00.000Z"),
 ];
+
+/** An older session — Find Best Move v3's (CTA-244): known as one, never resumed. */
+export const OLDER_ROW: FindBestMoveSessionRow = { ...row("v3", "Anand – Gelfand — Find Best Move", "2026-09-30T12:00:00.000Z"), older: true };
 
 /** A name at its longest, and Hebrew ones for RTL. */
 export const LONG_ROWS: readonly FindBestMoveSessionRow[] = [
