@@ -19,10 +19,11 @@ moves of each position, in the right order** (N, *Moves to find*, 3 to
 start). The reader loads a game, picks a side, and at each of that side's
 positions analyses on a board of their own — every move before the position
 shown, none after — each line they play from the position one of their
-moves, the lines' order their ranking; **Check** compares them with the top N
+moves, the lines' order their ranking; **Results** compares them with the top N
 (the game's computer analysis, or the engine's own search): which were found,
-which in their right place, each one's rank and loss; then Next, and a
-summary at the end. **A session is an Analysis Case whose PGN holds it
+which in their right place, each one's rank and loss; then Next — or **Next**
+straight away, which grades them and goes on without the result (CTA-240) —
+and a summary at the end. **A session is an Analysis Case whose PGN holds it
 whole** (CTA-239, §7): reloaded, opened from the **sessions lobby** — the
 route itself, `/accuracy-trainer/find-best-move-v3` (§8) — downloaded as a
 `.pgn` and loaded back, it resumes where it was left; a session's own address
@@ -57,7 +58,7 @@ each position.)
 | `src/lib/findBestMoveSessionRows.ts` | **The lobby's rows** (CTA-239, §8), pure: `findBestMoveSessionRowOf` (a session Case's PGN read), `sortedFindBestMoveSessions`, the columns and their first directions. |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
-| `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header (the way back to the lobby, Download PGN) and footer, the left panel; a Case that holds no session said so. |
+| `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header (the way back to the lobby, New session, Download PGN) and footer, the left panel; a Case that holds no session said so. |
 | `…/FindBestMoveV3Route.tsx` | A session's route (CTA-239): the Cases read and the screen mounted keyed by the Case (`resume`), a Case not there said. |
 | `…/SessionsLobby.tsx` | **The sessions lobby** (CTA-239, §8): the project's Cases as `FindBestMoveSessionsTable`, Delete picked, Download PGN; its right-hand panel the New session form. |
 | `…/NewSessionForm.tsx` | **The New session form** (CTA-239, the lobby's right-hand panel): Game (`SessionSetup`), Board editor (the shared `PositionEditor` — a session from a position) and Settings (*Moves to find*, *Use the engine*, *Show next-move arrows*) tabs, a full-width Start (Resume) under all three — the Case made (`sessionStartTreeOf` / `positionSessionTreeOf`, `createSessionCase`), then opened. `…/sessionSetup.ts` its reading of what is loaded (`setupReadingOf`: a session PGN, or the positions to train, and whether Start can go). |
@@ -186,8 +187,11 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   against, hung as a variation with its `[%eval]` — so the Case shows them to
   any PGN reader; a pass's stay out of the tree, hidden.
 
-- **On to the next position** — Next after a check, or a Pass, which **goes
-  on at once** (the summary after the last): the board starts at the position
+- **On to the next position** — Next after a check; or a Pass, or **Next
+  while answering** (CTA-240, the hook's `checkAndNext`: the moves graded as
+  Results grades them — the answer written once, `goOn(answerPosition(…))`,
+  the engine asked as `answer` asks it — the Result tab never opened, the
+  answer in Results and the summary as any other's), which **go on at once** (the summary after the last): the board starts at the position
   just answered and **plays the game's moves to the next one out, one every
   second** (`STEP_DELAY_MS`, the hook's `stepDelayMs` — the screen's prop, a
   test's own): the reader's side's game move, then the reply. A step that
@@ -199,7 +203,7 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   (or on Result, opened from the summary) — opens it again as the
   position on screen (`reopenPassed` over the Case's tree as it stands, the
   one on screen left first), the pass and its comment taken back
-  (`withoutPositionComment`). After Check, Next goes on to the next position
+  (`withoutPositionComment`). After Results, Next goes on to the next position
   still to answer — the one the reader left, their lines there back. An
   answer with moves is final.
 
@@ -214,8 +218,8 @@ moves to find, N.
 - **A position with fewer top lines than N** (`needsEngine`) is searched
   by an **Evaluate Position job** ([`jobs.md`](./jobs.md) §3.2) — queued by
   the reader's **first move there** (the hook's wrapped `onPieceDrop` /
-  `resolvePromotion`, a move made on or inside the position), or by Check if
-  none was; once per position — a Check while it is being queued already
+  `resolvePromotion`, a move made on or inside the position), or by a check
+  (Results, or Next while answering) if none was; once per position — a check while it is being queued already
   waits for it. Its search is the top bar's Engine menu's (the
   board's engine and its selected preset, depth, move time, Threads, Hash),
   MultiPV N. The footer says while it searches.
@@ -247,17 +251,21 @@ moves to find, N.
   position is one, the lines' order their ranking** — a new line goes last,
   and the move menu's *Promote variation* / *Make main line* reorder them; a
   reply inside a line is analysis, not a move of theirs. The footer lists
-  them ("Your moves: 1. Nf3 2. d4 3. c4") over **Check (n)** (off with none),
-  beside Pass.
+  them ("Your moves: 1. Nf3 2. d4 3. c4") over the row **New move · Pass ·
+  Results (n) · Next** (CTA-240): **New move** takes the board back to the
+  position's node (`newMove`, off while it stands there — `onPosition`, the
+  node itself, not `atPosition`'s lines from it), so the next move played is
+  a new line; **Results** (outlined, off with none) grades and opens Result;
+  **Next** (contained, off with none) grades and goes on.
 - **The right panel**: **Moves · Map ·
   Result** (off until answered) **· Summary**; the header — the way back to
   the sessions (CTA-239), the *Experimental* chip, "Position 3 of 12 · 12.
-  White", and **Download the session's PGN** (its Case's PGN as the autosave
+  White", then at its end **New session** (an icon, CTA-240 — back to the
+  lobby, where its form is) and **Download the session's PGN** (its Case's PGN as the autosave
   writes it); the footer — the
   comment block, the next-moves bar (Moves), the instructions, the reader's
-  moves and the engine's word while answering, New session (back to the
-  lobby, where its form is), Pass / Check or
-  Next / Summary. **Result** (`GradedLines`): the headline (found, in place;
+  moves and the engine's word while answering, New move · Pass · Results ·
+  Next while answering, or Next / Summary once answered. **Result** (`GradedLines`): the headline (found, in place;
   every one in place; none; a pass), the lines best first — rank, move, eval,
   loss, the reader's rank for it (*In place*), its verdict — a line under the
   top N.

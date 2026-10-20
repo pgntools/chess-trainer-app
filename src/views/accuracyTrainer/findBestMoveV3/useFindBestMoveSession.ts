@@ -102,7 +102,8 @@ const resumedOf = (record: AnalysisCase): { session: FindBestMoveSession; settin
  * - **The answer**: the reader's lines from the position, their first moves
  *   **in their order** (`candidatesOf`) — Check grades them against the top N
  *   the session asks for (`gradePosition`'s `wanted`): found, in place.
- * - **On to the next position** (Next, or a Pass — which goes on at once): the
+ * - **On to the next position** (Next, or a Pass — which goes on at once —,
+ *   or Next while answering, which checks first, CTA-240): the
  *   board starts at the position just answered and plays the game's moves to
  *   the next one, one every `stepDelayMs` (the reader's side's game move, then
  *   the reply); the reader navigating stops it.
@@ -376,11 +377,33 @@ export const useFindBestMoveSession = ({
   /** **Pass**: the position put off for later, and on to the next one at once — `false` when none is left. */
   const pass = (): boolean => (session === null ? false : goOn(answerPosition(session, [])));
 
+  /**
+   * **Next while answering** (CTA-240): the reader's moves graded as Check
+   * grades them — the answer written once, the engine asked where the lines
+   * are too few — and on to the next position at once, the result left to
+   * Results and the summary. `false` when none is left; nothing done without a
+   * move.
+   */
+  const checkAndNext = (): boolean => {
+    if (session === null) return false;
+    const moves = candidatesOf(session.view, core.tree);
+    if (moves.length === 0) return true;
+    evaluateAt(session.index);
+    return goOn(answerPosition(session, moves));
+  };
+
+  /** **New move** (CTA-240): the board back on the position being answered, so the next move played there starts a new line. */
+  const newMove = () => {
+    if (session !== null) core.goToNode(session.view.nodeId);
+  };
+
   const index = session?.index ?? 0;
   const position = session === null ? undefined : positions[index];
   const answered = session === null ? null : session.answers[index];
   const answering = position !== undefined && answered === null;
   const atPosition = session !== null && isAtPosition(session.view, core.tree, core.nodeId);
+  // On the position's own node — not inside a line from it.
+  const onPosition = session !== null && core.nodeId === session.view.nodeId;
 
   // The reader's first move at a position starts its search: their drops go through the core, then ask.
   const onPieceDrop: typeof core.onPieceDrop = (args) => {
@@ -518,6 +541,10 @@ export const useFindBestMoveSession = ({
     },
     pass,
     next,
+    checkAndNext,
+    /** Whether the board stands on the position itself — New move has nowhere to go back to. */
+    onPosition,
+    newMove,
     board: { onPieceDrop, resolvePromotion },
   };
 };

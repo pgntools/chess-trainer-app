@@ -697,10 +697,12 @@ const en = {
     /** A session: an analysis board at each position — every move before it, none after — then one move chosen. */
     session: {
       tabs: { moves: "Moves", map: "Map", result: "Result" },
-      instructions: "Find the {{count}} best moves, best first: each line you play from the position is one, in the order of the lines — reorder them with the move menu's Promote variation. Then Check.",
+      instructions: "Find the {{count}} best moves, best first: each line you play from the position is one, in the order of the lines — reorder them with the move menu's Promote variation; New move takes the board back to the position for the next. Then Results — or Next, to go straight on.",
       candidates: "Your moves:",
       noCandidates: "none yet — play one from the position.",
-      check: "Check ({{count}})",
+      check: "Results ({{count}})",
+      /** Back to the position being answered, for the next line (CTA-240). */
+      newMove: "New move",
       /** A pass on Result: put off for later, its lines hidden. */
       passed: "You passed — put off for later. Its lines stay hidden; answer it now, or later from Your moves when the board is back at it.",
       /** The session's Case (CTA-238): made at Start, in one project of its own. */
