@@ -49,18 +49,18 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "forms",
   title: "ComputerAnalysisForm",
   demos: [
-    { name: "The single-thread build — Threads pinned at 1, the light variant ticked", render: () => demo(OPTIONS, SINGLE_THREAD) },
-    { name: "The multi-thread build — Threads adjustable", render: () => demo(OPTIONS, MULTI_THREAD) },
+    { name: "The single-thread build — Threads pinned at 1, the light variant ticked", render: () => demo(OPTIONS, SINGLE_THREAD, { engineExpanded: true }) },
+    { name: "The multi-thread build — Threads adjustable", render: () => demo(OPTIONS, MULTI_THREAD, { engineExpanded: true }) },
     {
       name: "Before the engine's handshake — a single-thread engine still says Threads is 1",
-      render: () => demo(OPTIONS, BEFORE_HANDSHAKE, { multiThread: false }),
+      render: () => demo(OPTIONS, BEFORE_HANDSHAKE, { multiThread: false, engineExpanded: true }),
     },
     {
       name: "An engine server's engine — Threads to 15 and Hash to 4096 MB, as the server allows",
-      render: () => demo(HOSTED_OPTIONS, HOSTED_ENGINE, { deviceLimits: HOSTED_LIMITS, engineName: "Stockfish 19" }),
+      render: () => demo(HOSTED_OPTIONS, HOSTED_ENGINE, { deviceLimits: HOSTED_LIMITS, engineName: "Stockfish 19", engineExpanded: true }),
     },
-    { name: "No time limit — depth 35 alone decides, the time slider off", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD) },
-    { name: "An engine with no Hash and no MultiPV", render: () => demo(OPTIONS, NO_HASH) },
+    { name: "No time limit — depth 35 alone decides, the time slider off", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD, { engineExpanded: true }) },
+    { name: "An engine with no Hash and no MultiPV", render: () => demo(OPTIONS, NO_HASH, { engineExpanded: true }) },
     { name: "Black's moves, 12... to 30, every variant", render: () => demo(RANGED, MULTI_THREAD) },
     { name: "No variant ticked — Start off, saying why", render: () => demo(NONE_TICKED, SINGLE_THREAD) },
     { name: "A board with no moves", render: () => demo(OPTIONS, SINGLE_THREAD, { blocked: "noMoves" }) },
@@ -72,6 +72,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () =>
         demo(OPTIONS, BEFORE_HANDSHAKE, {
           multiThread: false,
+          engineExpanded: true,
           engineChoice: {
             engines: describeEngines(),
             engineId: describeEngines()[0].descriptor.id,
@@ -82,6 +83,21 @@ const gallery: GalleryModule<BlockFamilyId> = {
           },
         }),
     },
+    {
+      name: "The Engine section folded (CTA-241) — the engine, the preset, the depth and the time per move on one line",
+      render: () =>
+        demo(OPTIONS, SINGLE_THREAD, {
+          engineChoice: {
+            engines: describeEngines(),
+            engineId: describeEngines()[0].descriptor.id,
+            onEngineChange: () => {},
+            presets: ENGINE_CHOICE_PRESETS,
+            presetId: "deep",
+            onPresetChange: () => {},
+          },
+        }),
+    },
+    { name: "The Engine section folded, no time limit", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD) },
     { name: "Jobs V2 (CTA-188): one variant, for a merge into the Case", render: () => demo(OPTIONS, SINGLE_THREAD, { singleVariant: true }) },
   ],
 };

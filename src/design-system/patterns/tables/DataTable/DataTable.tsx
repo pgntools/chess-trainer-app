@@ -189,7 +189,7 @@ export type DataTableBaseProps<R, C extends string = string> = {
   noMatchLabel?: ReactNode;
   /** A filter is on, so no rows means no match rather than empty. */
   filtered?: boolean;
-  /** Above the table: the filters' row (a `SearchField`, chips). */
+  /** Above the table: the filters' row (a `SearchField`, chips), a little room above it — an outlined field's label rides its top edge. */
   filters?: ReactNode;
   /** Above the filters: the table's actions (an `ActionBar` — delete picked, download). */
   toolbar?: ReactNode;
@@ -376,7 +376,11 @@ function DataTable<R, C extends string = string>({
   return (
     <Box data-testid={testId} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
       {toolbar !== undefined && <Box sx={{ flexShrink: 0 }}>{toolbar}</Box>}
-      {filters !== undefined && <Box sx={{ flexShrink: 0 }}>{filters}</Box>}
+      {filters !== undefined && (
+        <Box sx={{ flexShrink: 0, pt: 1 }}>
+          {filters}
+        </Box>
+      )}
       {hint !== undefined && (
         <Box id={hintId} data-testid={`${testId}-hint`} sx={visuallyHidden}>
           {hint}

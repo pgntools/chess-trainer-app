@@ -12,7 +12,7 @@ import {
   type RepertoireEvaluationOutputs,
   type RepertoireEvaluationSettings,
 } from "../../../lib/jobs/kinds/repertoireEvaluation/core";
-import { EngineSearchFields, type ComputerAnalysisEngineChoice } from "../ComputerAnalysisForm";
+import { EngineSearchFields, EngineSearchSummary, type ComputerAnalysisEngineChoice } from "../ComputerAnalysisForm";
 
 export type RepertoireEvaluationFormProps = {
   /** The settings — the side (the screen prefills it from the repertoire's), the ply limit, the search, the thresholds, the outputs. */
@@ -29,9 +29,13 @@ export type RepertoireEvaluationFormProps = {
   deviceLimits?: DeviceEngineLimits;
   /** The engine and preset selects at the head of the Engine section — absent, none. */
   engineChoice?: ComputerAnalysisEngineChoice;
+  /** The Engine section open at first. Absent, folded, its choice said on one line (CTA-241). */
+  engineExpanded?: boolean;
   /**
    * The root. The engine's fields are `EngineSearchFields`' (`-depth`,
-   * `-movetime`, `-threads` …, `-engine-select`, `-preset`); the side
+   * `-movetime`, `-threads` …, `-engine-select`, `-preset`), in the Engine
+   * section `-engine`, folded at first — its toggle `-engine-toggle`, its
+   * line `-engine-summary` (CTA-241); the side
    * `-side` (its buttons `-side-white`, `-side-black`), the ply limit
    * `-plies`, the thresholds `-inaccuracy`, `-mistake`, `-blunder`, the
    * outputs `-output-report`, `-output-repertoire`, `-output-pgn`.
@@ -63,6 +67,7 @@ function RepertoireEvaluationForm({
   multiThread,
   deviceLimits,
   engineChoice,
+  engineExpanded = false,
   testId,
 }: RepertoireEvaluationFormProps) {
   const { t } = useTranslation();
@@ -75,6 +80,8 @@ function RepertoireEvaluationForm({
       <SettingsSection
         title={t("computerAnalysis.form.engine")}
         description={engineChoice === undefined ? undefined : t("computerAnalysis.form.presetHelp")}
+        // Folded at first, as the computer analysis's (CTA-241).
+        fold={{ summary: <EngineSearchSummary values={settings.search} engineChoice={engineChoice} />, defaultExpanded: engineExpanded }}
         testId={`${testId}-engine`}
       >
         <EngineSearchFields

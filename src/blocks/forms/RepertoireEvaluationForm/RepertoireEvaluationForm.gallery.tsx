@@ -40,6 +40,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () =>
         demo(WHITE, BEFORE_HANDSHAKE, {
           multiThread: false,
+          engineExpanded: true,
           engineChoice: {
             engines: describeEngines(),
             engineId: describeEngines()[0].descriptor.id,
@@ -51,7 +52,21 @@ const gallery: GalleryModule<BlockFamilyId> = {
         }),
     },
     { name: "A Black repertoire, 30 plies, every output, stricter thresholds", render: () => demo(BLACK_EVERYTHING, MULTI_THREAD) },
-    { name: "No time limit — the depth alone decides", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD) },
+    { name: "No time limit — the depth alone decides", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD, { engineExpanded: true }) },
+    {
+      name: "The Engine section folded (CTA-241) — the engine, the preset, the depth and the time per move on one line",
+      render: () =>
+        demo(WHITE, SINGLE_THREAD, {
+          engineChoice: {
+            engines: describeEngines(),
+            engineId: describeEngines()[0].descriptor.id,
+            onEngineChange: () => {},
+            presets: PRESETS,
+            presetId: "default",
+            onPresetChange: () => {},
+          },
+        }),
+    },
     { name: "A long repertoire name", render: () => demo(BLACK_EVERYTHING, SINGLE_THREAD, { repertoireName: LONG_NAME }) },
   ],
 };

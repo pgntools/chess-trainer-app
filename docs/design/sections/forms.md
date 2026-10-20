@@ -145,7 +145,12 @@ Gallery: `/dev/design/forms`.
   Save (contained) and Cancel (text). The frame is a form: Enter in a one-line
   field saves.
 - **Props** — `SettingsSection`: `title`, `description?`, `children`,
-  `testId` (`-title`). `SettingsFrame`: `children`, `onSave`, `onCancel`,
+  `fold?` (CTA-241 — `{ summary?, defaultExpanded? }`: the heading a
+  disclosure button, `aria-expanded` and `aria-controls` over the
+  description and the fields, which stay mounted while folded; the summary
+  one line after the title, cut where it runs short, the button's
+  description; folded at first unless `defaultExpanded`; absent, always
+  open), `testId` (`-title`; with `fold` `-toggle`, `-summary`, `-content`). `SettingsFrame`: `children`, `onSave`, `onCancel`,
   `saveLabel`, `cancelLabel`, `saveDisabled?`, `busy?`, `footer?`, `testId`
   (`-body`, `-save`, `-cancel`).
 - **`useDraft(initial, same?)`** → `{ draft, update(patch), dirty, reset,

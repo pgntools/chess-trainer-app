@@ -4,6 +4,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Link as RouterLink, useHref, useNavigate, useParams, useSearchParams } from "react-router";
@@ -40,6 +41,8 @@ import {
   type AnalysisProject,
   type CaseOrderMove,
 } from "../../lib/analysisProjects";
+import { projectCasePgns, safeFileName } from "../../lib/analysisProjectsDownload";
+import { downloadPgn } from "../../lib/pgnExport";
 import { newRecordId } from "../../lib/recordId";
 import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
@@ -340,7 +343,7 @@ function ProjectScreen() {
               >
                 {t("analysisV2.case.new")}
               </Button>
-              {/* The picks' count and what they are for — the move and the delete; select-all is the table header's, over the rows the words leave. */}
+              {/* The picks' count and what they are for — the download, the move and the delete; select-all is the table header's, over the rows the words leave. */}
               {rows.length > 0 && (
                 <SelectionBar
                   count={pickedHere.length}
@@ -349,6 +352,19 @@ function ProjectScreen() {
                   clearLabel={t("analysisV2.case.clearSelected")}
                   actions={
                     <>
+                      {/* One .pgn named after the Project, the picked Cases in its order (CTA-241). */}
+                      <IconAction
+                        label={t("analysisV2.case.downloadSelected")}
+                        disabled={pickedHere.length === 0}
+                        onClick={() => {
+                          const pgns = projectCasePgns(cases ?? [], project.id, new Set(pickedHere.map((row) => row.id)));
+                          const saved = downloadPgn(safeFileName(projectName ?? "", t("analysisV2.project.untitled")), pgns);
+                          setProblem(saved ? null : t("analysisV2.downloadProblem"));
+                        }}
+                        testId="analysis-v2-cases-download-picked"
+                      >
+                        <DownloadRoundedIcon fontSize="small" />
+                      </IconAction>
                       {/* Into another Project — none to go to, off (CTA-226). */}
                       <IconAction
                         label={t("analysisV2.case.moveSelected")}

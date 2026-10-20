@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { strToU8, zipSync } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
@@ -22,7 +22,8 @@ import {
 } from "../../lib/analysisProjectStore";
 import { gameCaseOf, positionCaseOfFen, type AnalysisCase } from "../../lib/analysisProjects";
 import { loadUploadedCollections, loadUploadedGames, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
-import { parsePgnTree } from "../../lib/pgn";
+import { parsePgnTree, parsePgnTrees } from "../../lib/pgn";
+import { downloadBinaryFile, downloadPgn } from "../../lib/pgnExport";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions, engineJobsStub, FakeEngine } from "../board/boardTestHarness";
@@ -43,6 +44,11 @@ vi.mock("react-chessboard", async () => {
 vi.mock("../../lib/analysisCaseStore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/analysisCaseStore")>();
   return { ...actual, addAnalysisCases: vi.fn(actual.addAnalysisCases) };
+});
+// The Downloads of the picks hand their file to the browser (CTA-241) — caught here.
+vi.mock("../../lib/pgnExport", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/pgnExport")>();
+  return { ...actual, downloadBinaryFile: vi.fn(() => true), downloadPgn: vi.fn(() => true) };
 });
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
@@ -123,7 +129,19 @@ const fillProject = (projectId: string, count: number) =>
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
+  vi.mocked(downloadBinaryFile).mockClear();
+  vi.mocked(downloadPgn).mockClear();
 });
+
+/** A Game Case of a game of its own, its Event `event` — told apart in a download. */
+const namedGameCase = (projectId: string, id: string, event: string): AnalysisCase =>
+  gameCaseOf({ id, projectId, name: event }, parsePgnTree(`[Event "${event}"]\n\n1. d4 d5 (1... Nf6) 2. c4 {Gambit} *`));
+
+/** The Events of a PGN's games, in order. */
+const eventsOf = (pgn: string) => parsePgnTrees(pgn).map((tree) => tree.headers.Event);
+
+/** The accessible names of a row's buttons, in their order. */
+const buttonNames = (row: HTMLElement) => within(row).getAllByRole("button").map((button) => button.getAttribute("aria-label"));
 
 describe("the Projects browser (CTA-186)", () => {
   it("makes a folder, and a Project in it that opens at once", async () => {
@@ -381,7 +399,16 @@ describe("the Projects browser (CTA-186)", () => {
     const user = userEvent.setup();
     mount("/analysis");
 
-    await user.click(await screen.findByRole("button", { name: "Rename Najdorf" }));
+    // A Project's actions: Duplicate, Rename, Move to… (CTA-241); a folder's: Rename, Move to….
+    expect(buttonNames(await screen.findByTestId(`analysis-v2-list-row-${project.id}`))).toEqual([
+      "Show the cases of Najdorf",
+      "Duplicate Najdorf",
+      "Rename Najdorf",
+      "Move Najdorf",
+    ]);
+    expect(buttonNames(screen.getByTestId(`analysis-v2-list-row-folder-${folder.id}`)).slice(-2)).toEqual(["Rename Endgames", "Move Endgames"]);
+
+    await user.click(screen.getByRole("button", { name: "Rename Najdorf" }));
     const name = screen.getByRole("textbox", { name: "Name" });
     await user.clear(name);
     await user.type(name, "Sicilian{Enter}");
@@ -442,6 +469,49 @@ describe("the Projects browser (CTA-186)", () => {
     expect(analysisProjectsSnapshot()?.map((project) => project.name).sort()).toEqual(["Club games", "Kept"]);
     // The picks went with what they named.
     expect(screen.getByRole("button", { name: "Delete the picked items" })).toBeDisabled();
+  });
+
+  it("downloads the picks as one zip — a directory per folder, a .pgn per Project in its order, Cases on their own by their Project (CTA-241)", async () => {
+    const outer = (await createProjectFolder("Openings", null))!;
+    const inner = (await createProjectFolder("Sicilian", outer.id))!;
+    const najdorf = (await createAnalysisProject("Najdorf", inner.id))!;
+    const club = (await createAnalysisProject("Club games", null))!;
+    await createAnalysisProject("Untouched", null);
+    await addAnalysisCases([
+      namedGameCase(najdorf.id, "c1", "First"),
+      namedGameCase(najdorf.id, "c2", "Second"),
+      gameCase(club.id, "c3"),
+      positionCaseOfFen({ id: "c4", projectId: club.id, name: "Endgame" }, ENDGAME),
+    ]);
+    await moveAnalysisCaseInOrder("c2", "top");
+    const user = userEvent.setup();
+    const { baseElement } = mount("/analysis");
+
+    const download = await screen.findByRole("button", { name: "Download the picked items" });
+    expect(download).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: "Pick Openings" }));
+    await user.click(screen.getByRole("button", { name: "Show the cases of Club games" }));
+    await user.click(screen.getByRole("checkbox", { name: "Pick Endgame" }));
+    expect(download).toBeEnabled();
+    await expectNoAxeViolations(baseElement);
+    await user.click(download);
+
+    expect(downloadBinaryFile).toHaveBeenCalledTimes(1);
+    const [fileName, bytes] = vi.mocked(downloadBinaryFile).mock.calls[0];
+    expect(fileName).toMatch(/^analysis-\d{4}-\d{2}-\d{2}\.zip$/);
+    const files = unzipSync(bytes);
+    expect(Object.keys(files)).toEqual(["Openings/", "Openings/Sicilian/", "Openings/Sicilian/Najdorf.pgn", "Club games.pgn"]);
+    // The Project's order, each Case its whole tree.
+    const najdorfPgn = strFromU8(files["Openings/Sicilian/Najdorf.pgn"]);
+    expect(eventsOf(najdorfPgn)).toEqual(["Second", "First"]);
+    expect(najdorfPgn).toContain("(1... Nf6)");
+    expect(najdorfPgn).toContain("{ Gambit }");
+    // The Case ticked without its Project, its Position's FEN with it.
+    const clubPgn = strFromU8(files["Club games.pgn"]);
+    expect(parsePgnTrees(clubPgn).map((tree) => tree.startFen)).toEqual([ENDGAME]);
+    expect(clubPgn).toContain('[SetUp "1"]');
+    // The picks stay: 2 folders, Najdorf and its 2 Cases, Endgame.
+    expect(screen.getByTestId("analysis-v2-selection")).toHaveTextContent("6 selected");
   });
 
   it("steps out of a folder the picks deleted to the nearest one that survives", async () => {
@@ -662,6 +732,33 @@ describe("a Project's Cases (CTA-186)", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByTestId("analysis-v2-cases-empty")).toBeInTheDocument();
     expect(analysisCasesSnapshot()).toEqual([]);
+  });
+
+  it("downloads the picked Cases as one .pgn named after the Project, in its order (CTA-241)", async () => {
+    const project = (await createAnalysisProject("Club: games", null))!;
+    await addAnalysisCases([
+      namedGameCase(project.id, "c1", "First"),
+      namedGameCase(project.id, "c2", "Second"),
+      positionCaseOfFen({ id: "c3", projectId: project.id, name: "Endgame" }, ENDGAME),
+    ]);
+    await moveAnalysisCaseInOrder("c3", "top");
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}`);
+    await screen.findByRole("table", { name: "Cases" });
+    const download = screen.getByRole("button", { name: "Download the picked cases" });
+    expect(download).toBeDisabled();
+
+    await user.click(within(screen.getByTestId("analysis-v2-cases-row-c1")).getByRole("checkbox"));
+    await user.click(within(screen.getByTestId("analysis-v2-cases-row-c3")).getByRole("checkbox"));
+    await user.click(download);
+    expect(downloadPgn).toHaveBeenCalledTimes(1);
+    const [stem, pgns] = vi.mocked(downloadPgn).mock.calls[0];
+    // Named after the Project, safe for a file.
+    expect(stem).toBe("Club_ games");
+    expect(pgns).toHaveLength(2);
+    expect(parsePgnTree(pgns[0]).startFen).toBe(ENDGAME);
+    expect(eventsOf(pgns[1])).toEqual(["First"]);
+    expect(pgns[1]).toContain("(1... Nf6)");
   });
 
   it("moves the picked Cases together into another Project — last there, in their order; the gap closed; the move said (CTA-226)", async () => {

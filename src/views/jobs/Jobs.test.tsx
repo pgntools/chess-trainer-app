@@ -376,9 +376,18 @@ describe("New job from an entity's screen (CTA-221)", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("tab", { name: "Jobs" }));
     expect(await screen.findByText("No jobs for this Case yet.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "New job" }));
-    const dialog = await screen.findByRole("dialog");
+    // The tab's button and the dialog are the computer analysis's (CTA-241) — "New job" elsewhere.
+    expect(screen.queryByRole("button", { name: "New job" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Computer analysis" }));
+    const dialog = await screen.findByRole("dialog", { name: "Computer analysis" });
     expect(within(dialog).getByRole("radio", { name: /Computer analysis/ })).toBeChecked();
+    // Its Engine section folded, its choice said on one line.
+    const engine = within(dialog).getByRole("button", { name: "Engine" });
+    expect(engine).toHaveAttribute("aria-expanded", "false");
+    expect(engine).toHaveAccessibleDescription(/depth \d+ · (\d+ s a move|no time limit)$/);
+    expect(within(dialog).queryByRole("slider", { name: "Depth" })).toBeNull();
+    await user.click(engine);
+    expect(within(dialog).getByRole("slider", { name: "Depth" })).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Start" }));
     expect(await screen.findByRole("link", { name: "Open job" })).toBeInTheDocument();
     const job = jobRuntime().snapshot()?.find((each) => each.kind === COMPUTER_ANALYSIS_KIND);
@@ -395,6 +404,8 @@ describe("New job from an entity's screen (CTA-221)", () => {
     await user.click(await screen.findByRole("button", { name: "Evaluate with engine…" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("radio", { name: /Repertoire evaluation/ })).toBeChecked();
+    // Its Engine section folds as the computer analysis's (CTA-241).
+    expect(within(dialog).getByRole("button", { name: "Engine" })).toHaveAttribute("aria-expanded", "false");
     await user.click(within(dialog).getByRole("button", { name: "Start" }));
     expect(await screen.findByRole("link", { name: "Open job" })).toBeInTheDocument();
     expect(jobRuntime().snapshot()?.find((each) => each.kind === REPERTOIRE_EVALUATION_KIND)?.subjects).toEqual([{ type: "repertoire", id: "rep1" }]);

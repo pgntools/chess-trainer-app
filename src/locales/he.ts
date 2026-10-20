@@ -2389,6 +2389,7 @@ const he: typeof en = {
       hintRead: "חצי ימין ושמאל לעבור בין המסעים, Home ו־End לקצוות.",
     },
     form: {
+      title: "ניתוח מחשב",
       engine: "מנוע",
       engineName: "המשימה מריצה את {{name}} — המנוע שנבחר בהגדרות.",
       threads: "תהליכונים",
@@ -2399,6 +2400,11 @@ const he: typeof en = {
       noTimeLimitHelp: "כל עמדה נחקרת עד העומק המלא, כמה זמן שזה ייקח — חיפוש עמוק עלול להימשך דקות למסע.",
       moveTimeNone: "ללא הגבלה",
       seconds: "{{seconds}} שנ׳",
+      summary: {
+        depth: "עומק {{depth}}",
+        moveTime: "{{seconds}} שנ׳ למסע",
+        noTimeLimit: "ללא הגבלת זמן",
+      },
       lines: "קווים",
       minDepth: "עצירה מוקדמת מעומק",
       minDepthHelp: "מהעומק הזה חיפוש נעצר ברגע שקו אחר יורד יותר מטווח הווריאציות מתחת לקו הטוב ביותר. בעומק המלא הוא לעולם אינו נעצר מוקדם.",
@@ -2911,6 +2917,7 @@ const he: typeof en = {
       tooManyProjects: "לא ניתן היה ליצור פרויקט — הדפדפן סירב, או שיש כבר {{max}}.",
     },
     save: "שמירה",
+    downloadProblem: "הדפדפן סירב להורדה.",
     loading: "קורא את הפרויקטים שלכם…",
     browser: {
       title: "פרויקטים",
@@ -2944,6 +2951,7 @@ const he: typeof en = {
       pick: "בחירת {{name}}",
       selected: "{{count}} נבחרו",
       clearSelected: "ניקוי הבחירה",
+      downloadSelected: "הורדת הפריטים שנבחרו",
       deleteSelected: "מחיקת הפריטים שנבחרו",
       deleteManyTitle_one: "למחוק פריט אחד?",
       deleteManyTitle_other: "למחוק {{count}} פריטים?",
@@ -3019,6 +3027,7 @@ const he: typeof en = {
       pick: "בחירת {{name}}",
       selected: "{{count}} נבחרו",
       clearSelected: "ניקוי הבחירה",
+      downloadSelected: "הורדת המקרים שנבחרו",
       deleteSelected: "מחיקת המקרים שנבחרו",
       deleteManyTitle_one: "למחוק מקרה אחד?",
       deleteManyTitle_other: "למחוק {{count}} מקרים?",
@@ -3246,6 +3255,7 @@ const he: typeof en = {
       problem: "לא נשמר — הדפדפן סירב.",
     },
     caseJobs: {
+      newJob: "ניתוח מחשב",
       list: "המשימות של המקרה הזה",
       none: "אין עדיין משימות למקרה הזה.",
     },
