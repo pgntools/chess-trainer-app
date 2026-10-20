@@ -544,7 +544,7 @@ describe("foldSingleEntryFolders folds a folder marked as one destination", () =
 });
 
 describe("the Accuracy Trainer folder (CTA-238)", () => {
-  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v3 — marked experimental", () => {
+  it("is a dev-only folder of its own, after the Engine, holding Find Best Move v4 — marked experimental", () => {
     // A dev-only spread (`import.meta.env.DEV`): the tests run as dev.
     const ids = navFolders().map((folder) => folder.id);
     expect(ids.indexOf("accuracy-trainer")).toBe(ids.indexOf("engine") + 1);

@@ -6,6 +6,7 @@ import ComputerAnalysisNewJob from "./kinds/ComputerAnalysisNewJob";
 import { ComputerAnalysisDetails, ComputerAnalysisParameters } from "./kinds/ComputerAnalysisViews";
 import { engineLiveSummary } from "./kinds/engineLive";
 import EngineLiveView from "./kinds/EngineLiveView";
+import { EvaluatePositionParameters } from "./kinds/EvaluatePositionViews";
 import { RepertoireEvaluationData, RepertoireEvaluationNewJob, RepertoireEvaluationParameters } from "./kinds/RepertoireEvaluationViews";
 
 export type { JobKindViews } from "./kindViewTypes";
@@ -31,9 +32,11 @@ const JOB_KIND_VIEWS: Readonly<Record<string, JobKindViews>> = {
     Data: RepertoireEvaluationData,
     liveSummary: engineLiveSummary,
   },
-  // CTA-238: queued by Find Best Move alone (no New-job form); its result the session's record takes (CTA-244).
-  // Dev-only, as its kind.
-  ...(import.meta.env.DEV ? { [EVALUATE_POSITION_KIND]: { Live: EngineLiveView, liveSummary: engineLiveSummary } } : {}),
+  // CTA-238: queued by Find Best Move alone (no New-job form); its result the session's record takes (CTA-244);
+  // its engine settings a plate (CTA-248). Dev-only, as its kind.
+  ...(import.meta.env.DEV
+    ? { [EVALUATE_POSITION_KIND]: { Live: EngineLiveView, Parameters: EvaluatePositionParameters, liveSummary: engineLiveSummary } }
+    : {}),
 };
 
 /** A kind's views — none for a kind not registered here (a retired kind's stored jobs are drawn generically). */

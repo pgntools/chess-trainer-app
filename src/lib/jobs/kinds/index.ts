@@ -2,7 +2,7 @@ import type { JobKind } from "@pgntools/jobs-runtime";
 
 import type { EngineSessionDeps } from "../engineSession";
 import { computerAnalysisKind } from "./computerAnalysis/kind";
-import { EVALUATE_POSITION_KIND, RETIRED_EVALUATE_POSITION_KIND } from "./evaluatePosition/core";
+import { EVALUATE_POSITION_KIND } from "./evaluatePosition/core";
 import { evaluatePositionKind } from "./evaluatePosition/kind";
 import { repertoireEvaluationKind } from "./repertoireEvaluation/kind";
 
@@ -49,14 +49,10 @@ export const JOB_KIND_LOCALE_KEYS: Readonly<Record<string, string>> = {
 /**
  * **The kinds the app ran once and runs no more** — each its name's key,
  * `jobs.retiredKinds.<key>`: `library.collection-merge` (CTA-220 / CTA-221,
- * retired in CTA-232 — merging is the Library's own action now), and, dev-only
- * as the trainer is, Find Best Move v3's `analysis.evaluate-position`
- * (CTA-238, retired in CTA-244 — its input named a place in the movetext;
- * v4's kind names the session's position).
+ * retired in CTA-232 — merging is the Library's own action now).
  */
 export const RETIRED_JOB_KIND_LOCALE_KEYS: Readonly<Record<string, string>> = {
   "library.collection-merge": "collectionMerge",
-  ...(import.meta.env.DEV ? { [RETIRED_EVALUATE_POSITION_KIND]: "evaluatePositionV3" } : {}),
 };
 
 /** A kind's locale key — `undefined` for a kind no longer registered. */

@@ -101,7 +101,7 @@ export const navFolders = (): readonly NavFolder[] => [
     icon: MemoryRoundedIcon,
   },
   /*
-    The Accuracy Trainer (CTA-238): its exercises — Find Best Move v3 today,
+    The Accuracy Trainer (CTA-238): its exercises — Find Best Move v4 today,
     experimental. Dev-only, a spread gated on `import.meta.env.DEV`; a
     top-level folder with one screen stays a folder (only a sub-folder folds).
   */

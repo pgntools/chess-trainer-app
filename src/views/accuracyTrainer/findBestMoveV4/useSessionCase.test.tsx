@@ -36,15 +36,11 @@ describe("useSessionCase", () => {
     expect(state.caseRecord.id).toBe("s");
   });
 
-  it("says a Case not there, one that holds no session, and an older session apart", async () => {
-    await addAnalysisCases([
-      gameCaseOf({ id: "plain", projectId: "p", name: "" }, parsePgnTree(ANALYSED_PGN)),
-      gameCaseOf({ id: "v3", projectId: "p", name: "" }, parsePgnTree('[FindBestMove "1"]\n\n1. e4 { [%fbm game:e4 state:open] } *')),
-    ]);
+  it("says a Case not there and one that holds no session apart", async () => {
+    await addAnalysisCases([gameCaseOf({ id: "plain", projectId: "p", name: "" }, parsePgnTree(ANALYSED_PGN))]);
     const missing = read("nobody");
     await waitFor(() => expect(missing.result.current.state.kind).toBe("missing"));
     expect(read("plain").result.current.state.kind).toBe("not-a-session");
-    expect(read("v3").result.current.state.kind).toBe("older");
   });
 
   it("writes an action's events through the one writer — and the record is the store's once it lands", async () => {

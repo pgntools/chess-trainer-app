@@ -928,15 +928,6 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await expectNoAxeViolations();
   });
 
-  it("says an older session (v3's) is one, never converted — open it in Analysis", async () => {
-    const project = (await createAnalysisProject("Find Best Move", null))!;
-    const v3 = parsePgnTree(`[FindBestMove "1"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 { [%fbm game:e4 state:open] } *`);
-    await addAnalysisCases([gameCaseOf({ id: "older", projectId: project.id, name: "Old" }, v3)]);
-    mount(0, `${LOBBY}/older`);
-    expect(await screen.findByTestId(`${ID}-not-resumable`)).toHaveTextContent("an older Find Best Move session (v3)");
-    expect((await loadAnalysisCases()).find((each) => each.id === "older")?.pgn).toContain("[%fbm");
-  });
-
   it("keeps an engine search's lines in the session — a reload grades the same and asks the engine nothing more", async () => {
     const user = userEvent.setup();
     const { unmount } = mount();

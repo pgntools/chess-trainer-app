@@ -37,14 +37,14 @@ is the build's reference; read the note for the why.
 (v1 and v2 were deleted when v3 replaced them; **v3 — its session's machine
 data in `[%fbm]` movetext commands — was removed in CTA-244**: a foreign
 `[%eval]` prepended into a command's comment made positions vanish, "the
-38-to-35 bug". A v3 session Case keeps its lobby row as *an older session*,
-opens in Analysis, and is never converted — R26 dropped.)
+38-to-35 bug". Nothing of v3 is kept since CTA-248 — not its job kind, not
+its sessions: a v3 session Case is a plain Case, R26 dropped.)
 
 > **Dev-only.** The routes — the lobby and a session's — are in `routes.tsx`'s `devRoutes` (`React.lazy`
 > imports under `import.meta.env.DEV`), the folder and the nav entry spreads in
 > `navFolders.ts` / `navItems.ts` under the same flag, and so is the Evaluate
-> Position job kind (`lib/jobs/kinds/index.ts`, `views/jobs/kindViews.ts`) and
-> v3's retired kind's name: a production build has no code of any of it, only
+> Position job kind (`lib/jobs/kinds/index.ts`, `views/jobs/kindViews.ts`):
+> a production build has no code of any of it, only
 > the catalog strings. For the same reason it has **no line in
 > `e2e/a11y/routes.ts`**. Shipping it: the route into `appRoutes`, the
 > folder's, the entry's and the kind's spreads dropped, the a11y route added,
@@ -60,16 +60,16 @@ opens in Analysis, and is never converted — R26 dropped.)
 | `src/lib/findBestMove/model.ts` | **The record** (§3): `FindBestMoveRecord`, `PositionRecord`, the two axes `AnswerState` / `EngineState`, the position key; the recorded game replayed once (`replayGame`), a key's path, FEN and game move, `trainingPositionOf` (the grading's `TrainingPosition`, derived, never stored), `storedLinesOf`. |
 | `src/lib/findBestMove/reducer.ts` | **The transitions** (§3.2): `sessionReducer`, `reduceSession`, the events `sessionEvents.*` — an event that does not apply answers the same record. |
 | `src/lib/findBestMove/selectors.ts` | **What the panels read** (§3.3): `phaseOf`, `gradeOf`, `answerOf`, `engineFailedAt`, `resultsOf`, `summaryOf`, `progressOf`, `isDone`, `nextOpen`, `engineOfferedAt` (CTA-245), `placeOf`, `positionAtPath`, `replayPlan` (capped, `REPLAY_MAX_PLIES`). |
-| `src/lib/findBestMove/pgn.ts` | **The format, version 2** (§5): `isSessionTags` (the one predicate — Analysis's S3 reads it), `isOlderSessionTags`, `withoutSessionTags`, `sessionTagsOf` / `withSessionTags`, `sessionRecordOf` (lenient: `SessionIssue`s), the work fragment (`workFragmentOf`, `workFromFragment`). |
+| `src/lib/findBestMove/pgn.ts` | **The format, version 2** (§5): `isSessionTags` (the one predicate — Analysis's S3 reads it), `withoutSessionTags`, `sessionTagsOf` / `withSessionTags`, `sessionRecordOf` (lenient: `SessionIssue`s), the work fragment (`workFragmentOf`, `workFromFragment`). |
 | `src/lib/findBestMove/projection.ts` | **The projections** (§4, §5.3): `sessionMovetextOf` (the readable game), `boardTreeOf` (the board at a position), `workOf`, `candidatesOf`, `reorderedCandidates`, `withoutCandidate`, `isAtPosition`, `isWorkNode` (S5's predicate); `AnswerWords`. |
 | `src/lib/findBestMove/start.ts` | A session from a game (`sessionFromGame`) or one position (`sessionFromPosition`); `sourceHeadersOf` (the game's tags but its analysis's). |
 | `src/lib/findBestMove/store.ts` | **The one writer** (§6): `editSessionCase`, `sessionTreeOf` / `sessionPgnOf`, `sessionProjectOf`, `createSessionCase` (S4's `writeEvals: false`), `duplicateSessionAsPlainCase` (S3). |
-| `src/lib/findBestMove/rows.ts` | **The lobby's rows** (§7), from the tags alone: `findBestMoveSessionRowOf` (`older` for a v3 session), `sortedFindBestMoveSessions`, the columns. |
+| `src/lib/findBestMove/rows.ts` | **The lobby's rows** (§7), from the tags alone: `findBestMoveSessionRowOf`, `sortedFindBestMoveSessions`, the columns. |
 | `src/lib/findBestMove/words.ts`, `paths.ts` | The answers worded from the catalog (`answerWordsOf`); the addresses (`FIND_BEST_MOVE_PATH`, `findBestMoveSessionPath` — in `lib/` so Analysis can name them). |
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind**, `analysis.evaluate-session-position` — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV4/` | **The screen** (§8): `useSessionCase.ts` (persistence), `useSessionBoard.ts` (the board), `useReplay.ts` (the replay), `useSessionEngine.ts` (the engine jobs), `useFindBestMove.ts` (their composition, the actions), `FindBestMove.tsx` (composition alone), `FindBestMoveRoute.tsx` (a session's arrival), `SessionsLobby.tsx`, `NewSessionForm.tsx`, `SessionSetup.tsx` + `sessionSetup.ts` (the form's Game tab and its reading), `paths.ts`, `Main.tsx` / `LobbyMain.tsx` (layout-only). |
-| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the summary; the left panel (the game, its Case, Your moves, Results, Settings); the lobby's table (`older` rows said). |
-| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap, a partial analysis — `PARTIAL_PGN` — passed through and the engine offered, CTA-245), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts` (a retired v3 job too); `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
+| `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the summary; the left panel (the game, its Case, Your moves, Results, Settings); the lobby's table. |
+| Tests | `lib/accuracyTrainer.test.ts`; `lib/findBestMove/reducer.test.ts` (every event's row, the invariants over a seeded random walk), `selectors.test.ts` (the phase table, `nextOpen`, the replay's cap, a partial analysis — `PARTIAL_PGN` — passed through and the engine offered, CTA-245), `pgn.test.ts` (the round trips, the foreign writers, the 38-to-35 fixture, the manifest and stale data), `projection.test.ts`, `store.test.ts` (the two writers interleaved, S2), `rows.test.ts`; `src/test/findBestMoveKit.ts` (the games, plain words, a search); `lib/jobs/kinds/evaluatePosition/*.test.ts`; `findBestMoveV4/FindBestMove.test.tsx` (the screen by role and name, axe), `SessionsLobby.test.tsx`, and each unit alone — `useSessionCase.test.tsx` (the store read, a write, a refusal), `useSessionBoard.test.tsx` (the projection loaded, where it moves and edits, the work written, the engine asked, the replay's start), `useReplay.test.tsx`, `useSessionEngine.test.tsx` (queued once, the result echoed, a job gone or cancelled); the blocks' own; the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx`, `routes.test.tsx`; `views/explorer/useVariationsExplorer.test.tsx` (S5), `views/analysisV2/AnalysisV2.test.tsx` (S3), `lib/gameTree.test.ts` (S1). |
 
 Routes and nav: `/accuracy-trainer/find-best-move-v4` — the sessions lobby,
 the table in the board square and the New session form in the right-hand
@@ -82,7 +82,7 @@ in the sidebar, `nav.experimental`; the screen's header carries the same
 chip). `options.id` `find-best-move-v4`. Locale keys: `accuracyTrainer.*`
 (`setup`, `casePicker`, `position`, `session` — its `answer.*` the movetext's
 words —, `details`, `lines`, `report`, `sessions` — the lobby's and a
-session's own, `older` / `olderSession`, `readIssue`, `writeProblem`), and
+session's own, `readIssue`, `writeProblem`), and
 Analysis's notice `analysisV2.workspace.session.*`, in both catalogs.
 
 ---
@@ -262,7 +262,7 @@ Analysis autosave — can reach the session (`pgn.test.ts` holds them to it).
 
 | Tag | Value |
 | --- | --- |
-| `FindBestMove` | `2` — **what makes a PGN a session**; any other value (v3's `1`) is none (`isOlderSessionTags`: an older session) |
+| `FindBestMove` | `2` — **what makes a PGN a session**; any other value is none |
 | `FindBestMoveName` | the game's name (job titles, the lobby) |
 | `FindBestMoveSide` | `white`, `black` or `both` |
 | `FindBestMoveMoves` | N, 1–10 (unreadable: 3) |
@@ -335,8 +335,7 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   Download PGN; picks deleted together after one confirmation
   (`removeAnalysisCases` — their unfinished jobs with them). **Rows are read
   from the tags alone**. A Case that holds no session keeps its row, which
-  says so; **an older session** (v3's) says it is one — it opens in Analysis
-  and downloads as kept, but does not resume.
+  says so — it opens in Analysis and downloads as kept, but does not resume.
 - **The New session form** (`NewSessionForm`, the lobby's right-hand panel):
   **Game** (a PGN uploaded or pasted — a file of several picks one — or a
   Case picked; the side), **Board editor** (a position other than the
@@ -355,10 +354,10 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
 - **A session PGN loaded in the form** (a downloaded one, or a session Case
   picked): known by its tags, said with how far it got, the side toggle off —
   **Resume** in Start's place makes a **new** Case of it, where it was left
-  (R6). An older session's PGN is said as one this version cannot read.
+  (R6).
 - **A session's address** (`FindBestMoveRoute`): the Cases read first, then
-  the screen keyed by the Case; a Case not there, one that holds no session
-  and an older session each say so, with the way on.
+  the screen keyed by the Case; a Case not there and one that holds no
+  session each say so, with the way on.
 
 ## 8. The screen — four units over the reducer
 

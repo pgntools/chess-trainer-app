@@ -14,6 +14,7 @@ import { indexedRowOf } from "../../lib/collectionIndex";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type ComputerAnalysisOptions } from "../../lib/computerAnalysis";
 import { addCollection, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
 import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
+import { EVALUATE_POSITION_INPUT_VERSION, EVALUATE_POSITION_KIND } from "../../lib/jobs/kinds/evaluatePosition/core";
 import { JOBS_DB, jobRuntime, startJobRuntime } from "../../lib/jobs/runtime";
 import { JOBS_SETTINGS_STORAGE_KEY } from "../../lib/jobsSettings";
 import { parsePgnTree } from "../../lib/pgn";
@@ -317,6 +318,42 @@ describe("one job — /jobs/<id> (CTA-221)", () => {
     mountAt(`/jobs/${id}`);
     expect(await screen.findByRole("heading", { level: 1, name: "Alice – Bob" })).toBeInTheDocument();
     expect(screen.getByTestId("job-parameters")).toHaveTextContent("Results go to");
+    await expectNoAxeViolations();
+  });
+
+  it("draws an Evaluate Position job's engine settings as a plate (CTA-248): the engine, the preset, the search, the options sent", async () => {
+    startJobRuntime();
+    const queued = await jobRuntime().enqueue(
+      EVALUATE_POSITION_KIND,
+      {
+        version: EVALUATE_POSITION_INPUT_VERSION,
+        caseId: "session",
+        key: 1,
+        name: "Evaluate position — Alice – Bob, 1. White",
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        label: "1. White",
+        engine: "stockfish-19-lite-single",
+        preset: { id: "deep", name: "Deep", values: { Contempt: 24, UCI_ShowWDL: true } },
+        search: { depth: 22, moveTimeMs: 0, multiPv: 3, threads: 1, hashMb: 32 },
+      },
+      { runAfter: new Date(Date.now() + 3_600_000) },
+    );
+    if (!("id" in queued)) throw new Error("not queued");
+    mountAt(`/jobs/${queued.id}`);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Evaluate position — Alice – Bob, 1. White" })).toBeInTheDocument();
+    const plate = screen.getByRole("region", { name: "Engine settings" });
+    expect(plate).toBe(screen.getByTestId("job-parameters"));
+    expect(within(plate).getByRole("heading", { level: 3, name: "Engine settings" })).toBeInTheDocument();
+    // Not run yet: the engine by the id it was asked for.
+    expect(within(plate).getByTestId("job-parameters-facts-engine")).toHaveTextContent("stockfish-19-lite-single");
+    expect(within(plate).getByTestId("job-parameters-facts-preset")).toHaveTextContent("Deep");
+    expect(within(plate).getByTestId("job-parameters-facts-depth")).toHaveTextContent("22");
+    expect(within(plate).getByTestId("job-parameters-facts-time")).toHaveTextContent("No limit");
+    expect(within(plate).getByTestId("job-parameters-facts-lines")).toHaveTextContent("3");
+    const sent = within(plate).getByLabelText("Options the preset sent");
+    expect(within(sent).getAllByRole("term").map((term) => term.textContent)).toEqual(["Contempt", "UCI_ShowWDL"]);
+    expect(within(sent).getAllByRole("definition").map((value) => value.textContent)).toEqual(["24", "true"]);
     await expectNoAxeViolations();
   });
 });

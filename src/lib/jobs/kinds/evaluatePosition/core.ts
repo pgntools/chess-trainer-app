@@ -16,18 +16,11 @@ import { positionResultFrom, type RanEngine } from "../computerAnalysis/core";
  * asked for. Its result is a data output, and the session's record takes it
  * (`engineSearched`, the kind's adapter, `kind.ts`). No engine, store,
  * runtime or React here.
- *
- * **v3's jobs** (`analysis.evaluate-position`, whose input named a SAN path
- * into the movetext) are a retired kind: kept, never run, Delete alone
- * (`kinds/index.ts`).
  */
 
 export const EVALUATE_POSITION_KIND = "analysis.evaluate-session-position";
 
-/** v3's kind — retired in CTA-244, its stored jobs kept, never run. */
-export const RETIRED_EVALUATE_POSITION_KIND = "analysis.evaluate-position";
-
-/** The input's shape — bumped from v3's (a SAN path) to the session key (CTA-244); another version is refused. */
+/** The input's shape — another version is refused. */
 export const EVALUATE_POSITION_INPUT_VERSION = 2;
 
 /** Its state's shape — bump when it changes. */

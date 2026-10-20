@@ -9,6 +9,12 @@
 > position (the position itself where it has none, as in a session from a
 > position); a manifest key past the game's end is left out, said, since no
 > board can show it.
+>
+> **CTA-248 removed what v4 kept of v3**: the retired kind
+> `analysis.evaluate-position` (S6's retired input) and the *older session*
+> — a `FindBestMove "1"` Case is a plain Case now, its row the lobby's "holds
+> no session", and `fbm` left `UNREAD_COMMANDS`. No reader had either saved.
+> What R23, §5.5, §8 (S6 too), §9.3 and §9.4 say of them below is history.
 
 A design note: no production code ships with it. It reviews the Find Best
 Move v3 session (the Accuracy Trainer, dev-only —

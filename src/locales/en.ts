@@ -606,15 +606,11 @@ const en = {
       downloadRow: "Download the PGN of {{name}}",
       openCaseRow: "Open {{name}} in Analysis",
       unreadable: "{{name}} holds no session this version can resume — open it in Analysis.",
-      /** A Case of an older session (Find Best Move v3, CTA-244) — never converted. */
-      older: "{{name}} is an older Find Best Move session (v3) — it does not resume here; open it in Analysis.",
       /** The session screen's header. */
       back: "Back to the sessions",
       download: "Download the session's PGN",
       downloadProblem: "The browser refused the download.",
       notResumable: "This case holds no Find Best Move session this version can resume — made before sessions were kept in their PGN, or by hand. Open it in Analysis to see it.",
-      /** A session of v3's format (CTA-244): known, never resumed. */
-      olderSession: "This case is an older Find Best Move session (v3), which this version does not resume. Open it in Analysis to see it.",
       /** Some of a session's positions read leniently (CTA-244) — kept, said once. */
       readIssue_one: "{{count}} position of this session could not be read in full — it is kept, open to be answered again.",
       readIssue_other: "{{count}} positions of this session could not be read in full — they are kept, open to be answered again.",
@@ -3111,8 +3107,6 @@ const en = {
      */
     retiredKinds: {
       collectionMerge: "Merge collections (retired)",
-      /** Find Best Move v3's Evaluate Position jobs (CTA-244) — dev-only, as the kind was. */
-      evaluatePositionV3: "Evaluate position — Find Best Move v3 (retired)",
     },
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
@@ -3318,6 +3312,14 @@ const en = {
       continues: "Continues",
       continuesValue_one: "{{title}}, asked for {{date}} — one position carried over, analysed with its settings",
       continuesValue_other: "{{title}}, asked for {{date}} — {{count}} positions carried over, analysed with its settings",
+    },
+    /** **An engine job's engine settings** (CTA-248, `JobEngineSettings`) — the plate on an Evaluate Position job's page. */
+    engineSettings: {
+      title: "Engine settings",
+      preset: "Preset",
+      noPreset: "None recorded",
+      options: "Options the preset sent",
+      noOptions: "The preset sent no options — the engine ran with its own defaults.",
     },
     /**
      * **The Jobs module's generic blocks** (CTA-217): the queue, its filters,
