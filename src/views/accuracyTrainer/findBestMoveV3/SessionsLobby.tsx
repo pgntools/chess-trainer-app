@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router";
@@ -23,7 +22,9 @@ import { downloadPgn } from "../../../lib/pgnExport";
 import { casePath } from "../../analysisV2/paths";
 import { useAnalysisCases, useAnalysisProjects } from "../../analysisV2/useAnalysisProjects";
 import { useOwnPageHeading } from "../../main/pageTitle";
-import { NEW_SESSION_PATH, sessionPath } from "./paths";
+import { RightPanel } from "../../main/rightPanel";
+import NewSessionForm from "./NewSessionForm";
+import { sessionPath } from "./paths";
 import { sessionProjectOf } from "./sessionCase";
 
 /**
@@ -35,8 +36,9 @@ import { sessionProjectOf } from "./sessionCase";
  * `useTableUrlState`), each row resuming its session, opening its Case in
  * Analysis or downloading its PGN; the picks deleted together after one
  * confirmation (`DeleteManyDialog` → `removeAnalysisCases`, their unfinished
- * jobs with them); and **New session**, the setup (`…/new`). A Case that is
- * no session keeps its row, not resumable. The rows are read from the Cases'
+ * jobs with them). The right-hand panel is the **New session** form
+ * (`NewSessionForm`), as the Lobby's is Play with Engine's new-game form. A
+ * Case that is no session keeps its row, not resumable. The rows are read from the Cases'
  * PGNs (`lib/findBestMoveSessionRows.ts`) on each change of the store.
  */
 function SessionsLobby() {
@@ -94,30 +96,18 @@ function SessionsLobby() {
         }
         count={cases === undefined ? "" : t("accuracyTrainer.sessions.count", { count: rows.length })}
         actions={
-          <>
-            {shownPicks.size > 0 && (
-              <Button
-                size="small"
-                color="error"
-                variant="outlined"
-                startIcon={<DeleteOutlineRoundedIcon fontSize="small" />}
-                onClick={() => setDeleting(true)}
-                data-testid="find-best-move-sessions-delete-picked"
-              >
-                {t("accuracyTrainer.sessions.deletePicked", { count: shownPicks.size })}
-              </Button>
-            )}
+          shownPicks.size > 0 ? (
             <Button
               size="small"
-              variant="contained"
-              startIcon={<AddRoundedIcon fontSize="small" />}
-              component={RouterLink}
-              to={NEW_SESSION_PATH}
-              data-testid="find-best-move-sessions-new"
+              color="error"
+              variant="outlined"
+              startIcon={<DeleteOutlineRoundedIcon fontSize="small" />}
+              onClick={() => setDeleting(true)}
+              data-testid="find-best-move-sessions-delete-picked"
             >
-              {t("accuracyTrainer.sessions.newSession")}
+              {t("accuracyTrainer.sessions.deletePicked", { count: shownPicks.size })}
             </Button>
-          </>
+          ) : undefined
         }
         testId="find-best-move-sessions-header"
       />
@@ -154,6 +144,9 @@ function SessionsLobby() {
         testId="find-best-move-sessions-delete-dialog"
         confirmTestId="find-best-move-sessions-delete-confirm"
       />
+      <RightPanel>
+        <NewSessionForm />
+      </RightPanel>
     </Box>
   );
 }

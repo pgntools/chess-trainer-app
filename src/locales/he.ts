@@ -398,6 +398,17 @@ const he: typeof en = {
       count_one: "סשן אחד",
       count_other: "{{count}} סשנים",
       newSession: "סשן חדש",
+      form: {
+        game: "משחק",
+        editor: "עורך הלוח",
+        settings: "הגדרות",
+        position: "הסשן מתחיל מהעמדה שנקבעה בעורך הלוח — עמדה אחת, של הצד שעל המסע, והמנוע מוצא את הקווים שלה.",
+        positionEdit: "עריכה",
+        positionReset: "שימוש במשחק במקום",
+        positionIllegal: "אי אפשר לענות על העמדה הזו:",
+        positionOver: "לצד שעל המסע אין מסע בעמדה הזו — אין על מה לענות.",
+        positionName: "עמדה — {{side}} על המסע",
+      },
       deletePicked: "מחיקת הנבחרים ({{count}})",
       confirmDelete: {
         title_one: "למחוק את הסשן הנבחר?",

@@ -39,12 +39,26 @@ vi.mock("../../../lib/pgnExport", async (importOriginal) => ({
   },
 }));
 
+// The game boards' stub — and, for the New session form's Board editor, the spare-piece pair, the provider keeping its options.
+const editorBoard = vi.hoisted(() => ({ options: null as Record<string, unknown> | null }));
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
-  return reactChessboardMock();
+  const mock = reactChessboardMock();
+  return {
+    ...mock,
+    // The editor's board takes no options of its own — its provider holds them.
+    Chessboard: (props: { options?: Record<string, unknown> }) =>
+      props.options === undefined ? <div data-testid="editor-board" /> : mock.Chessboard(props as { options: Record<string, unknown> }),
+    ChessboardProvider: ({ options, children }: { options: Record<string, unknown>; children: React.ReactNode }) => {
+      editorBoard.options = options;
+      return <div>{children}</div>;
+    },
+    SparePiece: ({ pieceType }: { pieceType: string }) => <div data-testid={`spare-${pieceType}`} />,
+  };
 });
 
 import FindBestMoveV3Route from "./FindBestMoveV3Route";
+import SessionsLobby from "./SessionsLobby";
 
 /*
   Find Best Move v3 (CTA-238, experimental, dev-only): a game loaded, a side
@@ -68,11 +82,12 @@ const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
 
 /**
- * The screen at an address — the setup of a new session to start with, a
- * session's own (`…/<caseId>`) to resume one — the game's moves between
- * positions played out at once: `stepDelayMs` for the test that watches them.
+ * The screen at an address — the lobby, its New session form beside the
+ * table, to start with; a session's own (`…/<caseId>`) to resume one — the
+ * game's moves between positions played out at once: `stepDelayMs` for the
+ * test that watches them.
  */
-const mount = (stepDelayMs = 0, at = "/accuracy-trainer/find-best-move-v3/new") =>
+const mount = (stepDelayMs = 0, at = "/accuracy-trainer/find-best-move-v3") =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[at]}>
@@ -81,7 +96,7 @@ const mount = (stepDelayMs = 0, at = "/accuracy-trainer/find-best-move-v3/new") 
             <BoardLeftPanelOutlet compact={false} />
             <Routes>
               <Route path="/accuracy-trainer/find-best-move-v3/:caseId" element={<FindBestMoveV3Route stepDelayMs={stepDelayMs} />} />
-              <Route path="/accuracy-trainer/find-best-move-v3" element={<p>The sessions</p>} />
+              <Route path="/accuracy-trainer/find-best-move-v3" element={<SessionsLobby />} />
             </Routes>
             <RightPanelOutlet />
           </RightPanelProvider>
@@ -105,6 +120,23 @@ const load = async (user: ReturnType<typeof userEvent.setup>, pgn: string) => {
   await user.click(screen.getByRole("button", { name: "Load" }));
 };
 
+/** The form's *Use the engine*, on its Settings tab — then back to its Game tab. */
+const switchEngine = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole("tab", { name: "Settings" }));
+  await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+  await user.click(screen.getByRole("tab", { name: "Game" }));
+};
+
+/** A piece dropped on the form's Board editor, as a drag would. */
+const editorDrag = (pieceType: string, from: string, to: string | null) =>
+  act(() => {
+    (editorBoard.options!.onPieceDrop as (args: unknown) => boolean)({
+      piece: { pieceType, isSparePiece: false, position: from },
+      sourceSquare: from,
+      targetSquare: to,
+    });
+  });
+
 const startWith = async (user: ReturnType<typeof userEvent.setup>, side: "White" | "Black" | "Both", pgn = ANALYSED) => {
   await load(user, pgn);
   await user.click(screen.getByRole("button", { name: side }));
@@ -126,13 +158,14 @@ beforeEach(async () => {
 });
 
 describe("Find Best Move v3 (CTA-238)", () => {
-  it("starts on its setup, marked experimental, its own panel beside the board", async () => {
+  it("starts from the lobby's New session form — Game, Board editor and Settings tabs, Start under them", async () => {
     mount();
-    expect(screen.getByTestId("find-best-move-v3-experimental")).toHaveTextContent("Experimental");
+    expect(screen.getByRole("heading", { level: 2, name: "New session" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Game" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Board editor" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Pick a case…" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Find Best Move v3" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     await expectNoAxeViolations();
   });
 
@@ -140,6 +173,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White");
+    expect(screen.getByTestId("find-best-move-v3-experimental")).toHaveTextContent("Experimental");
     // 1. e4: the start, nothing of the game shown.
     expect(boardOptions().position).toBe(START);
     expect(screen.queryByTestId("move-ply-1")).not.toBeInTheDocument();
@@ -332,17 +366,17 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await load(user, '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     expect(screen.getByText(/Turn on Use the engine in the panel's Settings/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
-    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    await switchEngine(user);
     expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train");
     expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
-    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    await switchEngine(user);
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
   });
 
   it("asks the engine where the lines are too few: a job on the first move, the choice graded once it ends, its line kept", async () => {
     const user = userEvent.setup();
     mount();
-    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    await switchEngine(user);
     await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     expect(jobRuntime().snapshot() ?? []).toEqual([]);
 
@@ -606,7 +640,7 @@ describe("Find Best Move v3 (CTA-238)", () => {
   it("keeps an engine search's lines in the session's PGN — a reload grades the same and asks the engine nothing more", async () => {
     const user = userEvent.setup();
     const { unmount } = mount();
-    await user.click(screen.getByRole("switch", { name: "Use the engine" }));
+    await switchEngine(user);
     await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     const best = legalMove(START);
     drag(best.slice(0, 2), best.slice(2, 4));
@@ -622,6 +656,44 @@ describe("Find Best Move v3 (CTA-238)", () => {
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByRole("switch", { name: "Use the engine" })).toBeChecked();
     expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
+  });
+
+  it("starts a session from a position set in the Board editor — one position, the engine finding its lines", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("tab", { name: "Board editor" }));
+    editorDrag("wP", "e2", "e4");
+    const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+    // The Game tab says the position is the session's.
+    await user.click(screen.getByRole("tab", { name: "Game" }));
+    expect(screen.getByTestId("new-session-custom-position")).toHaveTextContent(fen);
+    await user.click(screen.getByRole("button", { name: "Start" }));
+
+    expect(await screen.findByTestId("find-best-move-v3-progress")).toHaveTextContent("Position 1 of 1 · 1. White");
+    expect(boardOptions().position).toBe(fen);
+    expect(screen.getByRole("heading", { level: 2, name: "Position — White to move" })).toBeInTheDocument();
+    // No line of its own: the engine is asked, and the moves graded against its.
+    const best = legalMove(fen);
+    drag(best.slice(0, 2), best.slice(2, 4));
+    await user.click(screen.getByRole("button", { name: "Check (1)" }));
+    expect(await screen.findByTestId("find-best-move-v3-graded-headline", {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
+    const pgn = (await sessionCase())?.pgn ?? "";
+    expect(pgn).toContain('[FindBestMoveEngine "on"]');
+    expect(pgn).not.toContain("game:");
+  });
+
+  it("keeps Start off, and says why, while the Board editor's position cannot be answered", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("tab", { name: "Board editor" }));
+    editorDrag("wK", "e1", null);
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+    expect(screen.getByTestId("new-session-illegal")).toHaveTextContent("White has no king.");
+    // Use a game instead: the position set aside.
+    await user.click(screen.getByRole("tab", { name: "Game" }));
+    await user.click(screen.getByRole("button", { name: "Use a game instead" }));
+    expect(screen.queryByTestId("new-session-custom-position")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("new-session-illegal")).not.toBeInTheDocument();
   });
 
   it("says a session that is not there", async () => {

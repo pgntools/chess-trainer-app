@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { JobRecord } from "@pgntools/jobs-runtime";
 
 import type { PositionResult } from "../../../lib/computerAnalysis";
@@ -72,9 +72,15 @@ export const useEvaluatePositionJobs = ({
   const selections = useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot);
 
   const byId = useMemo(() => new Map((records ?? []).map((record) => [record.id, record])), [records]);
+  // Jobs queued here whose record the runtime's list has not shown yet — pending, not gone. Dropped once it shows.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  if ([...fresh].some((id) => byId.has(id))) setFresh(new Set([...fresh].filter((id) => !byId.has(id))));
   const states = useMemo(
-    () => jobIds.map((jobId): PositionEngineState => (jobId === null ? { kind: "none" } : stateOf(jobId, byId.get(jobId), records !== undefined))),
-    [jobIds, byId, records],
+    () =>
+      jobIds.map((jobId): PositionEngineState =>
+        jobId === null ? { kind: "none" } : stateOf(jobId, byId.get(jobId), records !== undefined && !fresh.has(jobId)),
+      ),
+    [jobIds, byId, records, fresh],
   );
   const merges = useMemo(() => states.flatMap((state) => (state.kind === "done" ? [state.jobId] : [])), [states]);
 
@@ -95,7 +101,9 @@ export const useEvaluatePositionJobs = ({
         search: { depth: settings.depth, moveTimeMs: settings.moveTimeMs, threads: settings.threads, hashMb: settings.hashMb, multiPv: lines },
       };
       const queued = await jobRuntime().enqueue(EVALUATE_POSITION_KIND, input);
-      return "id" in queued ? queued.id : undefined;
+      if (!("id" in queued)) return undefined;
+      setFresh((current) => new Set([...current, queued.id]));
+      return queued.id;
     },
     [caseId, engineId, presets, selections, settings, lines],
   );

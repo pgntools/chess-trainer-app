@@ -26,7 +26,9 @@ summary at the end. **A session is an Analysis Case whose PGN holds it
 whole** (CTA-239, §7): reloaded, opened from the **sessions lobby** — the
 route itself, `/accuracy-trainer/find-best-move-v3` (§8) — downloaded as a
 `.pgn` and loaded back, it resumes where it was left; a session's own address
-is `/accuracy-trainer/find-best-move-v3/<caseId>`, a new one's setup `…/new`.
+is `/accuracy-trainer/find-best-move-v3/<caseId>`, and a new one is started
+from the lobby's **New session** form, in its right-hand panel — as Play with
+Engine's Lobby holds its new-game form.
 
 (v1 — several moves suggested on a board that snapped back — and v2 — the
 first analysis board, its own tree per position — were deleted when v3
@@ -56,20 +58,22 @@ each position.)
 | `src/lib/jobs/kinds/evaluatePosition/` | **The Evaluate Position job kind** — [`jobs.md`](./jobs.md) §3.2. |
 | `src/views/accuracyTrainer/findBestMoveV3/useFindBestMoveSession.ts` | **The screen's one hook**: the board core, the session, its Case (made, autosaved), the engine jobs, the grading, the board's wrapped drops — everything the screen shows, and every action. |
 | `…/FindBestMoveV3.tsx` | **The screen — composition alone**: `BoardShell`, the explorer, the right panel's tabs, header (the way back to the lobby, Download PGN) and footer, the left panel; a Case that holds no session said so. |
-| `…/FindBestMoveV3Route.tsx` | A session's route (CTA-239): `new` the setup, else the Cases read and the screen mounted keyed by the Case (`resume`), a Case not there said. |
-| `…/SessionsLobby.tsx` | **The sessions lobby** (CTA-239, §8): the project's Cases as `FindBestMoveSessionsTable`, New session, Delete picked, Download PGN. |
-| `…/paths.ts` | The addresses: the lobby, `sessionPath(caseId)`, `NEW_SESSION_PATH`. |
-| `…/SessionSetup.tsx` | The setup: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one) or an Analysis Case (`CasePickerDialog`, the Projects and Cases stores read only while it is open), the side, Start — and a session's own PGN known by its tags, **Resume** in Start's place (CTA-239). |
-| `…/sessionCase.ts` | The session's Case made: the *Find Best Move* project found or made (`sessionProjectOf`, the lobby's too), a Case of the session's PGN. |
+| `…/FindBestMoveV3Route.tsx` | A session's route (CTA-239): the Cases read and the screen mounted keyed by the Case (`resume`), a Case not there said. |
+| `…/SessionsLobby.tsx` | **The sessions lobby** (CTA-239, §8): the project's Cases as `FindBestMoveSessionsTable`, Delete picked, Download PGN; its right-hand panel the New session form. |
+| `…/NewSessionForm.tsx` | **The New session form** (CTA-239, the lobby's right-hand panel): Game (`SessionSetup`), Board editor (the shared `PositionEditor` — a session from a position) and Settings (*Moves to find*, *Use the engine*, *Show next-move arrows*) tabs, a full-width Start (Resume) under all three — the Case made (`sessionStartTreeOf` / `positionSessionTreeOf`, `createSessionCase`), then opened. `…/sessionSetup.ts` its reading of what is loaded (`setupReadingOf`: a session PGN, or the positions to train, and whether Start can go). |
+| `…/paths.ts` | The addresses: the lobby, `sessionPath(caseId)`. |
+| `…/SessionSetup.tsx` | The form's Game tab: a PGN uploaded or pasted (`PgnInput`, a file of several games picking one) or an Analysis Case (`CasePickerDialog`, the Projects and Cases stores read only while it is open), the side — and a session's own PGN known by its tags (CTA-239). |
+| `…/sessionCase.ts` | The session's Case made: the tree it starts from (`sessionStartTreeOf` — a session PGN as it is, or a game's mainline with a new session written in), the *Find Best Move* project found or made (`sessionProjectOf`, the lobby's too), a Case of the session's PGN. |
 | `…/useEvaluatePositionJobs.ts` | The screen's side of the job kind: queue one (the Engine menu's search), read each job's state and result, the done ones' ids (the Case's merges). |
 | `…/Main.tsx`, `…/LobbyMain.tsx` | Layout-only wrappers (`find-best-move-v3-wrapper`, `find-best-move-sessions-wrapper`). |
 | `src/blocks/panels/GradedLines/`, `AccuracySessionReport/`, `AccuracyTrainerDetails/`, `src/blocks/tables/FindBestMoveSessionsTable/` | A graded position; the session's summary; the left panel (the game, its Case, Settings); the lobby's table (CTA-239). |
-| Tests | `lib/accuracyTrainer.test.ts`, `lib/findBestMoveSession.test.ts`, `lib/findBestMoveSessionPgn.test.ts` (the format: the round trip, a PGN that is no session, the leniency, the board without the commands — CTA-239), `lib/findBestMoveSessionRows.test.ts`, `lib/jobs/kinds/evaluatePosition/*.test.ts`, `findBestMoveV3/FindBestMoveV3.test.tsx` (mounted through its route: a reload resuming, Download, a session PGN resumed from the setup, a Case that is no session, one not there), `findBestMoveV3/SessionsLobby.test.tsx`, the blocks' own, the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
+| Tests | `lib/accuracyTrainer.test.ts`, `lib/findBestMoveSession.test.ts`, `lib/findBestMoveSessionPgn.test.ts` (the format: the round trip, a PGN that is no session, the leniency, the board without the commands — CTA-239), `lib/findBestMoveSessionRows.test.ts`, `lib/jobs/kinds/evaluatePosition/*.test.ts`, `findBestMoveV3/FindBestMoveV3.test.tsx` (mounted through the lobby and its route: started from the form, a reload resuming, Download, a session PGN resumed from the form, a Case that is no session, one not there), `findBestMoveV3/SessionsLobby.test.tsx`, the blocks' own, the trainer's rows in `views/board/boards.test.tsx` and `panelPropagation.test.tsx`, `navTree.test.ts`, `Sidebar.test.tsx` (the experimental chip), `routes.test.tsx`. |
 
-Routes and nav: `/accuracy-trainer/find-best-move-v3` — the sessions lobby, a
-`FULL_WIDTH_ROUTE`, `pages.findBestMoveV3` (and `pageDescriptions.findBestMoveV3`)
-— and `/accuracy-trainer/find-best-move-v3/:caseId` — a session, or `new` the
-setup, a board route, `pages.findBestMoveV3Session` (CTA-239); the dev-only top-level folder
+Routes and nav: `/accuracy-trainer/find-best-move-v3` — the sessions lobby, the
+table in the board square and the New session form in the right-hand panel,
+`pages.findBestMoveV3` (and `pageDescriptions.findBestMoveV3`) — and
+`/accuracy-trainer/find-best-move-v3/:caseId` — a session, a board route,
+`pages.findBestMoveV3Session` (CTA-239); the dev-only top-level folder
 `accuracy-trainer` (`nav.folders.accuracyTrainer`, after the Engine — a
 top-level folder with one screen stays a folder), its screen
 `nav.findBestMoveV3`, marked `experimental` (`NavItem.experimental`, carried by
@@ -139,8 +143,9 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   new session written in** (CTA-239, §7 — its tags and each position's
   command, the positions' lines among them: the source's analysis is not in
   the tree, so it is in the commands) — then opens it at its address, where
-  the screen resumes it from that PGN as a reload would (§8). A refused write
-  is said under the setup, and nothing starts.
+  the screen resumes it from that PGN as a reload would (§8). Start is the
+  lobby's New session form's. A refused write is said above its Start, and
+  nothing starts.
 - **A position's view** (`positionViewOf`): the Case's tree **with the
   position's continuation set aside** — its node's children: the game's next
   move and everything after it, the engine's lines there, the answers further
@@ -210,7 +215,8 @@ moves to find, N.
   by an **Evaluate Position job** ([`jobs.md`](./jobs.md) §3.2) — queued by
   the reader's **first move there** (the hook's wrapped `onPieceDrop` /
   `resolvePromotion`, a move made on or inside the position), or by Check if
-  none was; once per position. Its search is the top bar's Engine menu's (the
+  none was; once per position — a Check while it is being queued already
+  waits for it. Its search is the top bar's Engine menu's (the
   board's engine and its selected preset, depth, move time, Threads, Hash),
   MultiPV N. The footer says while it searches.
 - **A check waits for its search**: the Result tab says so, and the moves are
@@ -243,13 +249,14 @@ moves to find, N.
   reply inside a line is analysis, not a move of theirs. The footer lists
   them ("Your moves: 1. Nf3 2. d4 3. c4") over **Check (n)** (off with none),
   beside Pass.
-- **The right panel**: the setup before a session; then **Moves · Map ·
+- **The right panel**: **Moves · Map ·
   Result** (off until answered) **· Summary**; the header — the way back to
   the sessions (CTA-239), the *Experimental* chip, "Position 3 of 12 · 12.
   White", and **Download the session's PGN** (its Case's PGN as the autosave
   writes it); the footer — the
   comment block, the next-moves bar (Moves), the instructions, the reader's
-  moves and the engine's word while answering, New session, Pass / Check or
+  moves and the engine's word while answering, New session (back to the
+  lobby, where its form is), Pass / Check or
   Next / Summary. **Result** (`GradedLines`): the headline (found, in place;
   every one in place; none; a pass), the lines best first — rank, move, eval,
   loss, the reader's rank for it (*In place*), its verdict — a line under the
@@ -326,7 +333,7 @@ space-separated, absent when empty:
 
 | Field | Value |
 | --- | --- |
-| `game:` | The game's move there |
+| `game:` | The game's move there — absent for a session from a position alone |
 | `state:` | `open` (not answered), `answered`, `passed`, `reopened` (a pass being answered again — only on screen; anywhere else read as a pass) |
 | `answer:` | The reader's moves in their order, `Nf3,d4,c4` |
 | `lines:` | **Every line the position is graded against** — the source's analysis and the engine's search together — each `<moves>/<score>/<flags>`: its moves from the position dot-joined (the game's move by its first alone), its score in White's view (centipawns, `#N` a mate), `l` one of the engine's listed lines, `p` the game's move: `e4/30/lp,d4.d5.c4/25/l`. A position rebuilt from them (`trainingPositionFrom`) is the one the source gave. |
@@ -349,8 +356,18 @@ grading is reproduced from the command, never re-read from the tree.
   not yet), Status (*Ongoing* / *Done* — nothing left to answer), Updated;
   every header sorts, newest first, the sort and page the URL's; each row's
   Open in Analysis and Download PGN; picks deleted together after one
-  confirmation (`removeAnalysisCases` — their unfinished jobs with them);
-  **New session** opens the setup. A Case there that holds no session (one
+  confirmation (`removeAnalysisCases` — their unfinished jobs with them).
+  **The right-hand panel is the New session form** (`NewSessionForm`, as the
+  Lobby's new-game form is Play with Engine's): **Game** — the game loaded
+  (a PGN uploaded or pasted, or a Case picked) and the side —, **Board
+  editor** — the shared position editor ([`position-editor.md`](./position-editor.md)):
+  a position other than the standard start is the session's, over any game
+  loaded (the Game tab says so, the FEN with *Edit* and *Use a game
+  instead*), Start off with why while it cannot be answered (illegal, or no
+  move for the side to move) — and **Settings** — *Moves to find*, *Use the engine* (with it on, a game with no
+  engine lines trains too), *Show next-move arrows* — with a full-width
+  **Start** under all three, off while there is nothing to ask; it makes the
+  session's Case and opens it. A Case there that holds no session (one
   from before CTA-239, one put there by hand) keeps its row, which says so —
   it opens in Analysis and downloads, but does not resume.
 - **Resuming** (`…/<caseId>`, `FindBestMoveV3Route`): the Cases read, the
@@ -360,7 +377,13 @@ grading is reproduced from the command, never re-read from the tree.
   locked, *Use the engine*, the arrows) as they were, every answer graded as
   before. A Case that holds no session says so with its link into Analysis;
   one not there says so with the way back.
-- **A session PGN loaded in the setup** (a downloaded one, or a session Case
+- **A session from a position** (`positionSessionTreeOf`): the position
+  alone, no game — **one position**, the side to move's, named "Position —
+  White to move", **no line of its own**: the engine finds them (the
+  session's *Use the engine* on, whatever the form's switch said), and its
+  command has no `game:` (the panels show "–" for the game's move).
+- **A session PGN loaded in the form** (a downloaded one, or a session Case
   picked): known by its tags — said as a session, how far it got, the side
-  toggle off — and **Resume** keeps it as it is, a **new** Case in the
-  project, opened where it was left. A plain game starts a fresh session.
+  toggle off — and **Resume**, in Start's place, keeps it as it is, a **new**
+  Case in the project, opened where it was left. A plain game starts a fresh
+  session.

@@ -70,6 +70,18 @@ import MaskedPlay from "../engine/masked/MaskedPlay";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
 import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
+import { sessionStartTreeOf } from "../accuracyTrainer/findBestMoveV3/sessionCase";
+
+/** A Find Best Move session's Case (CTA-239) — the screen resumes one, its PGN the whole session. */
+const FIND_BEST_MOVE_CASE = gameCaseOf(
+  { id: "session", projectId: "p", name: "Alice – Bob — Find Best Move" },
+  sessionStartTreeOf(
+    { name: "Alice – Bob", tree: parsePgnTree("1. e4 { [%eval 0.30] } (1. d4 { [%eval 0.25] }) 1... e5 *") },
+    "all",
+    { moves: 3, engine: false, showArrows: true },
+  )!,
+);
+const FindBestMoveV3Session = () => <FindBestMoveV3 resume={FIND_BEST_MOVE_CASE} />;
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -112,12 +124,12 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
   ];
 
 /**
- * The boards that open with no move list — the experimental Accuracy
- * Trainer's Find Best Move (CTA-238, dev-only) opens on its setup, its Moves
- * tab only once a session starts. Its panel is the one skeleton all the same.
+ * The experimental Accuracy Trainer's Find Best Move (CTA-238, dev-only) —
+ * a session resumed from its Case (CTA-239). Its panel is the one skeleton
+ * all the same.
  */
 const POSITION_BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] = [
-  { name: "Accuracy Trainer — Find Best Move v3", panelId: "find-best-move-v3-panel", Screen: FindBestMoveV3 },
+  { name: "Accuracy Trainer — Find Best Move v3", panelId: "find-best-move-v3-panel", Screen: FindBestMoveV3Session },
 ];
 
 const renderBoard = (Screen: () => ReactNode) =>

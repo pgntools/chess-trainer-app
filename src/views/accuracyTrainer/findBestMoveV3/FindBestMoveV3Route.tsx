@@ -8,31 +8,29 @@ import { InlineAlert } from "../../../design-system/components/feedback";
 import { analysisCasesSnapshot, loadAnalysisCases } from "../../../lib/analysisCaseStore";
 import { useStoreRead } from "../../shared/useStoreRead";
 import FindBestMoveV3 from "./FindBestMoveV3";
-import { FIND_BEST_MOVE_V3_PATH, NEW_SESSION_ID } from "./paths";
+import { FIND_BEST_MOVE_V3_PATH } from "./paths";
 
 const isRead = () => analysisCasesSnapshot() !== undefined;
 
 /**
  * **A Find Best Move session's route** (CTA-239) — `…/find-best-move-v3/<caseId>`:
- * `new` the setup of a new session, else the session whose Case that is,
- * resumed from its PGN. The Cases are read first (a reload lands here), then
+ * the session whose Case that is, resumed from its PGN (a new one is started
+ * from the lobby's form). The Cases are read first (a reload lands here), then
  * the screen mounts keyed by the Case — another session is a new screen, the
  * Case read once as it mounts. A Case that is not there says so, with the way
  * back to the lobby.
  */
 function FindBestMoveV3Route({ stepDelayMs }: { stepDelayMs?: number }) {
-  const { caseId = NEW_SESSION_ID } = useParams();
-  // Keyed by the address: Start's step from `new` to its Case is a new arrival, its read waited for afresh.
+  const { caseId = "" } = useParams();
+  // Keyed by the address: another session is a new arrival, its read waited for afresh.
   return <SessionArrival key={caseId} caseId={caseId} {...(stepDelayMs === undefined ? {} : { stepDelayMs })} />;
 }
 
 function SessionArrival({ caseId, stepDelayMs }: { caseId: string; stepDelayMs?: number }) {
   const { t } = useTranslation();
-  const creating = caseId === NEW_SESSION_ID;
-  const ready = useStoreRead(!creating, isRead, loadAnalysisCases);
+  const ready = useStoreRead(true, isRead, loadAnalysisCases);
   const delay = stepDelayMs === undefined ? {} : { stepDelayMs };
 
-  if (creating) return <FindBestMoveV3 {...delay} />;
   if (!ready) {
     return (
       <Typography variant="body2" role="status" data-testid="find-best-move-v3-loading" sx={{ p: 2, color: "text.secondary" }}>

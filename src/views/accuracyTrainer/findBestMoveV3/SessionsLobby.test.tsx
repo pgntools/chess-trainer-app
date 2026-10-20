@@ -13,6 +13,7 @@ import { withSessionRecord } from "../../../lib/findBestMoveSessionPgn";
 import { parsePgnTree } from "../../../lib/pgn";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
+import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
 // The browser's download, caught: what a row's Download PGN hands it.
 const downloaded = vi.hoisted(() => ({ pgns: [] as string[] }));
@@ -26,7 +27,7 @@ vi.mock("../../../lib/pgnExport", async (importOriginal) => ({
 
 import SessionsLobby from "./SessionsLobby";
 
-/* Find Best Move's sessions lobby (CTA-239): every Case of the Find Best Move project, its session read from its PGN. */
+/* Find Best Move's sessions lobby (CTA-239): every Case of the Find Best Move project, its session read from its PGN — and the New session form beside it (its own tests: `FindBestMoveV3.test.tsx`). */
 
 const ANALYSED = `[White "Alice"]
 [Black "Bob"]
@@ -58,10 +59,13 @@ const mount = () =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/accuracy-trainer/find-best-move-v3"]}>
-        <Routes>
-          <Route path="/accuracy-trainer/find-best-move-v3" element={<SessionsLobby />} />
-          <Route path="/accuracy-trainer/find-best-move-v3/:caseId" element={<p>The session</p>} />
-        </Routes>
+        <RightPanelProvider>
+          <Routes>
+            <Route path="/accuracy-trainer/find-best-move-v3" element={<SessionsLobby />} />
+            <Route path="/accuracy-trainer/find-best-move-v3/:caseId" element={<p>The session</p>} />
+          </Routes>
+          <RightPanelOutlet />
+        </RightPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -87,7 +91,8 @@ describe("Find Best Move's sessions lobby (CTA-239)", () => {
     expect(going[5]).toHaveTextContent("2/22 in place");
     expect(screen.getByTestId("find-best-move-sessions-table-status-going")).toHaveTextContent("Ongoing");
     expect(screen.getByTestId("find-best-move-sessions-table-note-plain")).toHaveTextContent("By hand holds no session");
-    expect(screen.getByRole("link", { name: "New session" })).toHaveAttribute("href", "/accuracy-trainer/find-best-move-v3/new");
+    // The New session form beside the table.
+    expect(screen.getByRole("heading", { level: 2, name: "New session" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });
 

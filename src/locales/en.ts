@@ -558,6 +558,20 @@ const en = {
       count_one: "{{count}} session",
       count_other: "{{count}} sessions",
       newSession: "New session",
+      /** The lobby's New session form's tabs. */
+      form: {
+        game: "Game",
+        editor: "Board editor",
+        settings: "Settings",
+        /** A position set in the Board editor: the session's, over any game loaded. */
+        position: "The session starts from the position set in the Board editor — one position, the side to move's, the engine finding its lines.",
+        positionEdit: "Edit",
+        positionReset: "Use a game instead",
+        positionIllegal: "This position cannot be answered:",
+        positionOver: "The side to move has no move in this position — there is nothing to answer.",
+        /** A session from a position alone: its name. */
+        positionName: "Position — {{side}} to move",
+      },
       deletePicked: "Delete picked ({{count}})",
       confirmDelete: {
         title_one: "Delete the picked session?",

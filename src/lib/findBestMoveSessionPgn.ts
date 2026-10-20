@@ -22,7 +22,7 @@ import { addLine, emptyTree, findNode, sanPathTo, setComments, setNags, type Gam
  * - **One command per position** — `[%fbm …]`, a comment of its own on the
  *   move the position follows, its first (the game's opening comment for the start),
  *   its fields `key:value`, space-separated, absent when empty:
- *   `game:` the game's move; `state:` `open` / `answered` / `passed` /
+ *   `game:` the game's move (none for a session from a position alone); `state:` `open` / `answered` / `passed` /
  *   `reopened` (a pass being answered again, on screen); `answer:` the
  *   reader's moves in their order (`Nf3,d4,c4`); `lines:` every line the
  *   position is graded against, best first not required — each its moves
@@ -103,7 +103,8 @@ const commandOf = (record: SessionRecord, index: number): string | undefined => 
   if (position === undefined) return undefined;
   const given = record.answers[index] ?? null;
   const state: StoredState = given === null ? (record.reopened === index ? "reopened" : "open") : given.length === 0 ? "passed" : "answered";
-  const fields = [`game:${position.playedSan}`, `state:${state}`];
+  // A session from a position alone has no game move (CTA-239).
+  const fields = [...(position.playedSan === "" ? [] : [`game:${position.playedSan}`]), `state:${state}`];
   if (given !== null && given.length > 0) fields.push(`answer:${given.join(",")}`);
   if (position.lines.length > 0) fields.push(`lines:${position.lines.map(lineText).join(",")}`);
   const work = record.work[index];
@@ -256,7 +257,8 @@ export const sessionRecordOf = (tree: GameTree): SessionRecord | undefined => {
     const fen = node === null ? tree.startFen : node.fen;
     const path = sanPathTo(tree, node?.id ?? null);
     const turn = turnOf(fen);
-    const playedSan = fields.get("game") ?? node?.children[0]?.san ?? tree.moves[0]?.san ?? "";
+    // No `game:` — a session from a position alone: no game move (the tree's moves there are the reader's).
+    const playedSan = fields.get("game") ?? "";
     positions.push(
       trainingPositionFrom(
         { nodeId: node?.id ?? null, path, fen, turn, ply: path.length + 1, moveNumber: Number(fen.split(" ")[5]) || 1, playedSan },
