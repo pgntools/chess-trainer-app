@@ -290,7 +290,7 @@ describe("the engine's part (CTA-238, Find Best Move)", () => {
   });
 
   it("asks every analysed position of a partial analysis — one with no side line needs the engine, the game's move no top line (CTA-245)", () => {
-    const partial = gamePositionsOf(parsePgnTree(PARTIAL_PGN), { engine: false });
+    const partial = gamePositionsOf(parsePgnTree(PARTIAL_PGN));
     expect(partial.map((position) => [position.ply, position.topCount])).toEqual([
       // 1. e4 above 1. Nf3 — the game's move inside the engine's range, one of its lines.
       [1, 3],
@@ -307,14 +307,16 @@ describe("the engine's part (CTA-238, Find Best Move)", () => {
     expect(needsEngine(nf3, 1)).toBe(true);
     // White's: 1, 2, 3, 4 — none skipped.
     expect(sessionPositionsOf(partial, "w").map((position) => position.moveNumber)).toEqual([1, 2, 3, 4]);
-    // The engine's switch changes nothing for an analysed game.
-    expect(gamePositionsOf(parsePgnTree(PARTIAL_PGN), { engine: true })).toEqual(partial);
   });
 
-  it("asks nothing of a game with no engine line while the engine is off — every position with it on", () => {
-    const plain = parsePgnTree("1. e4 e5 2. Nf3 *");
-    expect(gamePositionsOf(plain, { engine: false })).toEqual([]);
-    expect(gamePositionsOf(plain, { engine: true }).map((position) => position.ply)).toEqual([1, 2, 3]);
+  it("asks every position of a game with no engine line, each with no top line — the engine's to find (CTA-246)", () => {
+    const plain = gamePositionsOf(parsePgnTree("1. e4 e5 2. Nf3 *"));
+    expect(plain.map((position) => [position.ply, position.topCount])).toEqual([
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ]);
+    expect(plain.every((position) => needsEngine(position, 1))).toBe(true);
   });
 
   it("reads a UCI line as SAN, cut at the first move that does not play", () => {

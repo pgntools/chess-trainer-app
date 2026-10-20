@@ -29,7 +29,7 @@ type FormTab = (typeof FORM_TABS)[number];
 /** How many best moves may be asked for — the Engine menu's own range of lines. */
 const MOVES_BOUNDS = { min: 1, max: 10 } as const;
 
-const DEFAULT_SETTINGS: NewSessionSettings = { moves: 3, engine: false, arrows: true };
+const DEFAULT_SETTINGS: NewSessionSettings = { moves: 3, arrows: true };
 
 /** The widest the editor's board grows in the panel — a small board, as on Play with Engine's form. */
 const EDITOR_BOARD_MAX_PX = 360;
@@ -42,8 +42,9 @@ const EDITOR_BOARD_MAX_PX = 360;
  * editor** (the shared `PositionEditor`: a position other than the standard
  * start is the session's — one position, the side to move's, its lines the
  * engine's; the Game tab says so, with *Edit* and *Use a game instead*) and
- * **Settings** (*Moves to find*, *Use the engine* — which decides whether a
- * plain game trains —, *Show next-move arrows*) — and a full-width **Start**
+ * **Settings** (*Moves to find*, *Show next-move arrows* — no engine switch:
+ * a game's session starts with it off, each position short of lines offering
+ * it, CTA-246) — and a full-width **Start**
  * under all three (**Resume** for a session's PGN), off while nothing is
  * there to ask, or the position cannot be answered (said, with why). Start
  * makes the session (`sessionFromGame` / `sessionFromPosition`, or the
@@ -61,7 +62,7 @@ function NewSessionForm() {
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
-  const setup = useMemo(() => setupReadingOf(source, settings.engine, side), [source, settings.engine, side]);
+  const setup = useMemo(() => setupReadingOf(source, side), [source, side]);
 
   // The Board editor: a position other than the standard start is the session's, over any game loaded.
   const editor = usePositionEditor();
@@ -151,7 +152,7 @@ function NewSessionForm() {
                 </InlineAlert>
               </Box>
             )}
-            <SessionSetup source={source} onSource={setSource} setup={setup} engine={settings.engine} side={side} onSide={setSide} />
+            <SessionSetup source={source} onSource={setSource} setup={setup} side={side} onSide={setSide} />
           </>
         )}
         {tab === "editor" && <PositionEditor editor={editor} testId="new-session-editor" boardMaxWidth={EDITOR_BOARD_MAX_PX} />}
@@ -165,15 +166,6 @@ function NewSessionForm() {
               max={MOVES_BOUNDS.max}
               help={t("accuracyTrainer.details.movesHelp")}
               testId="new-session-moves"
-            />
-            <SwitchField
-              size="small"
-              testIdOn="control"
-              testId="new-session-engine"
-              checked={settings.engine}
-              onChange={(engine) => setSettings((current) => ({ ...current, engine }))}
-              label={t("accuracyTrainer.details.engine")}
-              help={t("accuracyTrainer.details.engineHelp")}
             />
             <SwitchField
               size="small"

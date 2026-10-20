@@ -97,7 +97,7 @@ describe("the round trip", () => {
 
   it("keeps a session from a position — its game empty, its one key 1", () => {
     const fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
-    const record = applied(sessionFromPosition({ fen, name: "Position — White to move", settings: { moves: 2, engine: false, arrows: false } }), [
+    const record = applied(sessionFromPosition({ fen, name: "Position — White to move", settings: { moves: 2, arrows: false } }), [
       e.workRecorded(1, workAt(fen, ["e4"], ["Kd2"])),
     ]);
     const { pgn, read } = roundTrip(record);

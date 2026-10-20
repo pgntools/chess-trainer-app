@@ -12,8 +12,13 @@ import { SESSION_FORMAT_VERSION, storedLinesOf, type FindBestMoveRecord, type Po
  * fixed now.
  */
 
-/** A new session's settings: how many best moves to find, the engine, the next-move arrows. */
-export type NewSessionSettings = { moves: number; engine: boolean; arrows: boolean };
+/**
+ * A new session's settings: how many best moves to find and the next-move
+ * arrows. The engine is not one of them (CTA-246): a game's session starts
+ * with it off — the first move where the lines are too few offers it — and a
+ * position's with it on.
+ */
+export type NewSessionSettings = { moves: number; arrows: boolean };
 
 /** The tags an analysis writes about itself — not the session's game's. */
 const ANALYSIS_TAGS: readonly string[] = [ANALYSED_PLIES_TAG, ANALYSED_SIDE_TAG, "Annotator"];
@@ -32,9 +37,10 @@ const openPosition = (key: number, lines: PositionRecord["lines"]): PositionReco
 
 /**
  * **A session from a game** — its positions for the side
- * (`gamePositionsOf`: every analysed one, whatever Use the engine says — one
- * with no side lines needs the engine, CTA-245), each with the lines the
- * game gives; the first on screen. `undefined` with none.
+ * (`gamePositionsOf`: every analysed one — one with no side lines needs the
+ * engine, CTA-245 — and every one of a game with no engine line, CTA-246),
+ * each with the lines the game gives; the first on screen; the engine off.
+ * `undefined` with none.
  */
 export const sessionFromGame = ({
   tree,
@@ -47,7 +53,7 @@ export const sessionFromGame = ({
   side: TrainingSide;
   settings: NewSessionSettings;
 }): FindBestMoveRecord | undefined => {
-  const positions = sessionPositionsOf(gamePositionsOf(tree, { engine: settings.engine }), side);
+  const positions = sessionPositionsOf(gamePositionsOf(tree), side);
   const first = positions[0];
   if (first === undefined) return undefined;
   return {
@@ -55,7 +61,7 @@ export const sessionFromGame = ({
     name,
     side,
     wanted: settings.moves,
-    settings: { engine: settings.engine, arrows: settings.arrows },
+    settings: { engine: false, arrows: settings.arrows },
     game: { startFen: tree.startFen, moves: mainline(tree).map((node) => node.san) },
     keys: positions.map((position) => position.ply),
     current: first.ply,
@@ -66,7 +72,7 @@ export const sessionFromGame = ({
 /**
  * **A session from one position** (the New session form's Board editor): no
  * game, one position — the side to move's — with no line of its own, so the
- * engine finds them (the session's engine on, whatever the form said).
+ * engine finds them (the session's engine on).
  */
 export const sessionFromPosition = ({ fen, name, settings }: { fen: string; name: string; settings: NewSessionSettings }): FindBestMoveRecord => ({
   version: SESSION_FORMAT_VERSION,

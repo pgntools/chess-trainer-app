@@ -22,14 +22,11 @@ type SessionSetupProps = {
   source: SessionSource | null;
   onSource: (source: SessionSource | null) => void;
   /**
-   * What the source reads as (`setupReadingOf`) — with the engine on, a game
-   * with no engine lines is taken too (every analysed position trained, the
-   * engine finding the lines); off, a computer analysis's output alone, and a
-   * plain game is refused with the way out.
+   * What the source reads as (`setupReadingOf`) — a computer analysis's
+   * output, or a game with no engine lines, every position trained, the
+   * engine offered at each (CTA-246).
    */
   setup: SetupReading;
-  /** The engine is on — the words for what was loaded. */
-  engine: boolean;
   side: SideValue;
   onSide: (side: SideValue) => void;
 };
@@ -49,9 +46,9 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
  * - **A game** — a PGN uploaded or pasted (a file of several picks one,
  *   `PgnInput`'s games), or **an Analysis Case** picked (`CasePickerDialog`;
  *   the Projects and Cases stores are read only while it is open). It is
- *   kept as loaded, and whether it trains read from it as it stands: with
- *   the engine off, a game with no engine lines is refused in words — the
- *   way out, the engine — and turning the engine on takes it.
+ *   kept as loaded, and what it trains read from it as it stands: a game
+ *   with no engine lines is taken too (CTA-246), said as one — training it
+ *   needs the engine, which each position offers.
  * - **The side** — White, Black or both (`SideToggle`, its *all* button
  *   "Both"); the form's **Start** is off while that side has no position.
  * - **A session's own PGN** (CTA-239 — a downloaded session, or a session
@@ -62,7 +59,7 @@ const gameNameOf = (tree: GameTree, untitled: string): string => {
  * The lobby's New session form's Game tab (CTA-239, `NewSessionForm`): Start
  * is the form's.
  */
-function SessionSetup({ source, onSource, setup, engine, side, onSide }: SessionSetupProps) {
+function SessionSetup({ source, onSource, setup, side, onSide }: SessionSetupProps) {
   const { t } = useTranslation();
   const untitled = t("accuracyTrainer.setup.untitled");
   const [pasted, setPasted] = useState("");
@@ -75,11 +72,7 @@ function SessionSetup({ source, onSource, setup, engine, side, onSide }: Session
   const projects = useSyncExternalStore(picking ? subscribeAnalysisProjects : unsubscribed, analysisProjectsSnapshot, analysisProjectsSnapshot);
   const cases = useSyncExternalStore(picking ? subscribeAnalysisCases : unsubscribed, analysisCasesSnapshot, analysisCasesSnapshot);
 
-  /**
-   * One game onto the trainer. It is kept even with nothing to train — no
-   * engine lines while the engine is off: whether it trains is read from it
-   * as it stands (below), so turning the engine on afterwards takes it.
-   */
+  /** One game onto the trainer — what it trains is read from it as it stands (`setup`). */
   const take = (tree: GameTree, name: string) => {
     setProblem(null);
     onSource({ name, tree });
@@ -101,8 +94,8 @@ function SessionSetup({ source, onSource, setup, engine, side, onSide }: Session
     take(trees[0], gameNameOf(trees[0], untitled));
   };
 
-  const { session, count, white, black, forSide, refused } = setup;
-  const shownProblem = problem ?? (session === null ? t("accuracyTrainer.setup.sessionProblem") : refused ? t("accuracyTrainer.setup.noLines") : null);
+  const { session, count, white, black, forSide, noLines } = setup;
+  const shownProblem = problem ?? (session === null ? t("accuracyTrainer.setup.sessionProblem") : null);
 
   return (
     <Box data-testid="accuracy-setup" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -163,9 +156,14 @@ function SessionSetup({ source, onSource, setup, engine, side, onSide }: Session
           })}
         </StatusText>
       )}
-      {source !== null && session === undefined && !refused && (
+      {source !== null && session === undefined && count > 0 && (
         <StatusText tone="success" testId="accuracy-setup-loaded">
-          {t(engine ? "accuracyTrainer.setup.loadedEngine" : "accuracyTrainer.setup.loaded", { name: source.name, count, white, black })}
+          {t("accuracyTrainer.setup.loaded", { name: source.name, count, white, black })}
+        </StatusText>
+      )}
+      {source !== null && session === undefined && noLines && (
+        <StatusText tone="info" testId="accuracy-setup-no-lines">
+          {t("accuracyTrainer.setup.noLines")}
         </StatusText>
       )}
       <Box sx={{ display: "grid", gap: 0.75 }}>
@@ -188,7 +186,7 @@ function SessionSetup({ source, onSource, setup, engine, side, onSide }: Session
             {t("accuracyTrainer.setup.sessionSide")}
           </StatusText>
         )}
-        {source !== null && session === undefined && !refused && forSide === 0 && (
+        {source !== null && session === undefined && forSide === 0 && (
           <StatusText tone="warning" testId="accuracy-setup-none">
             {t("accuracyTrainer.setup.noneForSide")}
           </StatusText>

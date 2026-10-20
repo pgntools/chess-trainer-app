@@ -138,7 +138,8 @@ export const useFindBestMove = ({
     open(at);
     return "result";
   };
-  const changeSettings = (settings: { engine?: boolean; arrows?: boolean }) => void dispatch([events.settingsChanged(settings)]);
+  // The engine is turned on by the offer alone (`useSessionBoard`, CTA-245) — no switch (CTA-246).
+  const changeArrows = (arrows: boolean) => void dispatch([events.settingsChanged({ arrows })]);
 
   // The trained position the board stands at — the one on screen inside its lines, an earlier one stepped back to.
   const shownAt = positionAtPath(record, sanPathTo(core.tree, core.nodeId)) ?? key;
@@ -228,6 +229,6 @@ export const useFindBestMove = ({
     answerAgain,
     open,
     openResult,
-    changeSettings,
+    changeArrows,
   };
 };

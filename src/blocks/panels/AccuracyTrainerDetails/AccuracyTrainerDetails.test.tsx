@@ -34,7 +34,6 @@ function Live({
   const [list, setList] = useState<readonly string[]>(MOVES);
   const answerAgain = onAnswerAgain;
   const [showArrows, setShowArrows] = useState(initial);
-  const [engine, setEngine] = useState(false);
   const [moves, setMoves] = useState(3);
   return (
     <AccuracyTrainerDetails
@@ -45,8 +44,6 @@ function Live({
       onShowArrowsChange={setShowArrows}
       movesToFind={moves}
       onMovesToFindChange={setMoves}
-      engine={engine}
-      onEngineChange={setEngine}
       {...(withCase
         ? {
             caseLink: CASE_LINK,
@@ -97,7 +94,7 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(arrows).not.toBeChecked();
   });
 
-  it("sets the moves to find, and switches the engine", async () => {
+  it("sets the moves to find, and has no engine switch (CTA-246)", async () => {
     const user = userEvent.setup();
     render(<Live />);
     const moves = screen.getByRole("slider", { name: "Moves to find" });
@@ -105,10 +102,8 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     moves.focus();
     await user.keyboard("{ArrowRight}");
     expect(moves).toHaveValue("4");
-    const engine = screen.getByRole("switch", { name: "Use the engine" });
-    expect(engine).not.toBeChecked();
-    await user.click(engine);
-    expect(engine).toBeChecked();
+    expect(screen.getByRole("switch", { name: "Show next-move arrows" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Use the engine" })).not.toBeInTheDocument();
   });
 
   it("links the session's case once there is one", () => {

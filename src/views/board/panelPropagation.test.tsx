@@ -79,7 +79,7 @@ const FIND_BEST_MOVE_RECORD = sessionFromGame({
   tree: parsePgnTree("1. e4 { [%eval 0.30] } (1. d4 { [%eval 0.25] }) 1... e5 *"),
   name: "Alice – Bob",
   side: "both",
-  settings: { moves: 3, engine: false, arrows: true },
+  settings: { moves: 3, arrows: true },
 })!;
 const FIND_BEST_MOVE_CASE = gameCaseOf({ id: "session", projectId: "p", name: "Alice – Bob — Find Best Move" }, sessionTreeOf(FIND_BEST_MOVE_RECORD, {}));
 const FIND_BEST_MOVE_WORDS = answerWordsOf();

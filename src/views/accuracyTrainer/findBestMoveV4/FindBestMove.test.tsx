@@ -127,12 +127,6 @@ const load = async (user: ReturnType<typeof userEvent.setup>, pgn: string) => {
   await user.click(screen.getByRole("button", { name: "Load" }));
 };
 
-/** The form's *Use the engine*, on its Settings tab — then back to its Game tab. */
-const switchEngine = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole("tab", { name: "Settings" }));
-  await user.click(screen.getByRole("switch", { name: "Use the engine" }));
-  await user.click(screen.getByRole("tab", { name: "Game" }));
-};
 
 /** A piece dropped on the form's Board editor, as a drag would. */
 const editorDrag = (pieceType: string, from: string, to: string | null) =>
@@ -146,6 +140,13 @@ const editorDrag = (pieceType: string, from: string, to: string | null) =>
 
 /** The header's "Position n of m · …", once the screen reads it — a write has to land first. */
 const atPosition = (text: string) => waitFor(() => expect(screen.getByTestId(`${ID}-progress`)).toHaveTextContent(text));
+
+/** The engine offered on a first move where the lines are too few, the engine off (CTA-245) — accepted, for the session. */
+const acceptEngine = async (user: ReturnType<typeof userEvent.setup>) => {
+  const dialog = await screen.findByRole("dialog", { name: "Use the engine?" });
+  await user.click(within(dialog).getByRole("button", { name: "Use the engine" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+};
 
 /**
  * The engine offered on a first move where the lines are too few, the engine
@@ -449,29 +450,42 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await waitFor(() => expect(boardOptions().arrows).toEqual([]));
   });
 
-  it("takes a plain game once the engine is on — loaded before or after the switch", async () => {
+  it("takes a game with no engine lines — said, no switch, the session's engine off and offered at each position (CTA-246)", async () => {
     const user = userEvent.setup();
     mount();
     await load(user, '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
-    expect(screen.getByText(/Turn on Use the engine in the panel's Settings/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
-    await switchEngine(user);
-    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train");
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train: White 2, Black 1.");
+    expect(screen.getByTestId("accuracy-setup-no-lines")).toHaveTextContent("This game carries no engine lines, so training it needs the engine");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
-    await switchEngine(user);
-    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.queryByRole("switch", { name: "Use the engine" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Game" }));
+
+    await user.click(screen.getByRole("button", { name: "White" }));
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByTestId(`${ID}-progress`);
+    await pgnHolds('[FindBestMoveEngine "off"]');
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.queryByRole("switch", { name: "Use the engine" })).not.toBeInTheDocument();
+
+    // The first move offers the engine; declined, nothing is asked of it.
+    const best = legalMove(START);
+    drag(best.slice(0, 2), best.slice(2, 4));
+    await declineEngine(user);
+    expect(jobRuntime().snapshot() ?? []).toEqual([]);
   });
 
   it("asks the engine where the lines are too few: a job on the first move, the choice graded once it ends, its lines in the session", async () => {
     const user = userEvent.setup();
     mount();
-    await switchEngine(user);
     await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     expect(jobRuntime().snapshot() ?? []).toEqual([]);
 
-    // The first move queues the position's search — on the session's Case, its key, MultiPV the lines needed.
+    // The first move, the engine taken from the offer, queues the position's search — on the session's Case, its key, MultiPV the lines needed.
     const best = legalMove(START);
     drag(best.slice(0, 2), best.slice(2, 4));
+    await acceptEngine(user);
     await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
     const job = jobRuntime().snapshot()![0];
     expect(job.title).toBe("Evaluate position — Carol – Dan, 1. White");
@@ -550,7 +564,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("turns Use the engine on from the offer — the position's search queued (CTA-245)", async () => {
+  it("turns the session's engine on from the offer — the position's search queued (CTA-245)", async () => {
     const user = userEvent.setup();
     mount();
     await startWith(user, "White", PARTIAL_PGN);
@@ -563,9 +577,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     await waitFor(() => expect(jobRuntime().snapshot()?.filter((job) => job.kind === EVALUATE_POSITION_KIND)).toHaveLength(1));
     expect(jobRuntime().snapshot()![0].input).toMatchObject({ key: 3, search: { multiPv: 3 } });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await user.click(screen.getByRole("tab", { name: "Settings" }));
-    expect(screen.getByRole("switch", { name: "Use the engine" })).toBeChecked();
-    await pgnHolds("engine:");
+    await pgnHolds("engine:", '[FindBestMoveEngine "on"]');
   });
 
   it("lists the reader's moves on the left panel's Moves tab — moved up or down, deleted, on the board too — and checks them in that order", async () => {
@@ -891,10 +903,10 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
   it("keeps an engine search's lines in the session — a reload grades the same and asks the engine nothing more", async () => {
     const user = userEvent.setup();
     const { unmount } = mount();
-    await switchEngine(user);
     await startWith(user, "White", '[White "Carol"]\n[Black "Dan"]\n\n1. e4 e5 2. Nf3 *');
     const best = legalMove(START);
     drag(best.slice(0, 2), best.slice(2, 4));
+    await acceptEngine(user);
     await user.click(screen.getByRole("button", { name: "Results (1)" }));
     expect(await screen.findByTestId(`${ID}-graded-headline`, {}, { timeout: 10_000 })).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
     const jobId = jobRuntime().snapshot()![0].id;
@@ -904,8 +916,6 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
 
     mount(0, `${LOBBY}/${caseId}`);
     expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("Every best move found, each in its place — 1 of 1.");
-    await user.click(screen.getByRole("tab", { name: "Settings" }));
-    expect(screen.getByRole("switch", { name: "Use the engine" })).toBeChecked();
     expect(jobRuntime().snapshot()?.filter((each) => each.kind === EVALUATE_POSITION_KIND)).toHaveLength(1);
   });
 
