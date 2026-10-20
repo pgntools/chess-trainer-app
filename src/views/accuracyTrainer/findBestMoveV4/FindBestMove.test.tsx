@@ -754,7 +754,8 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     const list = () => within(screen.getByRole("list", { name: "The positions answered or passed" }));
     await waitFor(() =>
       expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
-        "Open 1. White — 1/3 · 1 in place",
+        // Its name says the pieces it won (CTA-249).
+        "Open 1. White — 1/3 · 1 in place — won Place in order: Bishop, Best move: Rook, See the line: Pawn",
         "Answer 2. White now — passed",
       ]),
     );
@@ -769,16 +770,16 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(screen.getByRole("button", { name: "Results (1)" })).toBeEnabled();
     // Still listed, in its place: the one being answered now.
     expect(list().getAllByRole("button").map((row) => row.getAttribute("aria-label"))).toEqual([
-      "Open 1. White — 1/3 · 1 in place",
+      "Open 1. White — 1/3 · 1 in place — won Place in order: Bishop, Best move: Rook, See the line: Pawn",
       "Back to 2. White — answering now",
     ]);
 
     // The answered one: its result.
-    await user.click(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" }));
+    await user.click(list().getByRole("button", { name: /^Open 1\. White — 1\/3 · 1 in place/ }));
     await atPosition("Position 1 of 2");
     expect(screen.getByRole("tab", { name: "Result" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 1 of the top 3 — 1 in their place.");
-    expect(list().getByRole("button", { name: "Open 1. White — 1/3 · 1 in place" })).toHaveAttribute("aria-current", "true");
+    expect(list().getByRole("button", { name: /^Open 1\. White — 1\/3 · 1 in place/ })).toHaveAttribute("aria-current", "true");
     // The reopened one, left unanswered: passed again, still there to answer.
     expect(list().getByRole("button", { name: "Answer 2. White now — passed" })).toBeInTheDocument();
   });
@@ -827,7 +828,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(boardOptions().position).toBe(AFTER_E5);
     // The answer kept: on Results, and in the Case.
     await user.click(screen.getByRole("tab", { name: "Results" }));
-    expect(within(screen.getByRole("list", { name: "The positions answered or passed" })).getByRole("button", { name: "Open 1. White — 2/3 · 2 in place" })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "The positions answered or passed" })).getByRole("button", { name: /^Open 1\. White — 2\/3 · 2 in place/ })).toBeInTheDocument();
     await pgnHolds("{ Find Best Move: 1. e4 (#1, Best), 2. d4 (#2, Good) — 2 of the top 3, 2 in place }");
 
     // The last position: Next goes to the summary, the answer there.
@@ -873,7 +874,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     // The first position's answer, graded as it was.
     await user.click(screen.getByRole("tab", { name: "Results" }));
     const results = within(screen.getByRole("list", { name: "The positions answered or passed" }));
-    await user.click(results.getByRole("button", { name: "Open 1. White — 2/3 · 2 in place" }));
+    await user.click(results.getByRole("button", { name: /^Open 1\. White — 2\/3 · 2 in place/ }));
     expect(await screen.findByTestId(`${ID}-graded-headline`)).toHaveTextContent("You found 2 of the top 3 — 2 in their place.");
     // Its lines are the Case's variations, each with its eval.
     expect((await sessionCase())?.pgn).toContain("(1. Nf3 { [%eval 0.20] })");

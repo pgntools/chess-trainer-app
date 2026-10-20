@@ -173,14 +173,20 @@ export const useFindBestMove = ({
     trainingPositionOf(record, shownAt) === undefined ? undefined : { label: shownLabel, pieces: achievementsOf(record, shownAt) };
 
   const playedOf = (at: PositionKey) => gameMoveOf(record.game, at) ?? "–";
-  const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => ({
-    index: row.key,
-    label: labelOf(row.key),
-    playedSan: playedOf(row.key),
-    state: row.state === "graded" && row.grade === null ? "waiting" : row.state,
-    ...(row.state === "graded" && row.grade !== null ? { grade: row.grade } : {}),
-    current: row.key === shownAt,
-  }));
+  const results: AccuracyTrainerResult[] = resultsOf(record).map((row) => {
+    // A pass wins nothing: its slots are disabled pawns too.
+    const pieces = row.state === "graded" || row.state === "passed" ? achievementsOf(record, row.key) : null;
+    return {
+      index: row.key,
+      label: labelOf(row.key),
+      playedSan: playedOf(row.key),
+      state: row.state === "graded" && row.grade === null ? "waiting" : row.state,
+      ...(row.state === "graded" && row.grade !== null ? { grade: row.grade } : {}),
+      // Its pieces, derived from the record (CTA-249): the row's five slots.
+      ...(pieces === null ? {} : { achievements: pieces }),
+      current: row.key === shownAt,
+    };
+  });
 
   const reportRows = useMemo<AccuracyReportRow[]>(
     () =>

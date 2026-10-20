@@ -495,6 +495,7 @@ const he: typeof en = {
       resultWaiting: "ממתינים למנוע",
       resultNoLines: "אין קו להשוואה",
       resultOpen: "פתיחת {{move}} — {{score}}",
+      resultOpenWon: "פתיחת {{move}} — {{score}} — הישגים: {{pieces}}",
       resultAnswer: "לענות עכשיו על {{move}} — דילגתם",
       resultAnswering: "בתשובה עכשיו",
       resultBack: "חזרה אל {{move}} — בתשובה עכשיו",

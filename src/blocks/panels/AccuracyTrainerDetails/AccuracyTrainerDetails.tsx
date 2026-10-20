@@ -17,8 +17,10 @@ import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../
 import type { AchievementPieces } from "../../../lib/achievements/material";
 import { formatScore } from "../../../lib/engineAnalysis";
 import type { EngineStart } from "../../../lib/findBestMove/model";
+import { useChessTokens } from "../../../design-system/theme";
 import { gradeHeadlineOf } from "../GradedLines";
-import { AchievementTable } from "./AchievementTable";
+import { AchievementTable, PieceIcon } from "./AchievementTable";
+import { achievementNameOf } from "./achievementWords";
 
 /** The panel's tabs. */
 export type AccuracyTrainerDetailsTab = "moves" | "results" | "achievements" | "settings";
@@ -35,6 +37,12 @@ export type AccuracyTrainerResult = {
   state: "graded" | "waiting" | "passed" | "answering";
   /** Its grade, graded. */
   grade?: PositionGrade;
+  /**
+   * Its achievements, graded or passed (CTA-249) — five slots in the row's
+   * middle, a category each: the piece won in its category's colour, a
+   * disabled pawn where none was. Absent (waiting, answering): the slots' room kept empty.
+   */
+  achievements?: AchievementPieces;
   /** The position the board stands at. */
   current: boolean;
 };
@@ -335,9 +343,14 @@ function AccuracyTrainerDetails({
   );
 }
 
+/** A Results row's achievement slots — one per category — and each one's side, in pixels. */
+const SLOTS = 5;
+const SLOT_PX = 18;
+
 /** Every position answered or passed, each a button back to it. */
 function ResultList({ results, testId }: { results: AccuracyTrainerResults; testId: string }) {
   const { t } = useTranslation();
+  const tints = useChessTokens().achievements;
   const scoreOf = (row: AccuracyTrainerResult): string => {
     if (row.state === "passed") return t("accuracyTrainer.details.resultPassed");
     if (row.state === "answering") return t("accuracyTrainer.details.resultAnswering");
@@ -350,6 +363,7 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
       {results.rows.map((row) => {
         const perfect = row.grade !== undefined && row.grade.target > 0 && row.grade.inPlace === row.grade.target;
         const score = scoreOf(row);
+        const won = (row.achievements ?? []).flatMap(({ category, piece }) => (piece === null ? [] : [{ category, piece }]));
         return (
           <Box component="li" key={row.index}>
             <Button
@@ -362,11 +376,22 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
                   ? "accuracyTrainer.details.resultAnswer"
                   : row.state === "answering"
                     ? "accuracyTrainer.details.resultBack"
-                    : "accuracyTrainer.details.resultOpen",
-                { move: row.label, score },
+                    : won.length > 0
+                      ? "accuracyTrainer.details.resultOpenWon"
+                      : "accuracyTrainer.details.resultOpen",
+                { move: row.label, score, pieces: won.map(({ category, piece }) => achievementNameOf(t, category, piece)).join(", ") },
               )}
               data-testid={`${testId}-result-${row.index}`}
-              sx={{ justifyContent: "space-between", gap: 1, textTransform: "none", textAlign: "start", color: "text.primary" }}
+              sx={{
+                // Equal side columns: the slots sit at the same place on every row, whatever the label's or the score's width.
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                alignItems: "center",
+                gap: 1,
+                textTransform: "none",
+                textAlign: "start",
+                color: "text.primary",
+              }}
             >
               <Box component="span" sx={{ display: "grid", minWidth: 0 }}>
                 <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
@@ -379,10 +404,31 @@ function ResultList({ results, testId }: { results: AccuracyTrainerResults; test
                   </Box>
                 </Typography>
               </Box>
-              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
-                <Typography component="span" variant="body2" dir="ltr" sx={{ color: row.state === "graded" ? "text.primary" : "text.secondary" }}>
-                  {score}
-                </Typography>
+              {/* A slot per category, in the registry's order — the piece won in its colour, a disabled pawn where none was; named in the button's own name. */}
+              <Box
+                component="span"
+                {...(row.achievements === undefined ? {} : { "data-testid": `${testId}-result-${row.index}-pieces` })}
+                sx={{ display: "grid", gridTemplateColumns: `repeat(${SLOTS}, ${SLOT_PX}px)`, gap: "2px", justifyContent: "center" }}
+              >
+                {row.achievements?.map(({ category, piece }) => (
+                  <Box
+                    component="span"
+                    key={category}
+                    data-category={category}
+                    data-piece={piece ?? "none"}
+                    sx={{ display: "inline-flex", ...(piece === null ? { opacity: 0.25, filter: "grayscale(1)" } : {}) }}
+                  >
+                    {piece === null ? <PieceIcon piece="pawn" size={SLOT_PX} /> : <PieceIcon piece={piece} size={SLOT_PX} tint={tints[category]} />}
+                  </Box>
+                ))}
+              </Box>
+              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 0.75, minWidth: 0 }}>
+                {/* A pass says so with its chip alone. */}
+                {row.state !== "passed" && (
+                  <Typography component="span" variant="body2" dir="ltr" sx={{ color: row.state === "graded" ? "text.primary" : "text.secondary" }}>
+                    {score}
+                  </Typography>
+                )}
                 {perfect && <LabelChip label={t("accuracyTrainer.report.perfectMark")} tone="success" />}
                 {row.state === "passed" && <LabelChip label={t("accuracyTrainer.details.resultLater")} tone="warning" />}
               </Box>

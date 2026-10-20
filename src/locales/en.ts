@@ -668,6 +668,7 @@ const en = {
       resultWaiting: "Waiting for the engine",
       resultNoLines: "No line to compare",
       resultOpen: "Open {{move}} — {{score}}",
+      resultOpenWon: "Open {{move}} — {{score}} — won {{pieces}}",
       resultAnswer: "Answer {{move}} now — passed",
       resultAnswering: "Answering now",
       resultBack: "Back to {{move}} — answering now",

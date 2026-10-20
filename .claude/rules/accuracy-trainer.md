@@ -458,14 +458,26 @@ reads its table top down).
   (`AccuracyTrainerDetails`' `achievements` — `{ label, pieces }`, the
   position the board stands at, as Your moves; `useFindBestMove`'s
   `shownAchievements`): a table (`AchievementTable`), a row per category —
-  its name, then the five pieces Pawn to Queen from the board's set
-  (`defaultPieces` via `PieceIcon`), the one won on a highlighted cell, the
-  others dimmed as disabled; a screen reader hears each row header whole,
+  its colour's swatch (`CategorySwatch`) and name, then the five pieces Pawn
+  to Queen from the board's set (`defaultPieces` via `PieceIcon`), the one
+  won **filled with its category's colour** on a highlighted cell, the others
+  dimmed and grey as disabled. **Each category has its own colour**, a theme
+  token — `chess.achievements.<id>`, a light and a dark shade, each 3:1 on its
+  paper (`contrast.ts` reports it; the theme editor's Annotations section
+  edits it) — so a piece shown alone says which category it belongs to;
+  `PieceIcon`'s `tint` draws one (one drawing per scheme: an SVG fill takes
+  no CSS variable); on the **Results** tab every graded or passed row has **five slots** in
+  its middle, a category each in the registry's order — the piece won in its
+  colour, a disabled (dimmed, grey) pawn where none was — the row a grid of
+  equal side columns, so the slots line up on every row
+  (`AccuracyTrainerResult`'s `achievements`; a row waiting or being answered
+  keeps their room empty); the pieces won named in the row's button ("— won
+  Place in order: Queen, …", `resultOpenWon`); a screen reader hears each row header whole,
   "Place in order: Queen" / "…: no piece" (`achievementNameOf`), and each
   cell its piece and *Won* / *Not won* — or, not graded yet, a line
   saying so — the Result tab's `GradedLines` shows none; the Summary's `AccuracySessionReport`
   takes `material` — a table under the measures, a row per category and
-  *All categories*: each piece counted, the material. Words
+  *All categories* (each category's swatch beside its name): each piece counted, the material. Words
   `accuracyTrainer.achievements.*`.
 - **Later** (the note's §5, not built): a reader's lifetime ledger across
   sessions, a database of its own.
