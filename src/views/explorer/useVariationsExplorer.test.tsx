@@ -110,6 +110,25 @@ describe("useVariationsExplorer — the opt-in parts", () => {
     expect(screen.queryByTestId("move-menu-chances")).toBeNull();
   });
 
+  it("offers its edits only where editableAt says so (CTA-244) — the list's and the map's menus, the comment block", () => {
+    const onEditTree = vi.fn();
+    // Only the moves after 1. e4 e5 are editable — as Find Best Move's board, the position's own lines alone.
+    const position = at(tree, "e4", "e5");
+    const editableAt = (id: string | null) => id !== null && id !== position && id !== at(tree, "e4");
+    const { unmount } = mount({ onEditTree, editableAt, map: {}, annotations: true, nodeId: at(tree, "e4") });
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+    fireEvent.contextMenu(screen.getByTestId(`x-map-go-${at(tree, "e4")}`));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+    expect(screen.queryByTestId("x-annotations-add")).toBeNull();
+    fireEvent.contextMenu(screen.getByTestId("move-ply-3"));
+    expect(screen.getByTestId("move-menu")).toBeInTheDocument();
+    unmount();
+    // Where it is editable, the comment block edits too (2. f4 carries a comment).
+    mount({ onEditTree, editableAt, annotations: true, nodeId: at(tree, "e4", "e5", "f4") });
+    expect(screen.getByTestId("x-annotations-add")).toBeInTheDocument();
+  });
+
   it("renders the map and the comment block when asked for", () => {
     mount({ map: {}, annotations: true, nodeId: at(tree, "e4") });
     expect(screen.getByTestId("x-map")).toBeInTheDocument();

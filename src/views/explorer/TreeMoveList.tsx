@@ -72,6 +72,7 @@ function TreeMoveList({
   mask,
   extensionIds,
   onEditTree,
+  editableAt,
   playChances,
 }: {
   tree: GameTree;
@@ -87,6 +88,12 @@ function TreeMoveList({
   extensionIds?: ReadonlySet<string>;
   /** Opt-in: the move menu, and where its edits go (CTA-64). */
   onEditTree?: (next: GameTree) => void;
+  /**
+   * Where the move menu opens (CTA-244) — a node (`null` the start) it
+   * answers `false` for has none: its edits are not offered there. Absent,
+   * every node. Keep it stable: the list's memo depends on it.
+   */
+  editableAt?: (nodeId: string | null) => boolean;
   /** Whether the menu offers *Play chances…* — `MoveContextMenu`'s default when absent. */
   playChances?: boolean;
 }) {
@@ -147,15 +154,23 @@ function TreeMoveList({
   const [menuOpen, setMenuOpen] = useState(false);
   const editable = onEditTree !== undefined;
 
-  const openMenuAtNode = useCallback((id: string, anchor: MenuAnchor) => {
-    setMenu({ nodeId: id, anchor });
-    setMenuOpen(true);
-  }, []);
+  const openMenuAtNode = useCallback(
+    (id: string, anchor: MenuAnchor) => {
+      if (editableAt?.(id) === false) return;
+      setMenu({ nodeId: id, anchor });
+      setMenuOpen(true);
+    },
+    [editableAt],
+  );
 
-  const openMenuAtStart = useCallback((anchor: MenuAnchor) => {
-    setMenu({ nodeId: null, anchor });
-    setMenuOpen(true);
-  }, []);
+  const openMenuAtStart = useCallback(
+    (anchor: MenuAnchor) => {
+      if (editableAt?.(null) === false) return;
+      setMenu({ nodeId: null, anchor });
+      setMenuOpen(true);
+    },
+    [editableAt],
+  );
 
   const openMenuAtPly = useCallback(
     (ply: number, anchor: MenuAnchor) => {

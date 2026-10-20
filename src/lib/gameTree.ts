@@ -1066,8 +1066,9 @@ export const treeToPgn = (tree: GameTree, options?: PgnExportOptions): string =>
  */
 export const moveTreeToPgn = (tree: PgnMoveTree): string => {
   const headers = headersWithStart(tree);
+  // A tag value escapes `\` and `"` as the PGN standard asks (CTA-244) — `splitTags` (`lib/pgn.ts`) reads them back.
   const tags = Object.entries(headers)
-    .map(([key, value]) => `[${key} "${value}"]`)
+    .map(([key, value]) => `[${key} "${value.replace(/[\\"]/g, "\\$&")}"]`)
     .join("\n");
 
   const result = gameTag(headers, "Result") ?? "*";

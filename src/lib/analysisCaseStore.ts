@@ -298,22 +298,47 @@ export const saveCaseState = (
  * there; a merge it already holds, or an edit answering `undefined`, writes
  * nothing.
  */
-export const mergeIntoAnalysisCase = async (
+export const mergeIntoAnalysisCase = (
   id: string,
   mergeId: string,
   edit: (pgn: string) => string | undefined,
   now: Date = new Date(),
+): Promise<AnalysisCaseProblem | "gone" | undefined> =>
+  editCasePgn(id, (record) => (record.merges.includes(mergeId) ? undefined : edit(record.pgn)), now, (record) => [...record.merges, mergeId]);
+
+/**
+ * **A Case's PGN edited in the store's queue** (CTA-244): `edit` takes the
+ * Case's PGN as the store holds it **now** and answers the next one — read,
+ * modified and written in one queued write, so two edits issued back to back
+ * each see the other's result. `"gone"` for a Case not there; an edit
+ * answering `undefined`, or the same text, writes nothing. The Find Best Move
+ * session's one writer (`lib/findBestMove/store.ts`) is built on it.
+ */
+export const editAnalysisCasePgn = (
+  id: string,
+  edit: (pgn: string) => string | undefined,
+  now: Date = new Date(),
+): Promise<AnalysisCaseProblem | "gone" | undefined> => editCasePgn(id, (record) => edit(record.pgn), now);
+
+/** The one write under both: `merges`, where given, the record's next ones. */
+const editCasePgn = async (
+  id: string,
+  edit: (record: AnalysisCase) => string | undefined,
+  now: Date,
+  merges?: (record: AnalysisCase) => string[],
 ): Promise<AnalysisCaseProblem | "gone" | undefined> => {
   let found = false;
   const problem = await write((current) => {
     const existing = current.find((record) => record.id === id);
     if (existing === undefined) return current;
     found = true;
-    if (existing.merges.includes(mergeId)) return current;
-    const pgn = edit(existing.pgn);
-    if (pgn === undefined) return current;
+    const pgn = edit(existing);
+    // A merge is recorded even where its text is the Case's already; a plain edit answering the same text is none.
+    if (pgn === undefined || (merges === undefined && pgn === existing.pgn)) return current;
     return current.map((record) =>
-      record.id === id ? { ...record, pgn, merges: [...record.merges, mergeId], updatedAt: now.toISOString() } : record,
+      record.id === id
+        ? { ...record, pgn, ...(merges === undefined ? {} : { merges: merges(record) }), updatedAt: now.toISOString() }
+        : record,
     );
   });
   return problem ?? (found ? undefined : "gone");
