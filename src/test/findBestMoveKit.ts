@@ -59,16 +59,21 @@ export const PLAIN_WORDS: AnswerWords = {
   graded: (grade) => `FBM: ${grade.found}/${grade.target}, ${grade.inPlace} in place`,
 };
 
-const SETTINGS: NewSessionSettings = { moves: 2, engine: false, arrows: true };
+const SETTINGS: NewSessionSettings = { moves: 2, arrows: true };
 
-/** A session of a PGN's game — both sides unless said, N 2, the engine off. */
+/**
+ * A session of a PGN's game — both sides unless said, N 2, the engine off.
+ * `engine: true` stands for a session whose reader has since turned it on
+ * (the CTA-245 offer) — a new one never starts with it.
+ */
 export const sessionOfPgn = (
   pgn: string,
-  { side = "both", settings = {} }: { side?: FindBestMoveRecord["side"]; settings?: Partial<NewSessionSettings> } = {},
+  { side = "both", settings = {} }: { side?: FindBestMoveRecord["side"]; settings?: Partial<NewSessionSettings & { engine: boolean }> } = {},
 ): FindBestMoveRecord => {
-  const record = sessionFromGame({ tree: parsePgnTree(pgn), name: "Alice – Bob", side, settings: { ...SETTINGS, ...settings } });
+  const { engine = false, ...rest } = settings;
+  const record = sessionFromGame({ tree: parsePgnTree(pgn), name: "Alice – Bob", side, settings: { ...SETTINGS, ...rest } });
   if (record === undefined) throw new Error("The game trains no position.");
-  return record;
+  return engine ? { ...record, settings: { ...record.settings, engine } } : record;
 };
 
 /** Events applied — the kit's shorthand. */

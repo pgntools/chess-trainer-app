@@ -623,18 +623,16 @@ const en = {
       openCase: "Open the case in Analysis",
     },
     setup: {
-      title: "A fully analysed game",
-      help: "A computer analysis's output — the Full variant leaves the engine's lines at every move. Upload or paste its PGN, or pick a case that holds one.",
+      title: "A game",
+      help: "Best a computer analysis's output — the Full variant leaves the engine's lines at every move; a game without them trains with the engine. Upload or paste its PGN, or pick a case that holds one.",
       chooseFile: "Choose a .pgn file",
       paste: "Or paste its PGN",
       load: "Load",
       pickCase: "Pick a case…",
-      /** A game with nothing to train while the engine is off — the way out said. */
-      noLines: "This game carries no engine lines. Turn on Use the engine in the panel's Settings to train it — the engine finds the lines — or load a computer analysis's output.",
-      /** Every analysed position (CTA-245) — one the analysis left no lines at needs the engine to be graded. */
-      loaded: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. Where the analysis left too few lines, Use the engine finds them.",
-      /** With the engine on: every analysed position, the engine finding lines the game lacks. */
-      loadedEngine: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. The engine finds the lines the game lacks.",
+      /** A game with no engine line (CTA-246): taken, every position trained — the engine needed, offered at each. */
+      noLines: "This game carries no engine lines, so training it needs the engine: each position offers to turn it on.",
+      /** Every analysed position (CTA-245) — one the analysis left too few lines at offers the engine. */
+      loaded: "{{name}} — {{count}} positions to train: White {{white}}, Black {{black}}. Where the lines are too few, the position offers the engine to find them.",
       untitled: "Untitled game",
       side: "Train",
       sides: { white: "White", black: "Black", both: "Both" },
@@ -699,8 +697,6 @@ const en = {
       moveRemove: "Delete {{san}}",
       arrows: "Show next-move arrows",
       arrowsHelp: "The continuations of your analysis at the position on screen, as arrows on the board.",
-      engine: "Use the engine",
-      engineHelp: "When a position has fewer of the engine's lines than moves to find, the engine searches it once you start on it — an Evaluate position job — and your moves are graded against its lines too. The search's depth, move time, Threads and Hash are the Engine menu's.",
       moves: "Moves to find",
       movesHelp: "How many best moves to find at each position, best first: your lines from the position are your moves, in their order.",
       movesLocked: "Fixed for this session — set it before the next one starts.",
@@ -737,10 +733,10 @@ const en = {
         searching: "The engine is searching this position.",
         waiting: "Waiting for the engine's lines — your move is graded as soon as its search ends.",
         unavailable: "The engine could not search this position — graded with the game's lines alone.",
-        /** A first move where the lines are too few while Use the engine is off (CTA-245). */
+        /** A first move where the lines are too few while the session's engine is off (CTA-245). */
         offer: {
           title: "Use the engine?",
-          message: "The analysis left fewer of the engine's lines here than moves to find, so your moves cannot all be graded. Turn on Use the engine for this session? It searches this position — an Evaluate position job — and any other short of lines once you start on it.",
+          message: "There are fewer of the engine's lines here than moves to find, so your moves cannot all be graded. Use the engine for this session? It searches this position — an Evaluate position job — and any other short of lines once you start on it. The search's depth, move time, Threads and Hash are the Engine menu's.",
           confirm: "Use the engine",
           cancel: "Go on without it",
         },

@@ -6,7 +6,7 @@ import type { BlockFamilyId } from "../../families";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
 import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
 
-type Settings = { arrows: boolean; engine: boolean; moves: number };
+type Settings = { arrows: boolean; moves: number };
 
 /** The reader's moves reordered and deleted, as a screen's board would. */
 const moved = (list: readonly string[], index: number, move: "up" | "down"): string[] => {
@@ -30,8 +30,6 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
           onShowArrowsChange={(arrows) => set({ ...settings, arrows })}
           movesToFind={settings.moves}
           onMovesToFindChange={(moves) => set({ ...settings, moves })}
-          engine={settings.engine}
-          onEngineChange={(engine) => set({ ...settings, engine })}
           {...(withCase
             ? {
                 caseLink: CASE_LINK,
@@ -65,37 +63,37 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     {
       name: "Moves — the reader's moves at the position, moved up or down, deleted",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves", { arrows: true, engine: false, moves: 3 }, true, "moves"),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves", { arrows: true, moves: 3 }, true, "moves"),
     },
     {
       name: "Moves — checked and graded: every line, the reader's moves marked",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-graded", { arrows: true, engine: false, moves: 2 }, true, "moves", "graded"),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-graded", { arrows: true, moves: 2 }, true, "moves", "graded"),
     },
     {
       name: "Moves — passed, put off for later: no line shown, Answer it now",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-passed", { arrows: true, engine: false, moves: 3 }, true, "moves", "passed"),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-passed", { arrows: true, moves: 3 }, true, "moves", "passed"),
     },
     {
       name: "Moves — checked, waiting for the engine",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-waiting", { arrows: true, engine: true, moves: 3 }, true, "moves", "waiting"),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-moves-waiting", { arrows: true, moves: 3 }, true, "moves", "waiting"),
     },
     {
       name: "Results — every position answered or passed, each a way back to it",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details-results", { arrows: true, engine: false, moves: 2 }, true, "results"),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-results", { arrows: true, moves: 2 }, true, "results"),
     },
     {
       name: "Moves — before a session",
-      render: () => framed(EXERCISE_TITLE, "gallery-accuracy-details-moves-none", { arrows: true, engine: false, moves: 3 }, false, "moves"),
+      render: () => framed(EXERCISE_TITLE, "gallery-accuracy-details-moves-none", { arrows: true, moves: 3 }, false, "moves"),
     },
     {
-      name: "A session running — its case linked, three moves to find, the engine on",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details", { arrows: true, engine: true, moves: 3 }, true),
+      name: "A session running — its case linked, three moves to find",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details", { arrows: true, moves: 3 }, true),
     },
     {
-      name: "Nothing loaded — the exercise's name, the engine off",
-      render: () => framed(EXERCISE_TITLE, "gallery-accuracy-details-empty", { arrows: false, engine: false, moves: 3 }),
+      name: "Nothing loaded — the exercise's name",
+      render: () => framed(EXERCISE_TITLE, "gallery-accuracy-details-empty", { arrows: false, moves: 3 }),
     },
-    { name: "A Hebrew name", render: () => framed(HEBREW_TITLE, "gallery-accuracy-details-he", { arrows: true, engine: false, moves: 5 }) },
+    { name: "A Hebrew name", render: () => framed(HEBREW_TITLE, "gallery-accuracy-details-he", { arrows: true, moves: 5 }) },
   ],
 };
 

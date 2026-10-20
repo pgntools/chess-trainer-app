@@ -81,13 +81,6 @@ export type AccuracyTrainerDetailsProps = {
   onMovesToFindChange: (count: number) => void;
   /** A session runs: its moves to find are fixed — the slider off, saying so. */
   movesLocked?: boolean;
-  /**
-   * The engine (CTA-238): on, a position with fewer of its top lines than
-   * the moves to find is searched — an Evaluate Position job — once the
-   * reader starts on it.
-   */
-  engine: boolean;
-  onEngineChange: (on: boolean) => void;
   /** The session's Case in Analysis — absent before a session starts. */
   caseLink?: LinkTarget;
   /** The position the board stands at — absent before a session starts. */
@@ -102,8 +95,7 @@ export type AccuracyTrainerDetailsProps = {
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
    * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
-   * `-settings` (`-moves`, `-arrows`,
-   * `-engine`).
+   * `-settings` (`-moves`, `-arrows`).
    */
   testId: string;
 };
@@ -129,9 +121,10 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * stands at current —
  * and **Settings**:
  * *Moves to find* (how many
- * best moves, in order, at each position), *Show next-move arrows* (the
- * reader's analysis's continuations, on by default) and *Use the engine*
- * (CTA-238's Evaluate Position). A tab more is a field of
+ * best moves, in order, at each position) and *Show next-move arrows* (the
+ * reader's analysis's continuations, on by default) — no engine switch: the
+ * screen offers the engine where a position is short of lines (CTA-245,
+ * CTA-246). A tab more is a field of
  * {@link AccuracyTrainerDetailsTab} and its content here.
  *
  * Presentational: the settings and the tab are props; the screen holds them
@@ -146,8 +139,6 @@ function AccuracyTrainerDetails({
   movesToFind,
   onMovesToFindChange,
   movesLocked = false,
-  engine,
-  onEngineChange,
   caseLink,
   moves,
   results,
@@ -272,15 +263,6 @@ function AccuracyTrainerDetails({
               onChange={onShowArrowsChange}
               label={t("accuracyTrainer.details.arrows")}
               help={t("accuracyTrainer.details.arrowsHelp")}
-            />
-            <SwitchField
-              size="small"
-              testIdOn="control"
-              testId={`${testId}-engine`}
-              checked={engine}
-              onChange={onEngineChange}
-              label={t("accuracyTrainer.details.engine")}
-              help={t("accuracyTrainer.details.engineHelp")}
             />
           </Box>
         )}

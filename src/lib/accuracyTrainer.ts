@@ -271,16 +271,12 @@ export const needsEngine = (position: TrainingPosition, needed: number): boolean
 /**
  * **The positions a session over a game asks** (CTA-245), both sides, in
  * game order: **every analysed position** — whether or not the analysis hung
- * side lines there — of a tree with any engine line (a computer analysis
- * prunes every line far below line 1, so a position where the game's move
- * was the only one in range has none: its top lines are the engine's to
- * find, `needsEngine`); with the engine on, every analysed position of any
- * tree. None for a tree with no engine line while the engine is off.
+ * side lines there (a computer analysis prunes every line far below line 1,
+ * so a position where the game's move was the only one in range has none) —
+ * and of a game with no engine line at all, every position (CTA-246). Where
+ * the top lines are too few they are the engine's to find (`needsEngine`).
  */
-export const gamePositionsOf = (tree: GameTree, { engine }: { engine: boolean }): TrainingPosition[] => {
-  const positions = trainingPositionsOf(tree, { unevaluated: true });
-  return engine || positions.some((position) => position.topCount > 0) ? positions : [];
-};
+export const gamePositionsOf = (tree: GameTree): TrainingPosition[] => trainingPositionsOf(tree, { unevaluated: true });
 
 /** The positions a session over `side` asks, in game order. */
 export const sessionPositionsOf = (positions: readonly TrainingPosition[], side: TrainingSide): TrainingPosition[] =>

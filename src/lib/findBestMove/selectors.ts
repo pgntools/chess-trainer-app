@@ -119,8 +119,8 @@ export const isDone = (record: FindBestMoveRecord): boolean =>
   });
 
 /**
- * **Whether to offer the engine at a position** (CTA-245): Use the engine is
- * off, and the position — still to answer, its engine never asked — has
+ * **Whether to offer the engine at a position** (CTA-245): the session's
+ * engine is off (a game's starts so, CTA-246), and the position — still to answer, its engine never asked — has
  * fewer top lines than N (`needsEngine`), so the engine would be asked for it
  * were it on. The screen asks the reader then, on their first move there.
  */
