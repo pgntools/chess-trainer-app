@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import type { ChessboardOptions } from "react-chessboard";
 import { useTranslation } from "react-i18next";
@@ -40,11 +41,13 @@ const ID = "find-best-move-v3";
  * where its parts go — the board (`BoardShell` over the core, the explorer
  * with editing on: side lines, comments, glyphs, the map), the right panel
  * (Moves · Map · Result · Summary, the footer's moves so far
- * with Pass / Check, or Next) and the left one (`AccuracyTrainerDetails`: the
+ * with New move · Pass · Results · Next, or Next once answered) and the left one (`AccuracyTrainerDetails`: the
  * game, its Case, Your moves — the position the board stands at —, Results —
  * every position answered or passed, a way back to each — and Settings). At each position the board shows every move
  * before it and none after; the reader's lines from it are their moves, in
- * their order, and **Check** grades them against the top N. A **pass** is put
+ * their order, and **Results** grades them against the top N — the
+ * result opened — or **Next** grades them and goes on (CTA-240); **New move**
+ * takes the board back to the position, for the next line. A **pass** is put
  * off for later and goes on at once: its lines stay hidden, and *Answer it
  * now* — on Your moves when the board is back at it — opens it again. On to
  * the next position, the game's moves between them play out on the board.
@@ -52,7 +55,7 @@ const ID = "find-best-move-v3";
  * **A session is its Case** (CTA-239): this screen is a session at its
  * address, resumed from its Case's PGN (`resume`, read once) — a new one is
  * started from the lobby's New session form. Its header leads back to the
- * sessions lobby and downloads the session's PGN; a Case that holds no
+ * sessions lobby, opens that form (New session) and downloads the session's PGN; a Case that holds no
  * session says so.
  */
 type FindBestMoveV3Props = {
@@ -108,10 +111,13 @@ function FindBestMoveV3({ stepDelayMs, resume }: FindBestMoveV3Props) {
   }, [position, grade, session, core.nodeId, explorer.arrows, drawing]);
   const boardOptions = useMemo<ChessboardOptions>(() => ({ ...explorer.boardOptions, arrows }), [explorer.boardOptions, arrows]);
 
+  // Results: graded, the Result tab opened.
   const check = () => {
     run.check();
     setTab("result");
   };
+  // Next while answering: graded, and on at once — the result left to Results and the summary.
+  const checkAndNext = () => setTab(run.checkAndNext() ? "moves" : "summary");
   // A pass goes on at once — to the next position, or the summary after the last.
   const pass = () => setTab(run.pass() ? "moves" : "summary");
   const next = () => setTab(run.next() ? "moves" : "summary");
@@ -241,6 +247,9 @@ function FindBestMoveV3({ stepDelayMs, resume }: FindBestMoveV3Props) {
       {session !== null && (
         <>
           <Box sx={{ flexGrow: 1 }} />
+          <IconAction label={t("accuracyTrainer.position.newSession")} onClick={reset} testId={`${ID}-new-session`}>
+            <RestartAltRoundedIcon fontSize="small" />
+          </IconAction>
           <IconAction label={t("accuracyTrainer.sessions.download")} onClick={download} testId={`${ID}-download`}>
             <DownloadRoundedIcon fontSize="small" />
           </IconAction>
@@ -289,23 +298,30 @@ function FindBestMoveV3({ stepDelayMs, resume }: FindBestMoveV3Props) {
         </Box>
       )}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 1, flexWrap: "wrap" }}>
-        <Button size="small" onClick={reset} data-testid={`${ID}-new-session`}>
-          {t("accuracyTrainer.position.newSession")}
-        </Button>
-        <Box sx={{ flexGrow: 1 }} />
         {run.answering ? (
           <>
+            {/* Back to the position, so the next move played there is a new line. */}
+            <Button size="small" onClick={run.newMove} disabled={run.onPosition} data-testid={`${ID}-new-move`}>
+              {t("accuracyTrainer.session.newMove")}
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
             <Button variant="outlined" onClick={pass} data-testid={`${ID}-pass`}>
               {t("accuracyTrainer.position.pass")}
             </Button>
-            <Button variant="contained" onClick={check} disabled={run.candidates.length === 0} data-testid={`${ID}-check`}>
+            <Button variant="outlined" onClick={check} disabled={run.candidates.length === 0} data-testid={`${ID}-check`}>
               {t("accuracyTrainer.session.check", { count: run.candidates.length })}
+            </Button>
+            <Button variant="contained" onClick={checkAndNext} disabled={run.candidates.length === 0} data-testid={`${ID}-check-next`}>
+              {t("accuracyTrainer.position.next")}
             </Button>
           </>
         ) : (
-          <Button variant="contained" onClick={next} data-testid={`${ID}-next`}>
-            {run.hasNext ? t("accuracyTrainer.position.next") : t("accuracyTrainer.position.summary")}
-          </Button>
+          <>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button variant="contained" onClick={next} data-testid={`${ID}-next`}>
+              {run.hasNext ? t("accuracyTrainer.position.next") : t("accuracyTrainer.position.summary")}
+            </Button>
+          </>
         )}
       </Box>
     </>
