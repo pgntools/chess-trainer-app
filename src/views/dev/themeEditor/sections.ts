@@ -114,6 +114,14 @@ const NAG_TONES = [
   ["mistake", "Mistake (?)"],
   ["blunder", "Blunder (??)"],
 ] as const;
+/** The Accuracy Trainer's achievement categories (CTA-249). */
+const ACHIEVEMENT_CATEGORIES = [
+  ["order", "Place in order"],
+  ["best", "Best move"],
+  ["clean", "Clean candidates"],
+  ["game", "Better than the game"],
+  ["line", "See the line"],
+] as const;
 const RESULTS = [
   ["white", "White wins"],
   ["draw", "Draw"],
@@ -307,10 +315,16 @@ export const SECTIONS: readonly SectionSpec[] = [
     id: "annotations",
     title: "Annotations",
     preview: "board",
-    groups: (["light", "dark"] as const).map((scheme) => ({
-      title: `The move marks on the ${scheme} scheme's paper`,
-      fields: NAG_TONES.map(([tone, label]) => ({ path: `chess.nag.${tone}.${scheme}`, label, kind: "color" as const })),
-    })),
+    groups: [
+      ...(["light", "dark"] as const).map((scheme) => ({
+        title: `The move marks on the ${scheme} scheme's paper`,
+        fields: NAG_TONES.map(([tone, label]) => ({ path: `chess.nag.${tone}.${scheme}`, label, kind: "color" as const })),
+      })),
+      ...(["light", "dark"] as const).map((scheme) => ({
+        title: `The achievement categories' pieces on the ${scheme} scheme's paper`,
+        fields: ACHIEVEMENT_CATEGORIES.map(([category, label]) => ({ path: `chess.achievements.${category}.${scheme}`, label, kind: "color" as const })),
+      })),
+    ],
   },
   {
     id: "map",

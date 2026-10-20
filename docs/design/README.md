@@ -85,8 +85,10 @@ the generator (`themes/codegen.ts`) can write it back as a file.
   baseline's, never a theme's override.
 - `chess` is **every colour drawn on or over a board** — squares and
   coordinates, the last-move fill, the arrow palettes, the required / untagged
-  / play-chance arrows, the book arrows, the move marks' tones, the promotion
-  scrim, the map's dots, the filter board's result bars. Declared on MUI's
+  / play-chance arrows, the book arrows, the move marks' tones, the achievement
+  categories' colours (CTA-249 — the Accuracy Trainer's pieces, one hue per
+  category, a shade per scheme), the promotion scrim, the map's dots, the
+  filter board's result bars. Declared on MUI's
   `Theme` by module augmentation (`theme/augment.ts`), read through
   `useChessTokens()` / `chessTokensOf(theme)`, never as CSS variables
   ([`chessboard.md`](../../.claude/rules/chessboard.md) §3.6).

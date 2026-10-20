@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { defaultPieces } from "react-chessboard";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
+import { useChessTokens } from "../../../design-system/theme";
+import type { AchievementCategoryId } from "../../../lib/achievements/categories";
 import type { AchievementPieces } from "../../../lib/achievements/material";
 import { PIECES, type Piece } from "../../../lib/achievements/pieces";
 import { achievementNameOf } from "./achievementWords";
@@ -12,24 +14,64 @@ const LETTERS: Readonly<Record<Piece, string>> = { pawn: "P", knight: "N", bisho
 /** A piece cell's side — the icon, and room around it. */
 const CELL_PX = 32;
 
+/** A colour per colour scheme — a `chess.achievements` token. */
+type Tint = { light: string; dark: string };
+
 /**
  * **A piece, drawn** (CTA-249) — the board's own piece set (`defaultPieces`,
- * as the captured-pieces strip draws it), White's, at `size` pixels. Hidden
- * from a screen reader: whatever shows it names it in words.
+ * as the captured-pieces strip draws it), White's, at `size` pixels; with a
+ * `tint`, filled with it — each scheme's shade (an SVG fill takes no CSS
+ * variable, so one drawing per scheme, the other hidden). Hidden from a
+ * screen reader: whatever shows it names it in words.
  */
-export function PieceIcon({ piece, size = 24 }: { piece: Piece; size?: number }) {
+export function PieceIcon({ piece, size = 24, tint }: { piece: Piece; size?: number; tint?: Tint }) {
   const render = defaultPieces[`w${LETTERS[piece]}`];
+  const drawn = (fill?: string) => render?.({ svgStyle: { width: "100%", height: "100%" }, ...(fill === undefined ? {} : { fill }) }) ?? LETTERS[piece];
+  const box = { display: "inline-block", width: size, height: size, lineHeight: 0, flexShrink: 0 } as const;
+  if (tint === undefined) {
+    return (
+      <Box component="span" aria-hidden sx={box}>
+        {drawn()}
+      </Box>
+    );
+  }
   return (
-    <Box component="span" aria-hidden sx={{ display: "inline-block", width: size, height: size, lineHeight: 0, flexShrink: 0 }}>
-      {render?.({ svgStyle: { width: "100%", height: "100%" } }) ?? LETTERS[piece]}
+    <Box component="span" aria-hidden sx={{ ...box, position: "relative" }}>
+      <Box component="span" sx={(theme) => ({ ...box, ...theme.applyStyles("dark", { display: "none" }) })}>
+        {drawn(tint.light)}
+      </Box>
+      <Box component="span" sx={(theme) => ({ ...box, display: "none", ...theme.applyStyles("dark", { display: "inline-block" }) })}>
+        {drawn(tint.dark)}
+      </Box>
     </Box>
+  );
+}
+
+/** **A category's colour, as a swatch** (CTA-249) — the key to its pieces' fill. Hidden from a screen reader. */
+export function CategorySwatch({ category }: { category: AchievementCategoryId }) {
+  const tint = useChessTokens().achievements[category];
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      sx={(theme) => ({
+        display: "inline-block",
+        width: 10,
+        height: 10,
+        borderRadius: "2px",
+        flexShrink: 0,
+        bgcolor: tint.light,
+        ...theme.applyStyles("dark", { bgcolor: tint.dark }),
+      })}
+    />
   );
 }
 
 /**
  * **A position's achievements, as a table** (CTA-249): a row per category,
- * its name then the five pieces, Pawn to Queen — the one won drawn in full
- * on a highlighted cell, the others dimmed as disabled. Read by a screen
+ * its colour's swatch and name, then the five pieces, Pawn to Queen — the
+ * one won filled with its category's colour (`chess.achievements`) on a
+ * highlighted cell, the others dimmed, grey, as disabled. Read by a screen
  * reader as a table: each row header says the category and its piece
  * ("Place in order: Queen"), each cell its piece (the column) and whether
  * it was won. Its root `testId`; a row `-<category>` (its `data-piece` the
@@ -37,6 +79,7 @@ export function PieceIcon({ piece, size = 24 }: { piece: Piece; size?: number })
  */
 export function AchievementTable({ pieces, testId }: { pieces: AchievementPieces; testId: string }) {
   const { t } = useTranslation();
+  const tints = useChessTokens().achievements;
   return (
     <Box
       component="table"
@@ -63,7 +106,8 @@ export function AchievementTable({ pieces, testId }: { pieces: AchievementPieces
               scope="row"
               sx={{ textAlign: "start", fontWeight: 400, typography: "body2", paddingInlineEnd: 1, whiteSpace: "nowrap", color: won === null ? "text.secondary" : "text.primary" }}
             >
-              <Box component="span" aria-hidden>
+              <Box component="span" aria-hidden sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+                <CategorySwatch category={category} />
                 {t(`accuracyTrainer.achievements.categories.${category}`)}:
               </Box>
               <Box component="span" sx={visuallyHidden}>
@@ -86,12 +130,12 @@ export function AchievementTable({ pieces, testId }: { pieces: AchievementPieces
                     verticalAlign: "middle",
                     borderRadius: 1,
                     border: 1,
-                    borderColor: got ? "primary.main" : "transparent",
+                    borderColor: got ? "divider" : "transparent",
                     bgcolor: got ? "action.selected" : "transparent",
                   }}
                 >
                   <Box component="span" sx={{ display: "inline-flex", opacity: got ? 1 : 0.25, filter: got ? "none" : "grayscale(1)" }}>
-                    <PieceIcon piece={piece} size={26} />
+                    <PieceIcon piece={piece} size={26} {...(got ? { tint: tints[category] } : {})} />
                   </Box>
                   <Box component="span" sx={visuallyHidden}>
                     {t(got ? "accuracyTrainer.achievements.cellWon" : "accuracyTrainer.achievements.cellNotWon")}

@@ -131,6 +131,14 @@ export type ChessTokens = {
     "good" | "brilliant" | "interesting" | "dubious" | "mistake" | "blunder",
     { light: string; dark: string }
   >;
+  /**
+   * **The achievement categories' colours** (CTA-249, the Accuracy Trainer):
+   * one per category — `order` Place in order, `best` Best move, `clean`
+   * Clean candidates, `game` Better than the game, `line` See the line — a
+   * piece won filled with its category's, so a piece alone says which it
+   * belongs to. One shade per colour scheme, each at least 3:1 on its paper.
+   */
+  achievements: Record<"order" | "best" | "clean" | "game" | "line", { light: string; dark: string }>;
   /** The promotion picker's scrim over the board. */
   promotion: { scrim: string };
   /** The map's move dots, in the colour of the side that moved. */

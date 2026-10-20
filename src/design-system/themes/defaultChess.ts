@@ -47,6 +47,15 @@ export const defaultChessTokens: ChessTokens = {
     mistake: { light: "#c47a00", dark: "#f0ad2a" },
     blunder: { light: "#d03b3b", dark: "#f06a6a" },
   },
+  // The achievement categories (CTA-249): blue, green, teal, orange, purple —
+  // a hue each, the light shade dark enough for white paper, the dark one light enough for the dark scheme's.
+  achievements: {
+    order: { light: "#1f6fd1", dark: "#6ea8ff" },
+    best: { light: "#1e8a3c", dark: "#5ad672" },
+    clean: { light: "#0f7c80", dark: "#4fd1d6" },
+    game: { light: "#b45f00", dark: "#f0a43a" },
+    line: { light: "#8a3fc7", dark: "#c792f5" },
+  },
   promotion: { scrim: "rgba(0, 0, 0, 0.35)" },
   map: { whiteDot: "#ffffff", blackDot: "#000000" },
   filterBoard: {

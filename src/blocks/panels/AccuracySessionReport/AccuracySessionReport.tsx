@@ -12,7 +12,7 @@ import type { AchievementCategoryId } from "../../../lib/achievements/categories
 import type { PieceCounts, SessionMaterial } from "../../../lib/achievements/material";
 import { PIECES, type Piece } from "../../../lib/achievements/pieces";
 import type { Turn } from "../../../lib/engineAnalysis";
-import { PieceIcon } from "../AccuracyTrainerDetails";
+import { CategorySwatch, PieceIcon } from "../AccuracyTrainerDetails";
 
 /** One position of the session, as the report lists it. */
 export type AccuracyReportRow = {
@@ -197,7 +197,15 @@ function AccuracySessionReport({ summary, material, rows, onOpen, testId }: Accu
         id: "category",
         header: t("accuracyTrainer.achievements.category"),
         rowHeader: true,
-        render: (row) => (row.id === "total" ? t("accuracyTrainer.achievements.total") : t(`accuracyTrainer.achievements.categories.${row.id}`)),
+        render: (row) =>
+          row.id === "total" ? (
+            t("accuracyTrainer.achievements.total")
+          ) : (
+            <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+              <CategorySwatch category={row.id} />
+              {t(`accuracyTrainer.achievements.categories.${row.id}`)}
+            </Box>
+          ),
       },
       ...PIECES.map((piece): DataTableColumn<MaterialRow, MaterialColumn> => ({
         id: piece,

@@ -102,6 +102,7 @@ export const brownTheme: ThemeDefinition = {
     drawing: defaultChessTokens.drawing,
     // lichess's own glyph colours — the default theme's already.
     nag: defaultChessTokens.nag,
+    achievements: defaultChessTokens.achievements,
     promotion: { scrim: "rgba(22, 21, 18, 0.5)" },
     map: { whiteDot: "#ffffff", blackDot: "#161512" },
     // lichess's opening explorer bars.

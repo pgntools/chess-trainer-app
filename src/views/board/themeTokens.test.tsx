@@ -59,6 +59,13 @@ const TOKENS: ChessTokens = vi.hoisted(() => ({
     mistake: { light: "#090909", dark: "#0a0a0a" },
     blunder: { light: "#0b0b0b", dark: "#0c0c0c" },
   },
+  achievements: {
+    order: { light: "#0d0d0d", dark: "#0e0e0e" },
+    best: { light: "#0f0f0f", dark: "#171717" },
+    clean: { light: "#181818", dark: "#191919" },
+    game: { light: "#1a1a1a", dark: "#1b1b1b" },
+    line: { light: "#1c1c1c", dark: "#1d1d1d" },
+  },
   promotion: { scrim: "rgba(10, 20, 30, 0.5)" },
   map: { whiteDot: "#fefefe", blackDot: "#101010" },
   filterBoard: {

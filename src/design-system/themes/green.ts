@@ -100,6 +100,7 @@ export const greenTheme: ThemeDefinition = {
       mistake: { light: "#b35f00", dark: "#ffa459" },
       blunder: { light: "#c0302b", dark: "#fa6a5c" },
     },
+    achievements: defaultChessTokens.achievements,
     promotion: { scrim: "rgba(0, 0, 0, 0.5)" },
     map: { whiteDot: "#ffffff", blackDot: "#312e2b" },
     filterBoard: {
