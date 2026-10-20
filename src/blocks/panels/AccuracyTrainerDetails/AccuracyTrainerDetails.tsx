@@ -7,7 +7,7 @@ import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { useTranslation } from "react-i18next";
 
-import { SliderField, SwitchField } from "../../../design-system/components/forms";
+import { RadioGroupField, SliderField, SwitchField } from "../../../design-system/components/forms";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { StatusText } from "../../../design-system/components/feedback";
@@ -15,6 +15,7 @@ import { LabelChip, type LabelChipTone } from "../../../design-system/components
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { PositionGrade, SuggestionGrade, TrainingPosition } from "../../../lib/accuracyTrainer";
 import { formatScore } from "../../../lib/engineAnalysis";
+import type { EngineStart } from "../../../lib/findBestMove/model";
 import { gradeHeadlineOf } from "../GradedLines";
 
 /** The panel's tabs. */
@@ -81,6 +82,13 @@ export type AccuracyTrainerDetailsProps = {
   onMovesToFindChange: (count: number) => void;
   /** A session runs: its moves to find are fixed — the slider off, saying so. */
   movesLocked?: boolean;
+  /**
+   * When a position's engine search starts — on the first move played there,
+   * or once it is graded (CTA-247); with `onEngineStartChange`, a radio
+   * group. Absent, none.
+   */
+  engineStart?: EngineStart;
+  onEngineStartChange?: (start: EngineStart) => void;
   /** The session's Case in Analysis — absent before a session starts. */
   caseLink?: LinkTarget;
   /** The position the board stands at — absent before a session starts. */
@@ -95,7 +103,8 @@ export type AccuracyTrainerDetailsProps = {
    * headline `-moves-headline`, a line `-line-<rank>`, a move of the reader's
    * outside them `-outside-<order>`; passed `-moves-passed`, `-answer-again`),
    * `-results-tab` (a position's row `-result-<index>`, none `-results-empty`),
-   * `-settings` (`-moves`, `-arrows`).
+   * `-settings` (`-moves`, `-arrows`, `-engine-start` — each radio
+   * `-engine-start-<move|grade>`).
    */
   testId: string;
 };
@@ -122,9 +131,10 @@ const MOVES_BOUNDS = { min: 1, max: 10 } as const;
  * and **Settings**:
  * *Moves to find* (how many
  * best moves, in order, at each position) and *Show next-move arrows* (the
- * reader's analysis's continuations, on by default) — no engine switch: the
- * screen offers the engine where a position is short of lines (CTA-245,
- * CTA-246). A tab more is a field of
+ * reader's analysis's continuations, on by default) and, given, *Engine
+ * starts thinking* (on the first move played, or after Next — once the
+ * position is graded, CTA-247) — no engine switch: the screen offers the
+ * engine where a position is short of lines (CTA-245, CTA-246). A tab more is a field of
  * {@link AccuracyTrainerDetailsTab} and its content here.
  *
  * Presentational: the settings and the tab are props; the screen holds them
@@ -139,6 +149,8 @@ function AccuracyTrainerDetails({
   movesToFind,
   onMovesToFindChange,
   movesLocked = false,
+  engineStart,
+  onEngineStartChange,
   caseLink,
   moves,
   results,
@@ -264,6 +276,19 @@ function AccuracyTrainerDetails({
               label={t("accuracyTrainer.details.arrows")}
               help={t("accuracyTrainer.details.arrowsHelp")}
             />
+            {engineStart !== undefined && onEngineStartChange !== undefined && (
+              <RadioGroupField<EngineStart>
+                label={t("accuracyTrainer.details.engineStart.label")}
+                value={engineStart}
+                onChange={onEngineStartChange}
+                options={[
+                  { value: "move", label: t("accuracyTrainer.details.engineStart.move") },
+                  { value: "grade", label: t("accuracyTrainer.details.engineStart.grade") },
+                ]}
+                help={t(`accuracyTrainer.details.engineStart.${engineStart}Help`)}
+                testId={`${testId}-engine-start`}
+              />
+            )}
           </Box>
         )}
       </Box>

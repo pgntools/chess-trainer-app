@@ -79,6 +79,18 @@ describe("sessionReducer — the event table", () => {
     expect(sessionReducer(on, e.answer(1, ["e4"])).positions.get(1)?.engine.kind).toBe("wanted");
   });
 
+  it("started after Next (CTA-247): a first move wants nothing, a grading wants the engine, a pass never", () => {
+    const grade = sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5, engineStart: "grade" } });
+    expect(sessionReducer(grade, e.firstMove(1))).toBe(grade);
+    // Results, or Next while answering — both the answer event.
+    expect(applied(grade, [e.firstMove(1), e.answer(1, ["e4"])]).positions.get(1)?.engine.kind).toBe("wanted");
+    expect(applied(grade, [e.firstMove(1), e.answer(1, ["e4"]), e.next()]).positions.get(1)?.engine.kind).toBe("wanted");
+    expect(applied(grade, [e.firstMove(1), e.pass(1)]).positions.get(1)?.engine.kind).toBe("idle");
+    // The engine off, a grading wants nothing either.
+    const off = sessionOfPgn(ANALYSED_PGN, { settings: { moves: 5, engineStart: "grade" } });
+    expect(sessionReducer(off, e.answer(1, ["e4"])).positions.get(1)?.engine.kind).toBe("idle");
+  });
+
   it("a pass never waits, and reopen takes back a pass alone", () => {
     const on = sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5 } });
     const passed = sessionReducer(on, e.pass(1));
@@ -137,7 +149,22 @@ describe("sessionReducer — the event table", () => {
   it("settingsChanged changes the switches, and the same ones are no event", () => {
     const record = fresh();
     expect(sessionReducer(record, e.settingsChanged({ arrows: true }))).toBe(record);
-    expect(sessionReducer(record, e.settingsChanged({ engine: true })).settings).toEqual({ engine: true, arrows: true });
+    expect(sessionReducer(record, e.settingsChanged({ engineStart: "move" }))).toBe(record);
+    expect(sessionReducer(record, e.settingsChanged({ engine: true })).settings).toEqual({ engine: true, arrows: true, engineStart: "move" });
+    expect(sessionReducer(record, e.settingsChanged({ engineStart: "grade" })).settings).toEqual({ engine: false, arrows: true, engineStart: "grade" });
+  });
+
+  it("settingsChanged of when the engine starts leaves every position's engine as it is (CTA-247)", () => {
+    const on = sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5 } });
+    const asked = applied(on, [e.firstMove(1), e.answer(2, ["e5"]), e.engineQueued(2, "j2")]);
+    const switched = sessionReducer(asked, e.settingsChanged({ engineStart: "grade" }));
+    expect(switched.positions).toBe(asked.positions);
+    // A position wanted on its first move stays wanted — never asked twice, never dropped.
+    expect(switched.positions.get(1)?.engine).toEqual({ kind: "wanted" });
+    expect(switched.positions.get(2)?.engine).toEqual({ kind: "queued", jobId: "j2" });
+    // Switched back, a move asks again where nothing was asked.
+    const back = sessionReducer(switched, e.settingsChanged({ engineStart: "move" }));
+    expect(sessionReducer(back, e.firstMove(3)).positions.get(3)?.engine.kind).toBe("wanted");
   });
 });
 
@@ -169,6 +196,7 @@ const randomEvent = (random: () => number, record: FindBestMoveRecord): SessionE
     () => e.engineSearched(key, job, searchOf(fen, [{ pv: ["a2a3"], cp: -10 }])),
     () => e.engineFailed(key, random() < 0.5 ? undefined : job),
     () => e.settingsChanged({ engine: random() < 0.5 }),
+    () => e.settingsChanged({ engineStart: random() < 0.5 ? "move" : "grade" }),
   ])();
 };
 
@@ -200,6 +228,7 @@ describe("sessionReducer — the invariants", () => {
       sessionOfPgn(ANALYSED_PGN),
       sessionOfPgn(ANALYSED_PGN, { settings: { engine: true, moves: 5 } }),
       sessionOfPgn(RUY_LOPEZ_38, { settings: { engine: true, moves: 3 } }),
+      sessionOfPgn(RUY_LOPEZ_38, { settings: { engine: true, moves: 3, engineStart: "grade" } }),
     ];
     for (let walk = 0; walk < 300; walk += 1) {
       let record = starts[walk % starts.length];

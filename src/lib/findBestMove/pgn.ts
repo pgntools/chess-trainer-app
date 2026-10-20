@@ -6,6 +6,7 @@ import type { GameHeaders } from "../gameModel";
 import { treeToPgn, type GameTree } from "../gameTree";
 import { parsePgnTree } from "../pgn";
 import {
+  DEFAULT_ENGINE_START,
   DEFAULT_MOVES,
   MOVES_BOUNDS,
   SESSION_FORMAT_VERSION,
@@ -34,6 +35,7 @@ import {
  * | `FindBestMoveSide` | `white` / `black` / `both` |
  * | `FindBestMoveMoves` | N, 1–10 |
  * | `FindBestMoveEngine`, `FindBestMoveArrows` | `on` / `off` |
+ * | `FindBestMoveEngineStart` | `move` / `grade` — when a position's search starts (CTA-247); absent, or anything else, `move` |
  * | `FindBestMoveGame` | the recorded game's SANs, space-separated (the start is `SetUp` / `FEN`) |
  * | `FindBestMoveKeys` | the manifest, ascending, comma-separated |
  * | `FindBestMoveCurrent` | the position on screen |
@@ -54,6 +56,7 @@ const TAG = {
   moves: "FindBestMoveMoves",
   engine: "FindBestMoveEngine",
   arrows: "FindBestMoveArrows",
+  engineStart: "FindBestMoveEngineStart",
   game: "FindBestMoveGame",
   keys: "FindBestMoveKeys",
   current: "FindBestMoveCurrent",
@@ -147,6 +150,7 @@ const sessionTagsOf = (record: FindBestMoveRecord, done: boolean): GameHeaders =
     [TAG.moves]: String(record.wanted),
     [TAG.engine]: record.settings.engine ? "on" : "off",
     [TAG.arrows]: record.settings.arrows ? "on" : "off",
+    [TAG.engineStart]: record.settings.engineStart,
     [TAG.game]: record.game.moves.join(" "),
     [TAG.keys]: record.keys.join(","),
     [TAG.current]: String(record.current),
@@ -325,7 +329,12 @@ export const sessionRecordOf = (tags: Readonly<GameHeaders>): SessionReading | u
       name: tags[TAG.name] ?? "",
       side: side === "white" ? "w" : side === "black" ? "b" : "both",
       wanted: wholeIn(tags[TAG.moves], MOVES_BOUNDS.min, MOVES_BOUNDS.max, DEFAULT_MOVES),
-      settings: { engine: tags[TAG.engine] === "on", arrows: tags[TAG.arrows] !== "off" },
+      settings: {
+        engine: tags[TAG.engine] === "on",
+        arrows: tags[TAG.arrows] !== "off",
+        // A session from before CTA-247 has no such tag: today's behaviour.
+        engineStart: tags[TAG.engineStart] === "grade" ? "grade" : DEFAULT_ENGINE_START,
+      },
       game,
       keys,
       current,

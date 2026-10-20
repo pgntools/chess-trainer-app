@@ -326,6 +326,8 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
           movesLocked
           showArrows={record.settings.arrows}
           onShowArrowsChange={(arrowsOn) => run.changeArrows(arrowsOn)}
+          engineStart={record.settings.engineStart}
+          onEngineStartChange={run.changeEngineStart}
           caseLink={{ component: RouterLink, to: casePath(caseRecord.projectId, caseRecord.id) }}
           {...(run.shownMoves === undefined ? {} : { moves: run.shownMoves })}
           results={{

@@ -32,6 +32,17 @@ export const MOVES_BOUNDS = { min: 1, max: 10 } as const;
 /** The moves to find to start with, and when a PGN says something unreadable. */
 export const DEFAULT_MOVES = 3;
 
+/**
+ * **When a position's engine search starts** (CTA-247): `move` — on the
+ * reader's first move there, so it searches while they analyse; `grade` —
+ * only once the position is graded (Results, or Next while answering), the
+ * answer waiting for it. A pass never wants it under either.
+ */
+export type EngineStart = "move" | "grade";
+
+/** The engine's start to begin with, and what a session from before CTA-247 reads as — today's behaviour. */
+export const DEFAULT_ENGINE_START: EngineStart = "move";
+
 /** The ply of the move to find, 1-based from the recorded game's start (`TrainingPosition.ply`). */
 export type PositionKey = number;
 
@@ -68,6 +79,9 @@ export type PositionRecord = {
 /** **The recorded game** — its start and its mainline, copied from the source when the session starts and never edited after. */
 export type RecordedGame = { startFen: string; moves: readonly string[] };
 
+/** The session's settings — the engine on, the next-move arrows, when a position's search starts. */
+export type SessionSettings = { engine: boolean; arrows: boolean; engineStart: EngineStart };
+
 /** **A session**, whole — what its Case's tags hold (`pgn.ts`). */
 export type FindBestMoveRecord = {
   version: typeof SESSION_FORMAT_VERSION;
@@ -76,7 +90,7 @@ export type FindBestMoveRecord = {
   side: TrainingSide;
   /** N, the moves to find — 1–10, fixed for the session. */
   wanted: number;
-  settings: { engine: boolean; arrows: boolean };
+  settings: SessionSettings;
   game: RecordedGame;
   /** The manifest: every position's key, ascending, fixed at start. */
   keys: readonly PositionKey[];

@@ -8,6 +8,7 @@ import {
   withPosition,
   type EngineState,
   type FindBestMoveRecord,
+  type SessionSettings,
   type PositionKey,
   type PositionRecord,
 } from "./model";
@@ -37,7 +38,7 @@ export type SessionEvent =
   | { type: "engineQueued"; key: PositionKey; jobId: string }
   | { type: "engineSearched"; key: PositionKey; jobId: string; result: PositionResult }
   | { type: "engineFailed"; key: PositionKey; jobId?: string }
-  | { type: "settingsChanged"; engine?: boolean; arrows?: boolean };
+  | ({ type: "settingsChanged" } & Partial<SessionSettings>);
 
 /** The events, made — what the screen and the job dispatch. */
 export const sessionEvents = {
@@ -51,7 +52,7 @@ export const sessionEvents = {
   engineQueued: (key: PositionKey, jobId: string): SessionEvent => ({ type: "engineQueued", key, jobId }),
   engineSearched: (key: PositionKey, jobId: string, result: PositionResult): SessionEvent => ({ type: "engineSearched", key, jobId, result }),
   engineFailed: (key: PositionKey, jobId?: string): SessionEvent => ({ type: "engineFailed", key, ...(jobId === undefined ? {} : { jobId }) }),
-  settingsChanged: (settings: { engine?: boolean; arrows?: boolean }): SessionEvent => ({ type: "settingsChanged", ...settings }),
+  settingsChanged: (settings: Partial<SessionSettings>): SessionEvent => ({ type: "settingsChanged", ...settings }),
 } as const;
 
 /** A position's record changed by `edit` — the record back where the key names none or nothing changed. */
@@ -96,7 +97,8 @@ export const sessionReducer = (record: FindBestMoveRecord, event: SessionEvent):
       });
 
     case "firstMove":
-      return wantEngine(record, event.key);
+      // Started on grading alone (CTA-247): a move there asks nothing.
+      return record.settings.engineStart === "grade" ? record : wantEngine(record, event.key);
 
     case "answer": {
       if (event.moves.length === 0) return record;
@@ -154,9 +156,12 @@ export const sessionReducer = (record: FindBestMoveRecord, event: SessionEvent):
       });
 
     case "settingsChanged": {
-      const engine = event.engine ?? record.settings.engine;
-      const arrows = event.arrows ?? record.settings.arrows;
-      return engine === record.settings.engine && arrows === record.settings.arrows ? record : { ...record, settings: { engine, arrows } };
+      // Only the settings: a position already wanted, queued or searched stays as it is.
+      const { engine = record.settings.engine, arrows = record.settings.arrows, engineStart = record.settings.engineStart } = event;
+      const { settings } = record;
+      return engine === settings.engine && arrows === settings.arrows && engineStart === settings.engineStart
+        ? record
+        : { ...record, settings: { engine, arrows, engineStart } };
     }
   }
 };

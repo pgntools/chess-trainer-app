@@ -700,6 +700,14 @@ const en = {
       moves: "Moves to find",
       movesHelp: "How many best moves to find at each position, best first: your lines from the position are your moves, in their order.",
       movesLocked: "Fixed for this session — set it before the next one starts.",
+      /** When a position's engine search starts (CTA-247). */
+      engineStart: {
+        label: "Engine starts thinking",
+        move: "On the first move played",
+        grade: "After Next is clicked",
+        moveHelp: "Where the engine's lines are too few, its search starts on your first move at the position and runs while you analyse.",
+        gradeHelp: "Where the engine's lines are too few, its search starts only once the position is graded — Results, or Next — and the result waits for it.",
+      },
       openCase: "Open the session's case",
     },
     /** A session: an analysis board at each position — every move before it, none after — then one move chosen. */
@@ -736,7 +744,7 @@ const en = {
         /** A first move where the lines are too few while the session's engine is off (CTA-245). */
         offer: {
           title: "Use the engine?",
-          message: "There are fewer of the engine's lines here than moves to find, so your moves cannot all be graded. Use the engine for this session? It searches this position — an Evaluate position job — and any other short of lines once you start on it. The search's depth, move time, Threads and Hash are the Engine menu's.",
+          message: "There are fewer of the engine's lines here than moves to find, so your moves cannot all be graded. Use the engine for this session? It searches this position — an Evaluate position job — and any other short of lines, on your first move there or once it is graded, as Settings' Engine starts thinking says. The search's depth, move time, Threads and Hash are the Engine menu's.",
           confirm: "Use the engine",
           cancel: "Go on without it",
         },

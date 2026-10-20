@@ -2,11 +2,12 @@ import Box from "@mui/material/Box";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
+import type { EngineStart } from "../../../lib/findBestMove/model";
 import type { BlockFamilyId } from "../../families";
 import AccuracyTrainerDetails, { type AccuracyTrainerDetailsTab } from "./AccuracyTrainerDetails";
 import { CASE_LINK, EXERCISE_TITLE, GAME_TITLE, GRADED, GRADED_POSITION, HEBREW_TITLE, LABEL, MOVES, RESULTS } from "./fixtures";
 
-type Settings = { arrows: boolean; moves: number };
+type Settings = { arrows: boolean; moves: number; engineStart?: EngineStart };
 
 /** The reader's moves reordered and deleted, as a screen's board would. */
 const moved = (list: readonly string[], index: number, move: "up" | "down"): string[] => {
@@ -30,6 +31,9 @@ const framed = (title: string, testId: string, initial: Settings, withCase = fal
           onShowArrowsChange={(arrows) => set({ ...settings, arrows })}
           movesToFind={settings.moves}
           onMovesToFindChange={(moves) => set({ ...settings, moves })}
+          {...(settings.engineStart === undefined
+            ? {}
+            : { engineStart: settings.engineStart, onEngineStartChange: (engineStart: EngineStart) => set({ ...settings, engineStart }) })}
           {...(withCase
             ? {
                 caseLink: CASE_LINK,
@@ -87,13 +91,17 @@ const gallery: GalleryModule<BlockFamilyId> = {
     },
     {
       name: "A session running — its case linked, three moves to find",
-      render: () => framed(GAME_TITLE, "gallery-accuracy-details", { arrows: true, moves: 3 }, true),
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details", { arrows: true, moves: 3, engineStart: "move" }, true),
+    },
+    {
+      name: "Settings — the engine starts thinking after Next",
+      render: () => framed(GAME_TITLE, "gallery-accuracy-details-engine-start", { arrows: true, moves: 3, engineStart: "grade" }, true),
     },
     {
       name: "Nothing loaded — the exercise's name",
       render: () => framed(EXERCISE_TITLE, "gallery-accuracy-details-empty", { arrows: false, moves: 3 }),
     },
-    { name: "A Hebrew name", render: () => framed(HEBREW_TITLE, "gallery-accuracy-details-he", { arrows: true, moves: 5 }) },
+    { name: "A Hebrew name", render: () => framed(HEBREW_TITLE, "gallery-accuracy-details-he", { arrows: true, moves: 5, engineStart: "move" }) },
   ],
 };
 
