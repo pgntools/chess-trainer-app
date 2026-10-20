@@ -53,8 +53,20 @@ import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import FindBestMoveV3 from "../accuracyTrainer/findBestMoveV3/FindBestMoveV3";
+import { sessionStartTreeOf } from "../accuracyTrainer/findBestMoveV3/sessionCase";
 import { CaseBoard } from "../analysisV2/CaseWorkspace";
 import { gameCaseOf } from "../../lib/analysisProjects";
+
+/** A Find Best Move session's Case (CTA-239) — the screen resumes one, its PGN the whole session. */
+const FIND_BEST_MOVE_CASE = gameCaseOf(
+  { id: "session", projectId: "p", name: "Alice – Bob — Find Best Move" },
+  sessionStartTreeOf(
+    { name: "Alice – Bob", tree: parsePgnTree("1. e4 { [%eval 0.30] } (1. d4 { [%eval 0.25] }) 1... e5 *") },
+    "all",
+    { moves: 3, engine: false, showArrows: true },
+  )!,
+);
+const FindBestMoveV3Session = () => <FindBestMoveV3 resume={FIND_BEST_MOVE_CASE} />;
 
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
@@ -186,7 +198,7 @@ beforeEach(async () => {
 
 describe("the Accuracy Trainer's Find Best Move v3 (CTA-238, dev-only), from the same core — with no engine", () => {
   it("renders the shared board square and panel skeleton, and builds no engine", () => {
-    const { unmount } = renderBoard(FindBestMoveV3);
+    const { unmount } = renderBoard(FindBestMoveV3Session);
     expect(screen.getByTestId("find-best-move-v3-screen")).toBeInTheDocument();
     expect(screen.getByTestId("find-best-move-v3-board")).toBeInTheDocument();
     expect(boardOptions().id).toBe("find-best-move-v3");

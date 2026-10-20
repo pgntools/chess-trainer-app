@@ -11,6 +11,8 @@ export * from "./ProjectsTable";
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./EngineOptionsTable";
+// CTA-239: the Accuracy Trainer's Find Best Move sessions — each a Case whose PGN holds it whole.
+export * from "./FindBestMoveSessionsTable";
 // CTA-217: the Jobs module's queue — every job of any kind, over block-local view models (`JobRowView`), and the parts every Jobs block draws a job with.
 export * from "./JobQueueTable";
 export * from "./PlayedGamesTable";

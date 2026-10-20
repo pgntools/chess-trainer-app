@@ -1,4 +1,6 @@
-import type { TrainingPosition } from "./accuracyTrainer";
+import { Chess } from "chess.js";
+
+import type { TrainingLine, TrainingPosition, TrainingSide } from "./accuracyTrainer";
 import type { PositionResult } from "./computerAnalysis";
 import { ANALYSED_PLIES_TAG, ANALYSED_SIDE_TAG, withEngineLine } from "./computerAnalysisTree";
 import {
@@ -16,6 +18,7 @@ import {
   setNags,
   type CommentKind,
   type GameTree,
+  type LineMove,
   type VariationNode,
 } from "./gameTree";
 
@@ -33,6 +36,12 @@ import {
  * Whatever the reader then does on the board is the Case's tree again once
  * the continuation is put back under the position ({@link caseTreeOf}) —
  * the game's move first, so the Case's mainline stays the game's.
+ *
+ * **The Case's PGN is the whole session** (CTA-239): its tags and one
+ * `[%fbm …]` command per position say everything this module holds in
+ * memory, so a session reloads, downloads and resumes from its PGN alone —
+ * `lib/findBestMoveSessionPgn.ts` writes and reads it. The board never holds
+ * that machine data ({@link withoutSessionCommands}): the Case's tree does.
  */
 
 /* ─── The Case's tree ─────────────────────────────────────────────────── */
@@ -48,8 +57,29 @@ export const sessionBaseTree = (tree: GameTree): GameTree => {
   return addLine(emptyTree(tree.startFen, headers), null, moves).tree;
 };
 
+/** A SAN line played from `fen` — each move with its squares and the position after it — cut at the first that does not play. */
+export const lineMovesOf = (fen: string, sans: readonly string[]): LineMove[] => {
+  const moves: LineMove[] = [];
+  let chess: Chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return moves;
+  }
+  for (const san of sans) {
+    let move;
+    try {
+      move = chess.move(san);
+    } catch {
+      break;
+    }
+    moves.push({ san: move.san, from: move.from, to: move.to, fen: chess.fen(), ...(move.captured === undefined ? {} : { captured: move.captured }) });
+  }
+  return moves;
+};
+
 /** The node a SAN path names — `undefined` where the tree does not hold the whole path. */
-const nodeAtPath = (tree: GameTree, path: readonly string[]): { id: string | null } | undefined => {
+export const nodeAtPath = (tree: GameTree, path: readonly string[]): { id: string | null } | undefined => {
   const id = nodeAtSanPath(tree, path);
   return sanPathTo(tree, id).length === path.length ? { id } : undefined;
 };
@@ -112,16 +142,84 @@ export const withPositionEngineLines = (tree: GameTree, path: readonly string[],
   return result.lines.reduce((next, line) => withEngineLine(next, at.id, result.fen, line), tree);
 };
 
-/** What the session writes at a position besides the reader's own: the engine's search, the answer worded. */
-export type PositionAnnotation = { path: readonly string[]; engine?: PositionResult; answer?: string };
+/** An `[%eval]` of a score whose depth is not known — the game's own analysis's. */
+const EVAL_COMMAND = /\[%eval\s/;
+const evalCommandOf = (score: TrainingLine["score"]): string =>
+  `[%eval ${score.kind === "mate" ? `#${score.value}` : (score.value / 100).toFixed(2)}]`;
 
-/** **The session's annotations written** — each position's engine lines and its answer as a comment on it. Idempotent. */
+/**
+ * **A position's lines hung in the tree** (CTA-239) — each line's moves (its
+ * `sans`) under the position, as a computer analysis hangs them, its first
+ * move carrying its `[%eval]` where it has none: what a graded position's
+ * lines look like to any PGN reader. A line that does not play from the
+ * position is cut where it stops; the same tree back when all is there.
+ */
+export const withPositionLines = (tree: GameTree, path: readonly string[], fen: string, lines: readonly TrainingLine[]): GameTree => {
+  const at = nodeAtPath(tree, path);
+  if (at === undefined) return tree;
+  return lines.reduce((next, line) => {
+    const moves = lineMovesOf(fen, line.sans.length > 0 ? line.sans : [line.san]);
+    if (moves.length === 0) return next;
+    const grown = addLine(next, at.id, moves).tree;
+    const first = (at.id === null ? grown.moves : (findNode(grown, at.id)?.children ?? [])).find((node) => node.san === moves[0].san);
+    if (first === undefined || (first.comments ?? []).some((text) => EVAL_COMMAND.test(text))) return grown;
+    return setComments(grown, first.id, "comments", [evalCommandOf(line.score), ...(first.comments ?? [])]);
+  }, tree);
+};
+
+/**
+ * What the session writes at a position besides the reader's own: the
+ * engine's search, the answer worded — and, once graded, the position's lines
+ * (`lines`, with `fen` its position), so the Case shows them as variations.
+ */
+export type PositionAnnotation = { path: readonly string[]; engine?: PositionResult; answer?: string; lines?: readonly TrainingLine[]; fen?: string };
+
+/** **The session's annotations written** — each position's engine lines, its graded lines and its answer as a comment on it. Idempotent. */
 export const withSessionAnnotations = (tree: GameTree, annotations: readonly PositionAnnotation[]): GameTree =>
-  annotations.reduce((next, { path, engine, answer }) => {
-    const withLines = engine === undefined ? next : withPositionEngineLines(next, path, engine);
+  annotations.reduce((next, { path, engine, answer, lines, fen }) => {
+    const withEngine = engine === undefined ? next : withPositionEngineLines(next, path, engine);
+    const withLines = lines === undefined || fen === undefined ? withEngine : withPositionLines(withEngine, path, fen, lines);
     const at = nodeAtPath(withLines, path);
     return answer === undefined || at === undefined ? withLines : withComments(withLines, at.id, "comments", [answer]);
   }, tree);
+
+/** **The session's command** (CTA-239) — one per position, `[%fbm …]`, a comment of its own on the move the position follows. */
+export const SESSION_COMMAND = /^\s*\[%fbm(?:\s[^\]]*)?\]\s*$/;
+
+/** A node's comments without the session's command — the same list back when it has none. */
+const withoutCommand = (comments: readonly string[] | undefined): readonly string[] | undefined =>
+  comments === undefined || !comments.some((text) => SESSION_COMMAND.test(text)) ? comments : comments.filter((text) => !SESSION_COMMAND.test(text));
+
+const strippedNodes = (nodes: readonly VariationNode[]): VariationNode[] | undefined => {
+  let changed = false;
+  const next = nodes.map((node) => {
+    const comments = withoutCommand(node.comments);
+    const children = strippedNodes(node.children);
+    if (comments === node.comments && children === undefined) return node;
+    changed = true;
+    const edited: VariationNode = { ...node, children: children ?? node.children };
+    if (comments === undefined || comments.length === 0) delete edited.comments;
+    else edited.comments = [...comments];
+    return edited;
+  });
+  return changed ? next : undefined;
+};
+
+/**
+ * **A tree without the session's machine data** (CTA-239) — every `[%fbm …]`
+ * comment taken off, every id kept; the same tree back when it holds none.
+ * What the board is given: the positions' lines and answers are the Case's
+ * alone, never a comment the reader could open on the board.
+ */
+export const withoutSessionCommands = (tree: GameTree): GameTree => {
+  const comments = withoutCommand(tree.comments);
+  const moves = strippedNodes(tree.moves);
+  if (comments === tree.comments && moves === undefined) return tree;
+  const edited: GameTree = { ...tree, moves: moves ?? tree.moves };
+  if (comments === undefined || comments.length === 0) delete edited.comments;
+  else edited.comments = [...comments];
+  return edited;
+};
 
 /* ─── A position's view ───────────────────────────────────────────────── */
 
@@ -144,7 +242,7 @@ export const positionViewOf = (tree: GameTree, path: readonly string[]): Positio
   const at = nodeAtPath(tree, path);
   if (at === undefined) return undefined;
   const hidden = at.id === null ? tree.moves : (findNode(tree, at.id)?.children ?? []);
-  return { board: withChildren(tree, at.id, []), nodeId: at.id, hidden };
+  return { board: withoutSessionCommands(withChildren(tree, at.id, [])), nodeId: at.id, hidden };
 };
 
 /** The position's own moves on the board — its node's children, `null` the start's. */
@@ -194,6 +292,10 @@ export const isAtPosition = (view: Pick<PositionView, "nodeId">, board: GameTree
 /** **A session**: its Case, its positions, where the reader is, and what each position holds. */
 export type FindBestMoveSession = {
   caseRef: { projectId: string; caseId: string };
+  /** The side whose positions are asked — what the session was started with (CTA-239: kept in its PGN). */
+  side: TrainingSide;
+  /** The game's name when the session started — its jobs' titles, the lobby's. */
+  game: string;
   /** The positions asked, in game order. */
   positions: readonly TrainingPosition[];
   /** How many best moves to find at each, in order — fixed for the session. */
@@ -204,6 +306,13 @@ export type FindBestMoveSession = {
   answers: readonly (readonly string[] | null)[];
   /** Each position's Evaluate Position job, `null` none. */
   jobs: readonly (string | null)[];
+  /**
+   * Each position's lines already hold its job's search (CTA-239) — a session
+   * read back from its PGN, whose positions were stored with the engine's
+   * lines in: that job is neither waited for nor asked again, even once the
+   * runtime has forgotten it.
+   */
+  searched: readonly boolean[];
   /**
    * **Each position's lines of the reader's own** — the board's moves from it
    * when it was left, as a tree from its position (`null` none yet): put back
@@ -235,14 +344,22 @@ export const caseTreeOf = (session: Pick<FindBestMoveSession, "tree" | "view">, 
 };
 
 /**
+ * **The reader's own lines at the position on screen** — the board's moves
+ * from it, as a tree from its position; `null` with none (or no position).
+ */
+export const workOf = (session: Pick<FindBestMoveSession, "positions" | "index" | "view">, board: GameTree): GameTree | null => {
+  const position = session.positions[session.index];
+  const moves = session.view.nodeId === null ? board.moves : (findNode(board, session.view.nodeId)?.children ?? []);
+  return position === undefined || moves.length === 0 ? null : { ...emptyTree(position.fen), moves: [...moves] };
+};
+
+/**
  * **The position on screen left** — its lines of the reader's own, the board's
  * moves from it, kept (`work`) to be put back when it opens again.
  */
 export const leavePosition = (session: FindBestMoveSession, board: GameTree): FindBestMoveSession => {
-  const moves = session.view.nodeId === null ? board.moves : (findNode(board, session.view.nodeId)?.children ?? []);
-  const position = session.positions[session.index];
-  if (position === undefined) return session;
-  const work = moves.length === 0 ? null : { ...emptyTree(position.fen), moves: [...moves] };
+  if (session.positions[session.index] === undefined) return session;
+  const work = workOf(session, board);
   // A pass reopened and left unanswered is a pass again.
   const passedAgain = session.reopened === session.index && session.answers[session.index] === null;
   return {
@@ -272,25 +389,46 @@ export const openPosition = (session: FindBestMoveSession, index: number, tree: 
  */
 export const startSession = ({
   caseRef,
+  side = "both",
+  game = "",
   positions,
   wanted,
   tree,
-}: Pick<FindBestMoveSession, "caseRef" | "positions" | "wanted" | "tree">): FindBestMoveSession | undefined => {
+}: Pick<FindBestMoveSession, "caseRef" | "positions" | "wanted" | "tree"> & Partial<Pick<FindBestMoveSession, "side" | "game">>): FindBestMoveSession | undefined => {
   const first = positions[0];
   const view = first === undefined ? undefined : positionViewOf(tree, first.path);
   if (view === undefined) return undefined;
   return {
     caseRef,
+    side,
+    game,
     positions,
     wanted,
     index: 0,
     answers: positions.map(() => null),
     jobs: positions.map(() => null),
+    searched: positions.map(() => false),
     work: positions.map(() => null),
     reopened: null,
     tree,
     view,
   };
+};
+
+/** Everything a session is but its Case and its view — what its PGN keeps (CTA-239, `lib/findBestMoveSessionPgn.ts`). */
+export type SessionState = Omit<FindBestMoveSession, "caseRef" | "tree" | "view">;
+
+/**
+ * **A session resumed** (CTA-239) — its state read back from its Case's PGN,
+ * on that Case's tree, the position on screen opened as it was left (its
+ * reader's lines put back). `undefined` where the tree does not hold that
+ * position.
+ */
+export const resumeSession = (caseRef: FindBestMoveSession["caseRef"], state: SessionState, tree: GameTree): FindBestMoveSession | undefined => {
+  const position = state.positions[state.index];
+  const view = position === undefined ? undefined : positionViewOf(tree, position.path);
+  if (view === undefined) return undefined;
+  return openPosition({ ...state, caseRef, tree, view }, state.index, tree);
 };
 
 /**

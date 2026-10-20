@@ -1,0 +1,90 @@
+import type { TrainingSide } from "./accuracyTrainer";
+import type { AnalysisCase } from "./analysisProjects";
+import { sessionProgressOf, sessionRecordOf, type SessionProgress } from "./findBestMoveSessionPgn";
+import { parsePgnTree } from "./pgn";
+
+/**
+ * **The Find Best Move sessions lobby's rows** (CTA-239) — pure: one row per
+ * Case of the *Find Best Move* project, its session read from its PGN
+ * (`lib/findBestMoveSessionPgn.ts`), and the table's sort. A Case that is not
+ * a session — one from before CTA-239, or one put in the project by hand —
+ * keeps its row, not resumable.
+ */
+
+/** The lobby's columns, in order — the whitelist `?sort=` is read against. */
+export const FIND_BEST_MOVE_SESSION_COLUMNS = ["name", "side", "moves", "progress", "found", "status", "updated"] as const;
+
+export type FindBestMoveSessionColumn = (typeof FIND_BEST_MOVE_SESSION_COLUMNS)[number];
+
+/** One session as the lobby lists it. */
+export type FindBestMoveSessionRow = {
+  /** Its Case's id — its address. */
+  id: string;
+  /** Its Case's name as the reader sees it. */
+  name: string;
+  /** ISO 8601 — its Case's last change. */
+  updatedAt: string;
+  /** What its PGN says — absent for a Case that is not a session: it cannot be resumed. */
+  session?: { side: TrainingSide; wanted: number; progress: SessionProgress };
+};
+
+/** **A session Case's row** — its PGN read and its progress counted; a Case whose PGN is no session has none. */
+export const findBestMoveSessionRowOf = (record: Pick<AnalysisCase, "id" | "pgn" | "updatedAt">, name: string): FindBestMoveSessionRow => {
+  const row = { id: record.id, name, updatedAt: record.updatedAt };
+  let session;
+  try {
+    session = sessionRecordOf(parsePgnTree(record.pgn));
+  } catch {
+    return row;
+  }
+  return session === undefined ? row : { ...row, session: { side: session.side, wanted: session.wanted, progress: sessionProgressOf(session) } };
+};
+
+/** A row's value for a column — `undefined` where it has none (a Case that is not a session), which sorts last. */
+const valueOf = (row: FindBestMoveSessionRow, column: FindBestMoveSessionColumn): string | number | undefined => {
+  const { session } = row;
+  switch (column) {
+    case "name":
+      return row.name;
+    case "updated":
+      return Date.parse(row.updatedAt) || undefined;
+    case "side":
+      return session?.side;
+    case "moves":
+      return session?.wanted;
+    case "progress":
+      return session === undefined || session.progress.total === 0
+        ? undefined
+        : (session.progress.answered + session.progress.passed) / session.progress.total;
+    case "found":
+      return session === undefined || session.progress.target === 0 ? undefined : session.progress.found / session.progress.target;
+    case "status":
+      return session === undefined ? undefined : session.progress.done ? 1 : 0;
+  }
+};
+
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+/**
+ * **The rows in a column's order** — missing values last either way, ties
+ * newest first.
+ */
+export const sortedFindBestMoveSessions = (
+  rows: readonly FindBestMoveSessionRow[],
+  column: FindBestMoveSessionColumn,
+  direction: "asc" | "desc",
+): FindBestMoveSessionRow[] => {
+  const sign = direction === "asc" ? 1 : -1;
+  const newest = (a: FindBestMoveSessionRow, b: FindBestMoveSessionRow) => collator.compare(b.updatedAt, a.updatedAt);
+  return [...rows].sort((a, b) => {
+    const left = valueOf(a, column);
+    const right = valueOf(b, column);
+    if (left === undefined || right === undefined) return left === right ? newest(a, b) : left === undefined ? 1 : -1;
+    const order = typeof left === "number" && typeof right === "number" ? left - right : collator.compare(String(left), String(right));
+    return order === 0 ? newest(a, b) : order * sign;
+  });
+};
+
+/** Which way a column opens — the numbers and the date high first, the words A to Z. */
+export const findBestMoveSessionFirstDirection = (column: FindBestMoveSessionColumn): "asc" | "desc" =>
+  column === "name" || column === "side" ? "asc" : "desc";
