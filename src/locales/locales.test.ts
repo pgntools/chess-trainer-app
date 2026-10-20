@@ -87,6 +87,10 @@ describe("translation catalogs", () => {
       "accuracyTrainer.session.answer.move",
       // A loss in the left panel's list, "−10": a sign and the value.
       "accuracyTrainer.details.lossShort",
+      // The sessions lobby's counts (CTA-239): the values and their slash alone —
+      // "2/5" answered or passed of all, "3/5" of the best moves found.
+      "accuracyTrainer.sessions.progress",
+      "accuracyTrainer.sessions.found",
     ]);
 
     const untranslated = leafKeys(en).filter(
