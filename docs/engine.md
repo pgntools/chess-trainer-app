@@ -301,8 +301,11 @@ settings ("Engine options changed", below) waits for the presets first
   Board, Write evaluations). Each board publishes its engine's state —
   off, on, searching (`useEngineModule`'s `searching`) — to the shell
   (`views/main/boardEngineState.ts`), and the top bar's button shows it: neutral
-  while off (or with no board), the theme's primary while on, breathing while a
-  search runs — still under `prefers-reduced-motion` (the theme's durations).
+  while off (or with no board), the theme's primary while on. It breathes
+  while an engine searches anywhere (CTA-242, `views/main/engineSearching.ts`)
+  — this board, a board in another tab (`lib/searchingTabs.ts`, a
+  `BroadcastChannel`) or a running engine job in any tab, the job named in
+  its name — still under `prefers-reduced-motion` (the theme's durations).
 - **Records keep what they ran with.** A saved analysis writes its
   `AnalysisSettings` (the search settings in effect, with its `writeEvals`),
   a played game its `EngineSettings` (with its strength and side). Opening

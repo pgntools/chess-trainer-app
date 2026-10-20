@@ -24,6 +24,7 @@ import { useEngineServer } from "../shared/useEngineServer";
 import { useEvalSourceConnection } from "../shared/useEvalSourceConnection";
 import { useSelectedEnginePreset } from "../shared/useSelectedEnginePreset";
 import { useBoardEngineState } from "./boardEngineState";
+import { useEngineSearching } from "./engineSearching";
 
 /** The eval sources that tell their connection — a switch each at the popup's foot (CTA-199). */
 const CONNECTED_SOURCES = EVAL_SOURCES.filter((source) => source.connection !== undefined);
@@ -86,13 +87,15 @@ const breathe = keyframes`
  * connection (CTA-199) beside an "Advanced settings" link to Settings → Engine. Until CTA-181 each board had the search
  * settings on its own Engine tab.
  *
- * **The button is the board on screen's engine** (`useBoardEngineState`,
+ * **The button's colour is the board on screen's engine** (`useBoardEngineState`,
  * which the boards' sessions publish): neutral while it is off — and on a
- * screen with no board — the theme's primary while on, and its robot
- * **breathing** while a search runs: an opacity cycle timed by the theme's
- * `transitions.duration.complex`, which the theme makes 0 under
- * `prefers-reduced-motion` — then it stays still. Its name says the same
- * ("Engine settings — engine searching").
+ * screen with no board — the theme's primary while on. **Its robot breathes
+ * while an engine searches anywhere** (CTA-242, `useEngineSearching`): this
+ * board, a board in another tab, or an engine job running in any tab — an
+ * opacity cycle timed by the theme's `transitions.duration.complex`, which
+ * the theme makes 0 under `prefers-reduced-motion` — then it stays still. Its
+ * name says the same ("Engine settings — engine searching", a job named:
+ * "… — engine searching: Computer analysis …").
  *
  * A popover of controls, so the button is `aria-haspopup="dialog"` and the
  * popover a `dialog` named by its heading; it closes on Escape, a click
@@ -102,6 +105,7 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const state = useBoardEngineState();
+  const search = useEngineSearching();
   const { engineId, setEngineId } = useEngineChoice();
   // The engine server's status, so the engine list follows it (its engines listed while it answers).
   useEngineServer();
@@ -119,10 +123,14 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
     if (anchor !== null) setAnchor(null);
   }
 
-  const searching = state === "searching";
-  const lit = state === "on" || searching;
+  const lit = state === "on" || state === "searching";
   const breath = theme.transitions.duration.complex * 6;
-  const breathing = searching && breath > 0;
+  const breathing = search.searching && breath > 0;
+  const label = !search.searching
+    ? t(`engineMenu.label.${state ?? "off"}`)
+    : search.source === "job"
+      ? t("engineMenu.label.searchingJob", { job: search.job })
+      : t("engineMenu.label.searching");
   // The popover places by the page's sides, so its inline end is picked here.
   const end = theme.direction === "rtl" ? "left" : "right";
 
@@ -131,7 +139,7 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
       <Button
         variant="outlined"
         color={lit ? "primary" : "inherit"}
-        aria-label={t(`engineMenu.label.${state ?? "off"}`)}
+        aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={anchor !== null}
         onClick={(event) => setAnchor(event.currentTarget)}
@@ -155,6 +163,7 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
           data-testid="header-engine-icon"
           data-state={state ?? "none"}
           data-breathing={breathing}
+          data-searching={search.searching ? search.source : "none"}
           sx={{
             display: "inline-flex",
             // Lit — or alone, under the breakpoint, where it is all there is to see — the robot in full; neutral beside its words, at the language switch's 0.56.

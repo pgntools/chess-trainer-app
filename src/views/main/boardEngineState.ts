@@ -1,5 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { searchingTabs } from "../../lib/searchingTabs";
+
 /**
  * **The board on screen's engine, for the top bar** (CTA-181) — off, on, or
  * searching — what the header's Engine icon shows: neutral while off (or on a
@@ -12,6 +14,11 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * last board to publish owns it, so a board that replaces another — a remount
  * under a new key — is the one shown. A store of the shell's beside
  * `rightPanelSlot.ts` and `boardLeftPanelSlot.ts`, kept outside React.
+ *
+ * Whether it searches is told to the other tabs too (CTA-242,
+ * `lib/searchingTabs.ts`), so their Engine button breathes with it; the
+ * button reads every source together through `useEngineSearching`
+ * (`engineSearching.ts`).
  */
 export type BoardEngineState = "off" | "on" | "searching";
 
@@ -19,7 +26,10 @@ type Published = { owner: object; state: BoardEngineState };
 
 let published: Published | null = null;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((listener) => listener());
+const emit = () => {
+  searchingTabs().setSearching(published?.state === "searching");
+  listeners.forEach((listener) => listener());
+};
 
 const subscribe = (listener: () => void): (() => void) => {
   listeners.add(listener);
