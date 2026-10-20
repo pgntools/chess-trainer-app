@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { AnalysisCase } from "../../../lib/analysisProjects";
 import type { FindBestMoveRecord } from "../../../lib/findBestMove/model";
-import { isOlderSessionTags, sessionRecordOf, type SessionIssue } from "../../../lib/findBestMove/pgn";
+import { sessionRecordOf, type SessionIssue } from "../../../lib/findBestMove/pgn";
 import type { AnswerWords } from "../../../lib/findBestMove/projection";
 import type { SessionEvent } from "../../../lib/findBestMove/reducer";
 import { editSessionCase, type SessionWriteProblem } from "../../../lib/findBestMove/store";
@@ -17,16 +17,12 @@ export type SessionCaseState =
   | { kind: "missing" }
   /** A Case whose tags are no session (a plain game, one put there by hand). */
   | { kind: "not-a-session"; caseRecord: AnalysisCase }
-  /** A session of an older format (v3's) — known, never resumed. */
-  | { kind: "older"; caseRecord: AnalysisCase }
   | { kind: "session"; caseRecord: AnalysisCase; record: FindBestMoveRecord; issues: readonly SessionIssue[] };
 
 /** A Case's PGN read once per text — the tags alone, no movetext parse. */
 const readingOf = (caseRecord: AnalysisCase): SessionCaseState => {
-  const tags = readPgnTags(caseRecord.pgn);
-  const read = sessionRecordOf(tags);
-  if (read !== undefined) return { kind: "session", caseRecord, record: read.record, issues: read.issues };
-  return isOlderSessionTags(tags) ? { kind: "older", caseRecord } : { kind: "not-a-session", caseRecord };
+  const read = sessionRecordOf(readPgnTags(caseRecord.pgn));
+  return read === undefined ? { kind: "not-a-session", caseRecord } : { kind: "session", caseRecord, record: read.record, issues: read.issues };
 };
 
 /**

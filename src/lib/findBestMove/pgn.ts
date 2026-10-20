@@ -30,7 +30,7 @@ import {
  *
  * | Tag | Value |
  * | --- | --- |
- * | `FindBestMove` | `2` — what makes a PGN a session; any other value (v3's `1`) is none |
+ * | `FindBestMove` | `2` — what makes a PGN a session; any other value is none |
  * | `FindBestMoveName` | the game's name |
  * | `FindBestMoveSide` | `white` / `black` / `both` |
  * | `FindBestMoveMoves` | N, 1–10 |
@@ -74,9 +74,6 @@ const SIDE_WORDS: Record<TrainingSide, string> = { w: "white", b: "black", both:
 
 /** **Whether a PGN's tags are a session's** — this build's format. The one predicate the Analysis screens read (S3). */
 export const isSessionTags = (tags: Readonly<GameHeaders>): boolean => tags[TAG.format] === String(SESSION_FORMAT_VERSION);
-
-/** Whether a PGN's tags are **an older session's** (v3, format `1`) — known as one, never read: it opens in Analysis. */
-export const isOlderSessionTags = (tags: Readonly<GameHeaders>): boolean => tags[TAG.format] !== undefined && !isSessionTags(tags);
 
 /** The headers with every session tag taken off — a plain game's (S3's *Duplicate as a plain Case*). */
 export const withoutSessionTags = (headers: Readonly<GameHeaders>): GameHeaders =>

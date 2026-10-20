@@ -19,8 +19,8 @@ const ID = "find-best-move-v4";
  * session its Case holds, read from the Case's tags (`useSessionCase`, the
  * persistence unit; a new one is started from the lobby's form). The Cases
  * are read first (a reload lands here), then the screen mounts keyed by the
- * Case. A Case not there, one that is no session and one of an older
- * session (v3's — never converted) each say so, with the way on.
+ * Case. A Case not there and one that is no session each say so, with the
+ * way on.
  */
 function FindBestMoveRoute({ stepDelayMs }: { stepDelayMs?: number }) {
   const { caseId = "" } = useParams();
@@ -57,7 +57,7 @@ function SessionArrival({ caseId, stepDelayMs }: { caseId: string; stepDelayMs?:
     return (
       <Box sx={{ p: 2, display: "grid", gap: 1, justifyItems: "start" }}>
         <InlineAlert severity="warning" testId={`${ID}-not-resumable`}>
-          {t(state.kind === "older" ? "accuracyTrainer.sessions.olderSession" : "accuracyTrainer.sessions.notResumable")}
+          {t("accuracyTrainer.sessions.notResumable")}
         </InlineAlert>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button component={RouterLink} to={casePath(state.caseRecord.projectId, state.caseRecord.id)} variant="outlined" size="small" data-testid={`${ID}-open-case`}>

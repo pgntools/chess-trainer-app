@@ -28,10 +28,8 @@ describe("findBestMoveSessionRowOf", () => {
     expect(findBestMoveSessionRowOf({ id: "b", pgn: broken, updatedAt: UPDATED }, "Broken").session?.progress.total).toBe(3);
   });
 
-  it("keeps a Case that is no session without one, and says an older session is one", () => {
+  it("keeps a Case that is no session without one", () => {
     expect(findBestMoveSessionRowOf({ id: "c", pgn: ANALYSED_PGN, updatedAt: UPDATED }, "Plain")).toEqual({ id: "c", name: "Plain", updatedAt: UPDATED });
-    const v3 = `[FindBestMove "1"]\n\n1. e4 { [%fbm game:e4 state:open] } *`;
-    expect(findBestMoveSessionRowOf({ id: "d", pgn: v3, updatedAt: UPDATED }, "Old")).toEqual({ id: "d", name: "Old", updatedAt: UPDATED, older: true });
   });
 });
 

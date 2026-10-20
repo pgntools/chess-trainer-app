@@ -6,7 +6,7 @@ import { recordEvaluation } from "../engineEvals";
 import { addLine, emptyTree, findNode, mainline, promoteVariation, setComments, setNags, treeToPgn, type GameTree } from "../gameTree";
 import { parsePgnTree, readPgnTags } from "../pgn";
 import { lineMovesOf, type FindBestMoveRecord } from "./model";
-import { isOlderSessionTags, isSessionTags, sessionRecordOf, workFragmentOf, workFromFragment } from "./pgn";
+import { isSessionTags, sessionRecordOf, workFragmentOf, workFromFragment } from "./pgn";
 import { sessionEvents as e } from "./reducer";
 import { nextOpen } from "./selectors";
 import { sessionFromPosition } from "./start";
@@ -63,11 +63,10 @@ const busy = (): FindBestMoveRecord => {
 };
 
 describe("isSessionTags", () => {
-  it("knows format 2 alone; v3's 1 is an older session", () => {
+  it("knows format 2 alone", () => {
     expect(isSessionTags({ FindBestMove: "2" })).toBe(true);
     expect(isSessionTags({ FindBestMove: "1" })).toBe(false);
-    expect(isOlderSessionTags({ FindBestMove: "1" })).toBe(true);
-    expect(isOlderSessionTags({ White: "Alice" })).toBe(false);
+    expect(isSessionTags({ White: "Alice" })).toBe(false);
   });
 });
 
@@ -190,12 +189,6 @@ describe("the 38-to-35 regression", () => {
     // Next from 7 goes to the first open one after it — 11 — and nothing between vanished.
     expect(nextOpen(read!.record)).toBe(11);
     expect([8, 9, 10].map((key) => read!.record.positions.get(key)?.answer.kind)).toEqual(["answered", "answered", "answered"]);
-  });
-
-  it("reads v3's shape of it as no session — an older one", () => {
-    const v3 = `[FindBestMove "1"]\n[FindBestMoveSide "both"]\n[FindBestMovePosition "8"]\n\n1. e4 { [%fbm game:e4 state:answered answer:e4] } e5 *`;
-    expect(sessionRecordOf(readPgnTags(v3))).toBeUndefined();
-    expect(isOlderSessionTags(readPgnTags(v3))).toBe(true);
   });
 });
 

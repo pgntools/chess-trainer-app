@@ -41,8 +41,8 @@ import { sessionPath } from "./paths";
  * confirmation (`DeleteManyDialog` → `removeAnalysisCases`, their unfinished
  * jobs with them). The right-hand panel is the **New session** form
  * (`NewSessionForm`), as the Lobby's is Play with Engine's new-game form. A
- * Case that is no session keeps its row, not resumable — an older session
- * (v3's) says so and opens in Analysis. The rows are read from the Cases'
+ * Case that is no session keeps its row, not resumable, and opens in
+ * Analysis. The rows are read from the Cases'
  * tags (`lib/findBestMove/rows.ts`) on each change of the store; a download
  * projects a session from its record (`sessionPgnOf`), so it is current.
  */

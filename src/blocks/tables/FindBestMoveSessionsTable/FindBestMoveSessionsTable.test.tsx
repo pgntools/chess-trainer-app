@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import type { FindBestMoveSessionRow } from "../../../lib/findBestMove/rows";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { manyRows, OLDER_ROW, SESSION_ROWS } from "./fixtures";
+import { manyRows, SESSION_ROWS } from "./fixtures";
 import FindBestMoveSessionsTable, { type FindBestMoveSessionsTableProps } from "./FindBestMoveSessionsTable";
 
 const mount = (props: Partial<FindBestMoveSessionsTableProps> = {}) => {
@@ -65,13 +65,6 @@ describe("FindBestMoveSessionsTable (CTA-239)", () => {
     expect(screen.getByRole("link", { name: "Open Fischer – Spassky — Find Best Move in Analysis" })).toHaveAttribute("href", "#case-old");
     await userEvent.click(screen.getByRole("button", { name: "Download the PGN of Fischer – Spassky — Find Best Move" }));
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ id: "old" }));
-  });
-
-  it("says an older session is one (CTA-244) — opened in Analysis, never resumed", () => {
-    mount({ rows: [OLDER_ROW] });
-    expect(screen.getByTestId("sessions-note-v3")).toHaveTextContent("Anand – Gelfand — Find Best Move is an older Find Best Move session (v3)");
-    expect(screen.queryByRole("link", { name: /Open the session Anand/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Anand – Gelfand — Find Best Move in Analysis" })).toHaveAttribute("href", "#case-v3");
   });
 
   it("sorts by its caller's sort — a Case that is no session last — and asks its caller to sort", async () => {

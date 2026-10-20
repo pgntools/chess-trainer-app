@@ -11,7 +11,7 @@ import type { AccuracyTrainerResult } from "./AccuracyTrainerDetails";
 export const GAME_TITLE = "Alice – Bob";
 
 /** Nothing loaded yet: the exercise's own name. */
-export const EXERCISE_TITLE = "Find Best Move v3";
+export const EXERCISE_TITLE = "Find Best Move v4";
 
 /** A name in Hebrew, read right to left. */
 export const HEBREW_TITLE = "אליס – בוב";

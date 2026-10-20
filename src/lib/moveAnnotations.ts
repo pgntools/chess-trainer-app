@@ -16,8 +16,7 @@ import { formatPercent, playChanceInText, withoutPlayChance } from "./playChance
  *   command's name, the value its text, unread. Lichess's shapes, `[%cal]`
  *   and `[%csl]`, are taken out of the prose but are no attribute: the board
  *   draws them (`lib/boardShapes.ts`, CTA-143), so a comment that only draws
- *   reads as empty. A Find Best Move session's `[%fbm]` (CTA-239) is taken
- *   out the same way: machine data, the trainer's alone.
+ *   reads as empty.
  * - **An engine's evaluation**, the shape analysis exports end a comment
  *   with — `+/= +1.31 (21 ply)`, `= 0.00 (27 ply)` — as `assessment`,
  *   `eval` and `depth`; and `-+ mate-in-12` as `assessment` and `mate`.
@@ -52,8 +51,8 @@ export type PositionAnnotations = {
 
 const COMMAND = /\[%([A-Za-z][\w-]*)\s*([^\]]*)\]/g;
 
-/** The commands no block reads: the shapes the board draws (CTA-143), and a Find Best Move session's own data (CTA-239). */
-const UNREAD_COMMANDS = new Set(["cal", "csl", "fbm"]);
+/** The commands no block reads: the shapes the board draws (CTA-143). */
+const UNREAD_COMMANDS = new Set(["cal", "csl"]);
 
 /** An `[%eval]` value with a depth after it — `0.17,20`, `#-3,18`. */
 const EVAL_WITH_DEPTH = /^\s*([^,\s]+)\s*,\s*(\d+)\s*$/;

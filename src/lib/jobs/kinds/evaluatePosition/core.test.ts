@@ -51,10 +51,6 @@ describe("parseEvaluatePositionInput", () => {
     expect(parseEvaluatePositionInput(null)).toBeUndefined();
     expect(parseEvaluatePositionInput({ version, caseId: "c", key: 1, fen: START })).toMatchObject({ name: "", label: "", preset: null });
   });
-
-  it("refuses v3's input — a SAN path, no version: its jobs are a retired kind's", () => {
-    expect(parseEvaluatePositionInput({ caseId: "c", fen: START, path: ["e4"], label: "1. Black" })).toBeUndefined();
-  });
 });
 
 describe("parseEvaluatePositionState", () => {

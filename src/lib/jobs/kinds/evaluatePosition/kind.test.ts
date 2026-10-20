@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { JobKind, JobRuntime } from "@pgntools/jobs-runtime";
+import type { JobRuntime } from "@pgntools/jobs-runtime";
 import { manualClock, memoryJobStore, runUntilIdle } from "@pgntools/jobs-runtime/testing";
 
 import { applied, PLAIN_WORDS, sessionOfPgn } from "../../../../test/findBestMoveKit";
@@ -12,9 +12,8 @@ import { sessionRecordOf } from "../../../findBestMove/pgn";
 import { sessionEvents as e } from "../../../findBestMove/reducer";
 import { sessionTreeOf } from "../../../findBestMove/store";
 import { parsePgnTree, readPgnTags } from "../../../pgn";
-import { isRegisteredJobKind } from "..";
 import { registerSubjectRemover } from "../../subjectDeletion";
-import { EVALUATE_POSITION_INPUT_VERSION, EVALUATE_POSITION_KIND, RETIRED_EVALUATE_POSITION_KIND, parseEvaluatePositionResult } from "./core";
+import { EVALUATE_POSITION_INPUT_VERSION, EVALUATE_POSITION_KIND, parseEvaluatePositionResult } from "./core";
 import { evaluatePositionKind } from "./kind";
 
 vi.mock("../../../engines/builtin", async (importOriginal) =>
@@ -25,8 +24,7 @@ vi.mock("../../../engines/builtin", async (importOriginal) =>
   Evaluate Position on the jobs runtime (CTA-238; the session's record its
   output since CTA-244): one search, its result a data output, then the
   session's record taking it — `engineSearched` through the session's one
-  writer, once — and the Case's deletion taking it while unfinished; v3's
-  stored jobs a retired kind's.
+  writer, once — and the Case's deletion taking it while unfinished.
 */
 
 const GAME = '[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 2. Nf3 *';
@@ -159,45 +157,5 @@ describe("the Evaluate Position kind (CTA-238) on the jobs runtime", () => {
     if (!("id" in plain)) throw new Error("not queued");
     await runToEnd(runtime, clock, plain.id);
     expect(runtime.snapshot()?.find((each) => each.id === plain.id)).toMatchObject({ status: "failed", error: { code: "target" } });
-  });
-
-  it("keeps v3's stored jobs, a retired kind's — never run, deleted alone", async () => {
-    const clock = manualClock();
-    const store = memoryJobStore();
-    // Find Best Move v3's kind, as a build before CTA-244 ran it.
-    const v3Kind: JobKind<{ caseId: string }, { done: boolean }> = {
-      id: RETIRED_EVALUATE_POSITION_KIND,
-      version: 1,
-      lane: "engine",
-      appliesTo: [],
-      resumable: false,
-      autoResume: true,
-      retry: { maxAttempts: 1, backoff: { initialMs: 1_000, factor: 2, maxMs: 1_000, jitter: false } },
-      parseInput: (value) => value as { caseId: string },
-      parseState: (value) => value as { done: boolean },
-      title: () => "Evaluate position — v3",
-      subjects: (input) => [{ type: "analysis-case", id: input.caseId }],
-      plan: async () => ({ state: { done: false }, progress: { done: 0, total: 1 } }),
-      step: async (state) => ({ state, progress: { done: 1, total: 1 }, done: true }),
-      finalize: async () => [],
-      applyOutput: async () => {
-        throw new Error("never applied");
-      },
-      classifyError: () => ({ code: "engine", message: "", retryable: false }),
-    };
-    const before = testRuntime([v3Kind], store, clock);
-    const old = await before.enqueue(RETIRED_EVALUATE_POSITION_KIND, { caseId: "session", fen: AFTER_E4, path: ["e4"] });
-    if (!("id" in old)) throw new Error("not queued");
-    await before.stop();
-
-    expect(isRegisteredJobKind(RETIRED_EVALUATE_POSITION_KIND)).toBe(false);
-    expect(isRegisteredJobKind(EVALUATE_POSITION_KIND)).toBe(true);
-    const runtime = started(testRuntime([evaluatePositionKind({ engine: engineDeps() })], store, clock));
-    await runUntilIdle(runtime);
-    expect(runtime.snapshot()?.find((each) => each.id === old.id)).toMatchObject({ status: "queued", kind: RETIRED_EVALUATE_POSITION_KIND });
-    expect(await runtime.pause(old.id)).toBeDefined();
-    expect(await runtime.remove([old.id])).toBeUndefined();
-    await runUntilIdle(runtime);
-    expect(runtime.snapshot()?.find((each) => each.id === old.id)).toBeUndefined();
   });
 });
