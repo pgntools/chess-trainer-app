@@ -10,8 +10,10 @@ import type { Score } from "../../engineAnalysis";
  * search asks about its position before the engine searches it. This module
  * is the client, pure but for `fetch`:
  *
- * - **`GET /fen?fen=<4-field FEN>`** — every eval the API holds of a
- *   position (CTA-253; `best=true`, the deepest alone, before), its lines
+ * - **`GET /fen?fen=<4-field FEN>&min_depth=<target depth>`** — every eval
+ *   the API holds of a position (CTA-253; `best=true`, the deepest alone,
+ *   before) at that depth or deeper (CTA-256 — an API without the parameter
+ *   ignores it and answers them all; the merge holds them to it anyway), its lines
  *   White's point of view (`cp` or `mate`, mate signed by who mates —
  *   `Score`'s own convention) and in UCI, the API's castling written
  *   king-takes-rook (`e1h1`), which {@link positionResultOfLichessEval} turns
@@ -115,15 +117,23 @@ const fetchWithTimeout = async (url: string, signal?: AbortSignal, body?: unknow
 };
 
 /**
- * **Ask the API for a position's evals.** A 404 — and a 422, a FEN it
- * will not take — is `missing`; a timeout, a network error, another status,
- * a body that is not JSON or not the API's shape is `unreachable`. Never throws.
+ * **Ask the API for a position's evals** — with `minDepth`, only those at
+ * that depth or deeper (`min_depth`, CTA-256; absent, every eval). A 404 —
+ * none there, or none that deep — and a 422, a FEN it will not take, is
+ * `missing`; a timeout, a network error, another status, a body that is not
+ * JSON or not the API's shape is `unreachable`. Never throws.
  */
-export const lookupLichessEval = async (baseUrl: string, fen: string, signal?: AbortSignal): Promise<LichessEvalLookup> => {
+export const lookupLichessEval = async (
+  baseUrl: string,
+  fen: string,
+  signal?: AbortSignal,
+  minDepth?: number,
+): Promise<LichessEvalLookup> => {
   const query = lichessEvalFen(fen);
   if (query === null) return { kind: "missing" };
+  const depthFilter = minDepth === undefined ? "" : `&min_depth=${Math.max(0, Math.floor(minDepth))}`;
   try {
-    const response = await fetchWithTimeout(`${baseUrl}/fen?fen=${encodeURIComponent(query)}`, signal);
+    const response = await fetchWithTimeout(`${baseUrl}/fen?fen=${encodeURIComponent(query)}${depthFilter}`, signal);
     if (response.status === 404 || response.status === 422) return { kind: "missing" };
     if (!response.ok) return { kind: "unreachable" };
     const evals = lichessEvalsFrom(await response.json().catch(() => undefined));

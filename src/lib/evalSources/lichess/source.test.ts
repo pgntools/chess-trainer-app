@@ -5,10 +5,10 @@ import { LICHESS_EVAL_API_STORAGE_KEY } from "./settings";
 import { lichessEvalSource } from "./source";
 
 /*
-  The lichess source against a stubbed `fetch`: its lookup merges every eval
-  at the target depth and answers only a full set of lines (CTA-253); its write
-  (`record`) sends only a search at least as deep as the minimum depth to
-  write (CTA-202).
+  The lichess source against a stubbed `fetch`: its lookup asks for the evals
+  at the target depth (`min_depth`, CTA-256), merges them and answers only a
+  full set of lines (CTA-253); its write (`record`) sends only a search at
+  least as deep as the minimum depth to write (CTA-202).
 */
 
 const API = "http://10.0.0.3:8000";
@@ -62,13 +62,14 @@ describe("the lichess source's write (CTA-202)", () => {
 });
 
 describe("the lichess source's lookup — every eval at the target depth merged (CTA-253)", () => {
-  /** The API on, answering `GET /fen` with these evals of `FEN`. */
+  /** The API on, answering `GET /fen` with these evals of `FEN` — whatever `min_depth` it was sent, as an API without the parameter does. */
   const answering = (evals: { depth: number; pvs: { cp: number; line: string }[] }[]) => {
     localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: API }));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify({ positions: [{ fen: FEN, evals }] }), { status: 200 })),
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(
+      async () => new Response(JSON.stringify({ positions: [{ fen: FEN, evals }] }), { status: 200 }),
     );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
   };
   const d45 = { depth: 45, pvs: [{ cp: -20, line: "c7c5 g1f3" }] };
   const d35 = {
@@ -95,5 +96,23 @@ describe("the lichess source's lookup — every eval at the target depth merged 
     // Only d45's one line is as deep as 40.
     await expect(lichessEvalSource.lookup({ fen: FEN, depth: 40, multiPv: 5 })).resolves.toEqual({ kind: "missing" });
     await expect(lichessEvalSource.lookup({ fen: FEN, depth: 40, multiPv: 1 })).resolves.toMatchObject({ kind: "found" });
+  });
+
+  it("asks GET /fen for the search's depth and deeper — min_depth (CTA-256)", async () => {
+    const fetchMock = answering([d45, d35]);
+    await lichessEvalSource.lookup({ fen: FEN, depth: 35, multiPv: 5 });
+    expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.get("min_depth")).toBe("35");
+  });
+
+  it("never fills the lines from a shallower eval an API without min_depth sent — d45/1 and d28/5 at 35 is missing", async () => {
+    const d28 = { ...d35, depth: 28 };
+    answering([d45, d28]);
+    await expect(lichessEvalSource.lookup({ fen: FEN, depth: 35, multiPv: 5 })).resolves.toEqual({ kind: "missing" });
+  });
+
+  it("is missing on the 404 an API answers when no eval is that deep", async () => {
+    localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: API }));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "not found" }), { status: 404 })));
+    await expect(lichessEvalSource.lookup({ fen: FEN, depth: 35, multiPv: 5 })).resolves.toEqual({ kind: "missing" });
   });
 });

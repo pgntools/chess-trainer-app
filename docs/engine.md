@@ -651,7 +651,7 @@ not tried again that run.
 
 | File | What |
 | --- | --- |
-| `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…` — **every eval** of the position, no `best=true` since CTA-253, read by `lichessEvalsFrom`, a malformed eval dropped and not the answer; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (**the lookup rule**, below; the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
+| `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…&min_depth=<the search's depth>` — **every eval** of the position at that depth or deeper, no `best=true` since CTA-253, `min_depth` since CTA-256 (an API without it ignores it and answers every eval — the merge holds them to the depth anyway; one with it answers 404, `missing`, where none is that deep), read by `lichessEvalsFrom`, a malformed eval dropped and not the answer; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (**the lookup rule**, below; the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
 | `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write, minWriteDepth }`, **off by default**; `minWriteDepth` (CTA-202) the shallowest search written — 35 by default (the lichess database's own shallowest), a missing or unreadable value 35, a number held to 1–99, so settings stored before it need no migration; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
 | `source.ts` | `lichessEvalSource` — the `EvalSource`. Its `record` sends nothing whose line 1 is shallower than `minWriteDepth` (CTA-202) — the one write path, the boards' and the jobs' — and answers `true`: too shallow is not a refusal (no back-off, no warning). |
 | `LichessEvalApiSection.tsx` | Its tab of Settings → Engine, *Lichess evaluation API* (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API*, *Minimum depth to write* (a number, disabled while writing is not ticked, CTA-202) and *Test connection*. |
@@ -671,6 +671,22 @@ every consumer's lines (boards, jobs, Find Best Move's grading) come
 deeper-first, not strictly by score. The API's answer is read as one position
 (`positions[0].evals`), whether its local row shadows lichess's or sits
 beside it.
+
+**The round trip** (CTA-252, CTA-255, CTA-256 — with an API that keeps
+several evals of a position, `lichess-eval-db-api` since CTA-255, in write
+mode, and writing ticked): a position whose lichess evals hold fewer than
+`MultiPV` lines at the target depth is a miss, so the engine searches it, and
+its whole search (`MultiPV` lines at the target depth) is written back
+(`POST /evals`) — kept beside lichess's evals, not over them (the API stores
+an eval unless one it holds is at least as deep **and** has at least as many
+lines, and drops the local evals the new one beats). On the next visit
+`GET /fen` answers both, deepest first, and the merge fills the lines — line 1
+from lichess's deepest eval, the rest from the local one, each with its own
+depth (the variations box shows each row's while they differ, CTA-254) — with
+no engine search. A deeper or wider search of the same position later
+replaces only the local evals it beats. A job's positions take the same path
+(the engine session asks and writes through the same source), and their
+`[%eval]`s carry each line's received depth.
 
 Locale keys: `evalSources.lichess.*` (the plugin's), `evalSources.*` (the
 layer's warnings), `settings.engine.evalSources.intro` (the tab's line).
