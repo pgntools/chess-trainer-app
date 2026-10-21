@@ -899,3 +899,76 @@ describe("a line hovered or focused shows its first move (CTA-201)", () => {
     expect(onHoverMove).toHaveBeenLastCalledWith(null);
   });
 });
+
+describe("each line's own depth when the lines' depths differ (CTA-254)", () => {
+  it("shows no per-line depth while every line is at the same depth — the engine's own set, as it always was", () => {
+    renderVariations({
+      fen: DEFAULT_POSITION,
+      depth: 18,
+      lines: [line(1, 32, "e2e4 e7e5"), line(2, 18, "d2d4 d7d5"), line(3, 10, "g1f3")],
+    });
+
+    expect(screen.queryByTestId("variation-1-depth")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("variation-2-depth")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("variation-3-depth")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Variation 1, +0.32 — show the full line" })).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-depth")).toHaveTextContent("Depth 18");
+  });
+
+  it("shows each line's own depth when they differ, the chip still the search's", async () => {
+    renderVariations({
+      fen: DEFAULT_POSITION,
+      depth: 45,
+      lines: [line(1, 32, "e2e4 e7e5", 45), line(2, 18, "d2d4 d7d5", 35), line(3, 10, "g1f3", 35)],
+    });
+
+    expect(screen.getByTestId("variation-1-depth")).toHaveTextContent("d45");
+    expect(screen.getByTestId("variation-2-depth")).toHaveTextContent("d35");
+    expect(screen.getByTestId("variation-3-depth")).toHaveTextContent("d35");
+    expect(screen.getByTestId("analysis-depth")).toHaveTextContent("Depth 45");
+    await expectNoAxeViolations();
+  });
+
+  it("names each line's depth to a screen reader, in the row and in its chevron", async () => {
+    renderVariations({
+      fen: DEFAULT_POSITION,
+      depth: 45,
+      lines: [line(1, 32, "e2e4 e7e5", 45), line(2, 18, "d2d4 d7d5", 35)],
+    });
+
+    expect(screen.getByTestId("variation-2")).toHaveTextContent("depth 35");
+    const toggle = screen.getByRole("button", {
+      name: "Variation 2, +0.18, depth 35 — show the full line",
+    });
+    await userEvent.setup().click(toggle);
+    expect(
+      screen.getByRole("button", { name: "Variation 2, +0.18, depth 35 — collapse the line" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("leaves a lower rank's depth out of the comparison once MultiPV no longer asks for it", () => {
+    renderVariations(
+      {
+        fen: DEFAULT_POSITION,
+        depth: 30,
+        lines: [line(1, 32, "e2e4", 30), line(2, 18, "d2d4", 30), line(3, 10, "g1f3", 22)],
+      },
+      2,
+    );
+
+    expect(screen.queryByTestId("variation-1-depth")).not.toBeInTheDocument();
+  });
+
+  it("keeps the depth's number left to right under Hebrew", async () => {
+    await i18n.changeLanguage("he");
+    renderVariations({
+      fen: DEFAULT_POSITION,
+      depth: 45,
+      lines: [line(1, 32, "e2e4", 45), line(2, 18, "d2d4", 35)],
+    });
+
+    const depth = screen.getByTestId("variation-2-depth");
+    expect(depth.querySelector('bdi[dir="ltr"]')).toHaveTextContent("35");
+    expect(depth).toHaveTextContent("עומק 35");
+  });
+});

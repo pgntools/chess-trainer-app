@@ -9,6 +9,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 import { Trans, useTranslation } from "react-i18next";
 import { ProgressChip } from "../../design-system/components/states";
+import { visuallyHidden } from "../../design-system/components/a11y";
 import {
   formatScore,
   lineMoveSquares,
@@ -52,7 +53,16 @@ import { moveSx, sanTokenSx } from "./moveTokenSx";
  *
  * The depth chip shows how far the running search has got (CTA-195): given a
  * `progress`, it reads "Depth 18/24" and fills toward where the search stops
- * — see `DepthChip`; without one it reads "Depth 18", as it always has.
+ * — see `DepthChip`; without one it reads "Depth 18", as it always has. The
+ * chip is the search's depth — the deepest line's.
+ *
+ * **Each line's own depth, when they differ** (CTA-254): lines answered by an
+ * eval source come at the depth it stored, not the search's, so a set can
+ * hold a d45 line over a d35 one, and the chip alone would claim d45 for
+ * both. While the lines shown were searched to different depths, every row
+ * carries its own beside its score — "d35", the number pinned LTR, named in
+ * words to a screen reader and in the chevron's name; while they agree —
+ * always, with the engine alone — no row does, and the block is as it was.
  *
  * The header is the block's own control (CTA-56): a small checkbox where a
  * plain title used to sit — checked by default. Clearing it hides the lines
@@ -269,6 +279,39 @@ const scoreSx = {
   minWidth: "3.5rem",
 } as const;
 
+/** The per-line depth's cell (CTA-254) — one width, so every row's moves start in one column. */
+const lineDepthSx = {
+  ...sanSx,
+  fontSize: "0.6875rem",
+  color: "text.secondary",
+  flexShrink: 0,
+  minWidth: "2rem",
+  // Holds the words read, not seen (`visuallyHidden` is `position: absolute`) to the cell.
+  position: "relative",
+} as const;
+
+/**
+ * A line's own depth (CTA-254), shown only while the lines' depths differ:
+ * "d35" to the eye — the number pinned LTR —, "depth 35" to a screen reader.
+ */
+function LineDepth({ rank, depth }: { rank: number; depth: number }) {
+  const { t } = useTranslation();
+  return (
+    <Typography component="span" data-testid={`variation-${rank}-depth`} sx={lineDepthSx}>
+      <span aria-hidden="true">
+        <Trans
+          i18nKey="variations.lineDepth"
+          values={{ depth }}
+          components={{ ltr: <bdi dir="ltr" /> }}
+        />
+      </span>
+      <Box component="span" sx={visuallyHidden}>
+        {t("variations.lineDepthName", { depth })}
+      </Box>
+    </Typography>
+  );
+}
+
 /**
  * The chevron's size: at least the smallest target WCAG 2.2 AA allows (24 px,
  * `MIN_TARGET_PX`) — it was 22 px, its icon and a little padding (CTA-113).
@@ -283,7 +326,16 @@ const CHEVRON_SIZE = `${MIN_TARGET_PX}px`;
  * child. `text` is what the first row says while nothing is in; otherwise
  * the cells are skeleton bars.
  */
-function PendingRow({ rank, text }: { rank: number; text?: string }) {
+function PendingRow({
+  rank,
+  text,
+  depthCell = false,
+}: {
+  rank: number;
+  text?: string;
+  /** The lines in carry their own depths (CTA-254): a blank cell where the depth goes, so the columns hold. */
+  depthCell?: boolean;
+}) {
   return (
     <Box
       component="li"
@@ -294,6 +346,7 @@ function PendingRow({ rank, text }: { rank: number; text?: string }) {
       <Typography component="span" sx={scoreSx}>
         <Skeleton variant="text" sx={{ display: "inline-block", width: "2.5rem" }} />
       </Typography>
+      {depthCell && <Box component="span" aria-hidden sx={lineDepthSx} />}
       <Typography
         component="span"
         sx={{ ...sanSx, color: "text.secondary", minWidth: 0, flexGrow: 1 }}
@@ -557,6 +610,12 @@ function BestVariations({
     return () => onHoverMove(null);
   }, [onHoverMove, hoveredFrom, hoveredTo]);
 
+  /*
+    Each line's own depth (CTA-254) — only while the lines shown disagree,
+    so an engine's own set, every line at the search's depth, is untouched.
+  */
+  const depthsDiffer = new Set(lines.map((line) => line.depth)).size > 1;
+
   const slots = Array.from({ length: Math.max(requested, 1) }, (_, index) => ({
     rank: index + 1,
     line: lines.find((line) => line.multipv === index + 1),
@@ -652,6 +711,7 @@ function BestVariations({
                   rank={rank}
                   // The first row says what is happening; the rest are bars.
                   text={rank === 1 && lines.length === 0 ? t("variations.thinking") : undefined}
+                  depthCell={depthsDiffer}
                 />
               );
             }
@@ -686,6 +746,7 @@ function BestVariations({
                 >
                   {formatScore(line.score)}
                 </Typography>
+                {depthsDiffer && <LineDepth rank={line.multipv} depth={line.depth} />}
                 {/*
                   Collapsed, the span truncates — one line, the moves that
                   fit, the cut marked by an ellipsis; CSS does the cutting,
@@ -731,10 +792,18 @@ function BestVariations({
                   to a screen reader on its own.
                 */}
                 <ButtonBase
-                  aria-label={t(
-                    isExpanded ? "variations.collapse" : "variations.expand",
-                    { rank: line.multipv, score: formatScore(line.score) },
-                  )}
+                  aria-label={
+                    depthsDiffer
+                      ? t(isExpanded ? "variations.collapseAtDepth" : "variations.expandAtDepth", {
+                          rank: line.multipv,
+                          score: formatScore(line.score),
+                          depth: line.depth,
+                        })
+                      : t(isExpanded ? "variations.collapse" : "variations.expand", {
+                          rank: line.multipv,
+                          score: formatScore(line.score),
+                        })
+                  }
                   aria-expanded={isExpanded}
                   data-testid={`variation-${line.multipv}-toggle`}
                   onClick={() => toggleExpanded(line.multipv)}
