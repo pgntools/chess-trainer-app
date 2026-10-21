@@ -112,7 +112,7 @@ The switch and the address are kept in this browser, and the address stays when 
 
 ## 4. On the boards
 
-With the API on, **every board's engine lines** — a case's board, the Openings explorer, a Library game, the repertoire player — ask it first, whichever engine you chose. If it holds the position **at the depth you search to or deeper** (the top bar's Engine menu), its lines are shown as the engine's, at their depth, and the engine does not search; otherwise the engine searches as always.
+With the API on, **every board's engine lines** — a case's board, the Openings explorer, a Library game, the repertoire player — ask it first, whichever engine you chose. If it holds the position **at the depth you search to or deeper** (the top bar's Engine menu) **with as many lines as you ask for**, its lines are shown as the engine's, each at its depth, and the engine does not search; otherwise the engine searches as always. The lines may come from more than one of its evaluations — the deepest first, then a shallower one's other moves — so they are listed deepest first.
 
 An **engine playing a game against you** — Play with Engine, Masked Pieces — never asks it: it always searches itself. Nor does an engine whose strength is limited (an Elo, a Skill Level below 20).
 
@@ -123,7 +123,7 @@ If the API does not answer, the board's engine searches, and the boards leave th
 Nothing else changes in how you start a job: open a case, its **Jobs** tab, **New job**, choose where the results go, **Start**. While the job runs, for every position of the game:
 
 1. **A finished position** (mate, stalemate) needs no one: it is scored at once.
-2. **The API is asked.** If it holds the position **at the job's depth or deeper**, its evaluation is the position's result — as many of its lines as the job asks for (**Lines**), each with its score and its moves. The engine is not asked.
+2. **The API is asked.** If it holds the position **at the job's depth or deeper** with as many lines as the job asks for (**Lines** — or every legal move, where there are fewer), those lines are the position's result, each with its score, its moves and its depth, taken from its evaluations deepest first. The engine is not asked.
 3. **Otherwise the engine searches it**, as without the API — the position is not in the database, or its evaluation there is shallower than the job's depth.
 
 So the job's **Depth** decides how much the database answers: lichess's evaluations are mostly deep, and a job at depth 20–30 finds most of the positions the database has. A job the API answers completely never even starts the engine.
@@ -193,7 +193,7 @@ In every case the API must allow the site in `--cors-origins` (it allows every s
 | **Not connected** — *… did not answer* | Is `api.py` running, on the address in the field? Started with `--host` matching the address you typed? From chessapp.dev, see *Using it from chessapp.dev* above. A firewall between the two machines? |
 | *… answered, but not as the lichess evaluation API* | The address points at something else — another program on that port, or the app itself. |
 | `curl` answers but the app does not connect | The browser refused the answer: the site is not in `--cors-origins`, or it is an HTTPS page asking a plain `http://` address. The browser's developer console names which. |
-| The engine still searches positions you expected the API to answer | The job's **Depth** (or, on a board, the Engine menu's) is above the evaluation the database holds for them, or the positions are not in it — lichess has evaluated many positions, not all. On a board, Play with Engine and an engine with a limited strength never ask it. |
+| The engine still searches positions you expected the API to answer | The job's **Depth** (or, on a board, the Engine menu's) is above the evaluation the database holds for them, its evaluations that deep have fewer lines than you ask for, or the positions are not in it — lichess has evaluated many positions, not all. On a board, Play with Engine and an engine with a limited strength never ask it. |
 | Test connection: *not in write mode* | Restart the API with `--write`. |
 | The warning *did not take the engine's evaluations* | The API is not in write mode, or it was started with `LICHESS_API_WRITE_TOKEN` — the app sends no token. |
 | A second write-mode API will not start | Only one process can hold `local_evals.duckdb` open: stop the other one. |
@@ -202,7 +202,7 @@ In every case the API must allow the site in `--cors-origins` (it allows every s
 
 For the curious — how the app asks:
 
-- **A lookup** is `GET /fen?fen=…&best=true` with the position's first four FEN fields — no move counters, and the en passant square only when a capture there is legal (after 1.e4 c5 the FEN says `-`, not `c6`), which is how the database writes positions. A 404 means it is not there.
+- **A lookup** is `GET /fen?fen=…` — every evaluation the database holds of the position — with its first four FEN fields — no move counters, and the en passant square only when a capture there is legal (after 1.e4 c5 the FEN says `-`, not `c6`), which is how the database writes positions. A 404 means it is not there.
 - **Scores** come back from White's point of view, as the app keeps them; lichess writes castling as *king takes rook* (`e1h1`), which the app turns into the engine's `e1g1`.
 - **A write** is `POST /evals` with one entry per searched position, its scores from White's point of view (`"pov": "white"`).
 - **Connect** and **Test connection** ask `GET /health`. Every request gives up after 5 seconds.

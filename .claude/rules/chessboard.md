@@ -685,7 +685,11 @@ while `searching`, and absent under infinite analysis: every board passes it to
 `BoardPanel` (`searchProgress`), whose variations block's depth chip then reads
 "Depth 18/24" and fills toward it (a `ProgressChip`: the depth behind the
 words, and with a move time the clock as a thin strip along its edge, its
-`secondaryValue` — CTA-251), "Depth 24" again once the search answers.
+`secondaryValue` — CTA-251), "Depth 24" again once the search answers. The
+chip is the search's depth; **while the lines shown were searched to different
+depths** (an eval source's stored lines beside the engine's) each row carries
+its own beside its score — "d35", named "depth 35" — and while they agree,
+always with the engine alone, no row does (CTA-254).
 **What a board searches with is the reader's global search settings**
 (depth, move time, lines, Threads, Hash — `useEngineSearchSettings`, every
 search stopping at its depth or move time since CTA-185,
