@@ -9,7 +9,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
  * **The answers worded** (CTA-244) — the catalog's
  * `accuracyTrainer.session.answer.*`, as the session's movetext writes them
  * (`projection.ts`): "Find Best Move: 1. e4 (#1, Best), 2. Nf3 (#3, Good) — 2
- * of the top 3, 1 in place", "Find Best Move: passed". In the writer's
+ * of the top 3, 1 in place", "Find Best Move: skipped". In the writer's
  * language: a screen hands its `t`, the job the app's i18next (the catalog
  * the page loaded).
  */

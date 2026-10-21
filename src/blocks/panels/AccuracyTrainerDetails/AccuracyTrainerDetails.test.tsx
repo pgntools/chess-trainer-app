@@ -217,10 +217,10 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     const user = userEvent.setup();
     const onOpen = vi.fn();
     render(<Live withCase startTab="results" onOpen={onOpen} />);
-    const rows = within(screen.getByRole("list", { name: "The positions answered or passed" })).getAllByRole("button");
+    const rows = within(screen.getByRole("list", { name: "The positions answered or skipped" })).getAllByRole("button");
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
       "Open 1. White — 2/2 · 2 in place — won Place in order: Queen, Best move: Rook, Clean candidates: Queen, Better than the game: Queen, See the line: Pawn",
-      "Answer 1. Black now — passed",
+      "Answer 1. Black now — skipped",
       "Open 2. White — 2/2 · 0 in place — won Place in order: Rook, Best move: Bishop, Clean candidates: Queen, Better than the game: Rook, See the line: Pawn",
       "Open 3. White — Waiting for the engine",
       "Back to 4. White — answering now",
@@ -232,7 +232,7 @@ describe("AccuracyTrainerDetails (CTA-238)", () => {
     expect(slots(1)).toEqual(["none", "none", "none", "none", "none"]);
     expect(screen.queryByTestId("details-result-3-pieces")).not.toBeInTheDocument();
     expect(rows[2]).toHaveAttribute("aria-current", "true");
-    await user.click(screen.getByRole("button", { name: "Answer 1. Black now — passed" }));
+    await user.click(screen.getByRole("button", { name: "Answer 1. Black now — skipped" }));
     expect(onOpen).toHaveBeenLastCalledWith(1);
     await user.click(rows[0]);
     expect(onOpen).toHaveBeenLastCalledWith(0);

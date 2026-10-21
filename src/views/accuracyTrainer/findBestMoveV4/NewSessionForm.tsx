@@ -57,7 +57,7 @@ function NewSessionForm() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<FormTab>("game");
   const [source, setSource] = useState<SessionSource | null>(null);
-  const [side, setSide] = useState<SideValue>("all");
+  const [side, setSide] = useState<SideValue>("white");
   const [settings, setSettings] = useState<NewSessionSettings>(DEFAULT_SETTINGS);
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState<string | undefined>(undefined);

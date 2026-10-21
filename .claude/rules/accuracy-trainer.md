@@ -107,7 +107,7 @@ the classified ones; the scope tags `AnalysedPlies` / `AnalysedSide` say which.
   analysis hung side lines there: a full
   analysis prunes every line far below line 1, so where the game's move was
   the only one in range there is **no side line**, and leaving that position
-  out made Pass skip it (1 → 4). Such a position has **no top line of its
+  out made Skip jump it (1 → 4). Such a position has **no top line of its
   own** — the game's move, unlisted, is not one — so it needs the engine to
   be graded (`needsEngine`, §3.2). A tree with **no** engine line — a plain
   game — asks **every mainline position** (CTA-246; no scope tags, the whole
@@ -202,7 +202,7 @@ never reach it but through `store.ts`.
   **leaves** the position on screen first — a reopened pass left unanswered is
   passed again, in that one place. The flow's compound actions are event
   lists applied in one write: Next while answering `[workRecorded, answer,
-  next]`, Pass `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
+  next]`, Skip `[workRecorded, pass, next]`, *Answer it now* `[workRecorded,
   reopen]`.
 - **When the engine starts thinking** (CTA-247 — `settings.engineStart`, the
   `FindBestMoveEngineStart` tag, the Settings tab's radio): **`move`** (*On
@@ -224,7 +224,7 @@ never reach it but through `store.ts`.
   no event: the position's search waits for its grading, CTA-247); the
   offer opens on the first move under both; **Go on without it** leaves both,
   the answer graded against the lines there are (none: "nothing to compare",
-  `target` 0). Asked once per position while the screen is up; **a Pass
+  `target` 0). Asked once per position while the screen is up; **a Skip
   never asks**. **The offer is the only way a game's session turns its
   engine on** (CTA-246 removed *Use the engine* from the New session form
   and the left panel): a game's session starts with it off
@@ -251,7 +251,7 @@ landed, a pass, or a position answering or waiting. `gradeOf` (a pass grades as 
 in game order), `summaryOf`, `progressOf` (the lobby's — from the record
 alone, so it is what the screen says), `nextOpen` (**the first `open` key
 after `current`** in the manifest — every analysed position of the side is
-in it, §1, so Pass goes 1 → 2 → 3, never past one), `engineOfferedAt`
+in it, §1, so Skip goes 1 → 2 → 3, never past one), `engineOfferedAt`
 (§3.2), `positionAtPath` (the trained position the board stands at, never
 past `current`), and `replayPlan(record, from, to)` — the recorded game's
 SANs between two keys, **capped at `REPLAY_MAX_PLIES` = 2**: a longer gap
@@ -313,7 +313,7 @@ Analysis autosave — can reach the session (`pgn.test.ts` holds them to it).
   hung as a variation, its first move carrying its `[%eval]`, then the answer
   worded on the game's move ("Find Best Move: 1. e4 (#1, Best), … — 2 of the
   top 3, 1 in place"); at a waiting one "… — waiting for the engine"; at a
-  pass "Find Best Move: passed", its lines hidden; at every position the
+  pass "Find Best Move: skipped", its lines hidden; at every position the
   reader's work grafted in. Re-derived on every write, never read back — so
   an answer comment is rewritten freely, and a foreign edit lasts until the
   next write. Its words are the catalog's in the writer's language
@@ -360,7 +360,7 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   says so — it opens in Analysis and downloads as kept, but does not resume.
 - **The New session form** (`NewSessionForm`, the lobby's right-hand panel):
   **Game** (a PGN uploaded or pasted — a file of several picks one — or a
-  Case picked; the side), **Board editor** (a position other than the
+  Case picked; the side — White to start, CTA-257), **Board editor** (a position other than the
   standard start is the session's — one position, the side to move's, no line
   of its own: the engine finds them, the session's engine on —
   Start off with why while it cannot be answered) and **Settings** (*Moves to
@@ -386,23 +386,26 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
 | Unit | Owns |
 | --- | --- |
 | `useSessionCase(caseId)` | the Case store's snapshot, the record parsed from its tags (memoised on the Case's row), `dispatch(events)` through `editSessionCase`, the write problem |
-| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), New move, `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove` — or, the session's engine off, opens the offer, `engineOffer`: `open`, `accept`, `decline`, once per position, CTA-245); the debounced `workRecorded` and `flushWork`; the replay's start |
+| `useSessionBoard` | `useBoardCore` over `boardTreeOf`, loaded when `current` changes (adjusted during render); the reader's moves (`candidates`, moved / deleted with their lines), Add move (`newMove`), `canMove`, `editableAt`; the wrapped drops (a first move where the engine is needed dispatches `firstMove` — or, the session's engine off, opens the offer, `engineOffer`: `open`, `accept`, `decline`, once per position, CTA-245); the debounced `workRecorded` and `flushWork`; the replay's start |
 | `useReplay` | the timers: the board put on the plan's start, then one ply every `stepDelayMs` (`STEP_DELAY_MS`, 1 s — a prop for tests), stopped once the reader moves the board. No chess |
 | `useSessionEngine` | an Evaluate Position job queued for every `wanted` position (the Engine menu's search, MultiPV N; an in-flight set so no render queues twice), then `engineQueued` / `engineFailed`; the queued jobs watched and echoed — `engineSearched` with a done job's result, `engineFailed` for one failed, cancelled or gone; a position wanted again (`engineRetry`, CTA-250) queued anew — the in-flight set holds a key only while its job is being queued |
 
 `useFindBestMove` composes them and names the actions (each one event list,
 one write, the board's work flushed first — `evaluateAgain(key)` among them,
 CTA-250); `FindBestMove.tsx` places what it
-returns. **Results** (outlined) grades and opens Result; **Next** while
-answering grades and goes on; **Pass** puts it off and goes on — both play
-the game's moves to the next position out (capped); **New move** takes the
-board back to the position node; a click on Results or the summary goes
+returns. **Results** (outlined) grades, takes the board back to the
+position — where the graded arrows are drawn — and opens Result (CTA-257);
+**Next** while answering grades and goes on; **Skip** (`pass`, CTA-257 — the
+reader's word "skip / skipped" throughout, the code's `pass`) puts it off and
+goes on — both play the game's moves to the next position out (capped);
+**Add move** (outlined, `board.newMove`, CTA-257) takes the board back to
+the position node; a click on Results or the summary goes
 straight there. The right panel: **Moves · Map · Result** (off until
 answered) **· Summary**; the header — back to the sessions, the
 *Experimental* chip, "Position 3 of 12 · 12. White", New session (an icon) and
 Download PGN; the footer — a read issue, a refused write, the comment block,
 the next-moves bar, the instructions, the reader's moves, the engine's word,
-then New move · Pass · Results (n) · Next, or Next / Summary once answered;
+then Add move (outlined) · Skip · Results (n) · Next, or Next / Summary once answered;
 the Result tab's word on a position graded without its engine — *could not
 search* (`failed`) or *was not asked* (`idle`, `engine.notAsked`) — with
 **Evaluate again** under it (CTA-250, `engineRetry`);

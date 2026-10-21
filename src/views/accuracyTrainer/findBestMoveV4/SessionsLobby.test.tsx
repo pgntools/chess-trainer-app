@@ -87,7 +87,7 @@ describe("Find Best Move's sessions lobby (CTA-239, CTA-244)", () => {
     const going = within(screen.getByTestId("find-best-move-sessions-table-row-going")).getAllByRole("cell");
     expect(going[2]).toHaveTextContent("Both");
     // Three positions: 2. Nf3 too, though the analysis hung no line there (CTA-245).
-    expect(going[4]).toHaveTextContent("1/31 answered, 0 passed");
+    expect(going[4]).toHaveTextContent("1/31 answered, 0 skipped");
     expect(going[5]).toHaveTextContent("2/22 in place");
     expect(screen.getByTestId("find-best-move-sessions-table-status-going")).toHaveTextContent("Ongoing");
     expect(screen.getByTestId("find-best-move-sessions-table-note-plain")).toHaveTextContent("By hand holds no session");
