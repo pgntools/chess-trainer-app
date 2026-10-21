@@ -282,6 +282,8 @@ const he: typeof en = {
     depth: "עומק {{depth}}",
     depthProgress: "עומק <ltr>{{depth}}/{{target}}</ltr>",
     depthProgressName: "עומק {{depth}} מתוך {{target}}",
+    depthTimeProgressName_one: "עומק {{depth}} מתוך {{target}}, {{elapsed}} מתוך שנייה אחת",
+    depthTimeProgressName_other: "עומק {{depth}} מתוך {{target}}, {{elapsed}} מתוך {{count}} שניות",
     thinking: "ממתינים למנוע…",
     partial: "{{shown}} מתוך {{requested}} וריאציות עד כה.",
     expand: "וריאציה {{rank}}, {{score}} — להצגת הווריאציה במלואה",

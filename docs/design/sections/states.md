@@ -67,10 +67,18 @@ Gallery: `/dev/design/states`.
   `progressbar` named by `progressLabel`, reporting `aria-valuenow`, and not a
   live region; the text over the fill is `text.primary`, measured over it in
   every theme (`themes/contrast.ts`); the fill moves through
-  `theme.transitions`, so it steps under reduced motion.
+  `theme.transitions`, so it steps under reduced motion. With a
+  `secondaryValue` (CTA-251) a second measure of the same progress runs
+  beside it: a thin strip along the chip's bottom edge from the same inline
+  start, the primary at full strength (`progressSecondaryFillOf`, measured at
+  3:1 over the paper and over the fill); still one `progressbar`, its value
+  the first measure's, its `progressLabel` naming both.
 - **Props** — `label` (the words in view), `value?` (0–100, clamped; absent: a
   plain outlined chip), `progressLabel` (the accessible name, required with a
-  `value` — CTA-111), `testId` (`-fill`).
-- **Variations** — filling; empty; full; no value (plain).
+  `value` — CTA-111), `secondaryValue?` (0–100, clamped, only with a `value`;
+  absent: no strip), `testId` (`-fill`, `-secondary-fill`).
+- **Variations** — filling; two measures; empty; full; no value (plain).
 - **Used by** — the variations box's depth chip while the engine searches
-  (`views/shared/BestVariations.tsx`): "Depth 18/24", named "Depth 18 of 24".
+  (`views/shared/BestVariations.tsx`): "Depth 18/24", named "Depth 18 of 24";
+  with a move time the clock is its strip, named "Depth 18 of 24, 3 of 5
+  seconds".

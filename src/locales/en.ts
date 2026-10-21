@@ -387,6 +387,9 @@ const en = {
      */
     depthProgress: "Depth <ltr>{{depth}}/{{target}}</ltr>",
     depthProgressName: "Depth {{depth}} of {{target}}",
+    /** CTA-251: the depth chip's name while a search with a move time runs — the depth, then the clock over the move time (`count`, in seconds). */
+    depthTimeProgressName_one: "Depth {{depth}} of {{target}}, {{elapsed}} of {{count}} second",
+    depthTimeProgressName_other: "Depth {{depth}} of {{target}}, {{elapsed}} of {{count}} seconds",
     thinking: "Waiting for the engine…",
     partial: "{{shown}} of {{requested}} lines so far.",
     /**

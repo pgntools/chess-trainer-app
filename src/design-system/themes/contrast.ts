@@ -1,7 +1,7 @@
 import { decomposeColor, getContrastRatio, recomposeColor, type Theme } from "@mui/material/styles";
 
 import { buildTheme } from "../theme/buildTheme";
-import { progressFillOf } from "../theme/progressFill";
+import { progressFillOf, progressSecondaryFillOf } from "../theme/progressFill";
 import type { ThemeDefinition } from "./types";
 
 /*
@@ -89,6 +89,10 @@ const schemeChecks = (scheme: "light" | "dark", theme: Theme): Measure[] => {
   // CTA-195: a progress chip's text over its fill — the paper under the tinted primary.
   const fill = over(progressFillOf(palette), palette.background.paper);
   add("text.primary", "text.primary on a progress fill (the paper under the tinted primary)", palette.text.primary, fill, "progressFill", "text");
+  // CTA-251: a progress chip's second fill, the strip along its edge — over the paper, and over the first fill where they overlap.
+  const strip = progressSecondaryFillOf(palette);
+  add("primary.main", "a progress chip's second fill on background.paper", strip, palette.background.paper, "progressStrip", "ui");
+  add("primary.main", "a progress chip's second fill on its first fill", strip, fill, "progressStripOnFill", "ui");
   for (const surface of SURFACES) {
     const background = palette.background[surface];
     add("text.primary", `text.primary on background.${surface}`, palette.text.primary, background, surface, "text");

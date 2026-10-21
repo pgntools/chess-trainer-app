@@ -146,11 +146,11 @@ type BestVariationsProps = {
    * **The search under way, and where it stops** (CTA-195) — present while the
    * engine searches the position on screen (`useEngineModule`'s
    * `searchProgress`). The depth chip then reads "Depth 18/24" and fills from
-   * its inline start toward its end: the depth reached over the target, or —
-   * with a move time — the time spent over it, whichever is further along, so
-   * a search the clock ends early is not left looking part-done. Absent — the
-   * search finished, or a caller that passes none — the chip reads "Depth 18"
-   * as it always has.
+   * its inline start toward its end with the depth reached over the target;
+   * with a move time, a thin strip along its bottom edge fills with the time
+   * spent over it (CTA-251), so the reader sees which limit stops the search
+   * first. Absent — the search finished, or a caller that passes none — the
+   * chip reads "Depth 18" as it always has.
    */
   progress?: SearchProgress;
   /**
@@ -171,7 +171,7 @@ type BestVariationsProps = {
  */
 type HoveredLine = { fen: string; rank: number };
 
-/** How often a move-time search's clock moves the fill (CTA-195). */
+/** How often a move-time search's clock moves its strip (CTA-195, CTA-251). */
 const CLOCK_TICK_MS = 250;
 
 /**
@@ -191,11 +191,13 @@ function useSearchClock(running: boolean, key: string): number {
 }
 
 /**
- * The depth chip (CTA-56; its fill CTA-195): "Depth 18" once a search is done,
- * and while one runs "Depth 18/24", filled as far as the search has got toward
- * where it stops — the further along of the depth and, with a move time, the
- * clock (see `progress`). The numbers are pinned LTR; the fill starts at the
- * chip's inline start. Named "Depth 18 of 24", never announced at each step.
+ * The depth chip (CTA-56; its fill CTA-195, its clock CTA-251): "Depth 18" once
+ * a search is done, and while one runs "Depth 18/24", filled as far as the
+ * depth has got toward the target and — with a move time — a strip along its
+ * edge as far as the clock has got toward the move time, each its own measure
+ * (see `progress`). The numbers are pinned LTR; both fills start at the chip's
+ * inline start. Named "Depth 18 of 24" (", 3 of 5 seconds" with the clock),
+ * never announced at each step.
  */
 function DepthChip({ analysis, progress }: { analysis: Analysis; progress?: SearchProgress }) {
   const { t } = useTranslation();
@@ -216,15 +218,22 @@ function DepthChip({ analysis, progress }: { analysis: Analysis; progress?: Sear
 
   const { targetDepth, moveTimeMs } = progress;
   const byDepth = targetDepth > 0 ? analysis.depth / targetDepth : 0;
-  const byTime = timed ? elapsedMs / moveTimeMs : 0;
+  const moveTimeS = Math.round(moveTimeMs / 100) / 10;
   return (
     <ProgressChip
       testId="analysis-depth"
-      value={Math.min(1, Math.max(byDepth, byTime)) * 100}
-      progressLabel={t("variations.depthProgressName", {
-        depth: analysis.depth,
-        target: targetDepth,
-      })}
+      value={Math.min(1, byDepth) * 100}
+      secondaryValue={timed ? Math.min(1, elapsedMs / moveTimeMs) * 100 : undefined}
+      progressLabel={
+        timed
+          ? t("variations.depthTimeProgressName", {
+              depth: analysis.depth,
+              target: targetDepth,
+              elapsed: Math.min(moveTimeS, Math.floor(elapsedMs / 1000)),
+              count: moveTimeS,
+            })
+          : t("variations.depthProgressName", { depth: analysis.depth, target: targetDepth })
+      }
       label={
         <Trans
           i18nKey="variations.depthProgress"
