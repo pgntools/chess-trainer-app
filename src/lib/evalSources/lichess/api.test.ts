@@ -6,7 +6,7 @@ import {
   LICHESS_EVAL_API_TIMEOUT_MS,
   lichessEvalEntryOf,
   lichessEvalFen,
-  lichessEvalFrom,
+  lichessEvalsFrom,
   lookupLichessEval,
   positionResultOfLichessEval,
   writeLichessEval,
@@ -81,17 +81,51 @@ describe("lichessEvalFen", () => {
   });
 });
 
-describe("lichessEvalFrom", () => {
-  it("reads the deepest eval: its depth and each line's score and moves", () => {
-    const found = lichessEvalFrom(START_BODY);
-    expect(found?.depth).toBe(75);
-    expect(found?.lines).toHaveLength(3);
-    expect(found?.lines[0]).toEqual({ score: { kind: "cp", value: 19 }, moves: START_BODY.positions[0].evals[0].pvs[0].line.split(" ") });
+describe("lichessEvalsFrom", () => {
+  it("reads an eval: its depth and each line's score and moves", () => {
+    const evals = lichessEvalsFrom(START_BODY);
+    expect(evals).toHaveLength(1);
+    expect(evals?.[0].depth).toBe(75);
+    expect(evals?.[0].lines).toHaveLength(3);
+    expect(evals?.[0].lines[0]).toEqual({ score: { kind: "cp", value: 19 }, moves: START_BODY.positions[0].evals[0].pvs[0].line.split(" ") });
+  });
+
+  it("reads every eval of the position, in the API's order (CTA-253)", () => {
+    const body = {
+      positions: [
+        {
+          evals: [
+            { depth: 45, pvs: [{ cp: 20, line: "e2e4" }] },
+            { depth: 35, pvs: [{ cp: 18, line: "e2e4" }, { cp: 12, line: "d2d4" }] },
+          ],
+        },
+      ],
+    };
+    expect(lichessEvalsFrom(body)?.map(({ depth, lines }) => [depth, lines.length])).toEqual([
+      [45, 1],
+      [35, 2],
+    ]);
+  });
+
+  it("drops a malformed eval, not the whole answer", () => {
+    const body = {
+      positions: [
+        {
+          evals: [
+            { depth: 45, pvs: [{ cp: null, mate: null, line: "e2e4" }] },
+            { pvs: [{ cp: 1, line: "e2e4" }] },
+            { depth: 30, pvs: [] },
+            { depth: 35, pvs: [{ cp: 18, line: "e2e4" }] },
+          ],
+        },
+      ],
+    };
+    expect(lichessEvalsFrom(body)?.map(({ depth }) => depth)).toEqual([35]);
   });
 
   it("reads a mate as a mate, signed as the API signs it (Black mating is negative)", () => {
     const body = { positions: [{ evals: [{ depth: 40, pvs: [{ cp: null, mate: -2, line: "f1g1 e8e1" }] }] }] };
-    expect(lichessEvalFrom(body)?.lines[0].score).toEqual({ kind: "mate", value: -2 });
+    expect(lichessEvalsFrom(body)?.[0].lines[0].score).toEqual({ kind: "mate", value: -2 });
   });
 
   it.each([
@@ -102,19 +136,19 @@ describe("lichessEvalFrom", () => {
     ["a line with no score", { positions: [{ evals: [{ depth: 30, pvs: [{ cp: null, mate: null, line: "e2e4" }] }] }] }],
     ["no lines", { positions: [{ evals: [{ depth: 30, pvs: [] }] }] }],
   ])("is undefined for a body with %s", (_name, body) => {
-    expect(lichessEvalFrom(body)).toBeUndefined();
+    expect(lichessEvalsFrom(body)).toBeUndefined();
   });
 });
 
 describe("lookupLichessEval", () => {
-  it("asks GET /fen with the 4-field FEN and best=true, and answers the eval", async () => {
+  it("asks GET /fen with the 4-field FEN — every eval, no best=true — and answers the evals", async () => {
     const fetchMock = stubFetch(async () => json(START_BODY));
     const answer = await lookupLichessEval(API, START);
-    expect(answer.kind).toBe("found");
+    expect(answer).toMatchObject({ kind: "found", evals: [{ depth: 75 }] });
     const url = new URL(String(fetchMock.mock.calls[0][0]));
     expect(url.origin + url.pathname).toBe(`${API}/fen`);
     expect(url.searchParams.get("fen")).toBe("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
-    expect(url.searchParams.get("best")).toBe("true");
+    expect(url.searchParams.has("best")).toBe(false);
   });
 
   it.each([404, 422])("is missing on a %i", async (status) => {
@@ -181,7 +215,14 @@ describe("checkLichessEvalApi", () => {
 });
 
 describe("positionResultOfLichessEval", () => {
-  const found = lichessEvalFrom(START_BODY) as LichessEval;
+  const found = lichessEvalsFrom(START_BODY) as LichessEval[];
+  const cp = (value: number) => ({ kind: "cp" as const, value });
+  /** An eval at `depth` of the start position, a line per first move, its score `cp`. */
+  const evalOf = (depth: number, lines: [string, number][]): LichessEval => ({
+    depth,
+    lines: lines.map(([line, value]) => ({ score: cp(value), moves: line.split(" ") })),
+  });
+  const firstMoves = (result: ReturnType<typeof positionResultOfLichessEval>) => result?.lines.map(({ pv, depth }) => [pv[0], depth]);
 
   it("takes an eval as deep as asked: its lines up to the MultiPV, each at its depth", () => {
     const result = positionResultOfLichessEval({ fen: START, multiPv: 2 }, found, 30);
@@ -191,13 +232,85 @@ describe("positionResultOfLichessEval", () => {
     expect(result?.lines[1].pv[0]).toBe("d2d4");
   });
 
-  it("takes as many lines as the eval has when the MultiPV asks for more", () => {
-    expect(positionResultOfLichessEval({ fen: START, multiPv: 5 }, found, 30)?.lines).toHaveLength(3);
+  it("merges the evals deepest first: d45/1 and d35/5 give line 1 from d45, lines 2–5 from d35 (CTA-253)", () => {
+    const d35 = evalOf(35, [
+      ["e2e4 e7e5", 25],
+      ["d2d4 d7d5", 22],
+      ["g1f3 d7d5", 20],
+      ["c2c4 e7e5", 18],
+      ["e2e3 e7e5", 10],
+    ]);
+    const d45 = evalOf(45, [["e2e4 c7c5", 30]]);
+    // The API's order is not trusted: the shallower first here.
+    const result = positionResultOfLichessEval({ fen: START, multiPv: 5 }, [d35, d45], 35);
+    expect(firstMoves(result)).toEqual([
+      ["e2e4", 45],
+      ["d2d4", 35],
+      ["g1f3", 35],
+      ["c2c4", 35],
+      ["e2e3", 35],
+    ]);
+    // Line 1 is d45's own, its score and its moves — never spliced with d35's e4 line.
+    expect(result?.lines[0]).toEqual({ score: cp(30), depth: 45, pv: ["e2e4", "c7c5"] });
+    expect(result?.lines[1]).toEqual({ score: cp(22), depth: 35, pv: ["d2d4", "d7d5"] });
   });
 
-  it("is undefined for a shallower eval", () => {
+  it("skips a line whose first move a deeper eval already shows", () => {
+    const deep = evalOf(50, [
+      ["d2d4", 20],
+      ["e2e4", 18],
+    ]);
+    const shallow = evalOf(40, [
+      ["e2e4 e7e5", 25],
+      ["g1f3", 15],
+      ["d2d4 g8f6", 14],
+      ["c2c4", 12],
+    ]);
+    const result = positionResultOfLichessEval({ fen: START, multiPv: 4 }, [deep, shallow], 30);
+    expect(firstMoves(result)).toEqual([
+      ["d2d4", 50],
+      ["e2e4", 50],
+      ["g1f3", 40],
+      ["c2c4", 40],
+    ]);
+  });
+
+  it("is missing with too few lines — one eval or merged", () => {
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 5 }, found, 30)).toBeUndefined();
+    const other = evalOf(40, [["e2e4", 20]]);
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 5 }, [...found, other], 30)).toBeUndefined();
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 3 }, found, 30)?.lines).toHaveLength(3);
+  });
+
+  it("is a hit with every legal move when there are fewer than the MultiPV — 2 moves, 5 asked", () => {
+    const twoMoves = "7k/8/8/8/8/8/r7/K7 w - - 0 1";
+    const both: LichessEval = {
+      depth: 60,
+      lines: [
+        { score: cp(-900), moves: ["a1a2", "h8g7"] },
+        { score: cp(-2000), moves: ["a1b1", "a2a1"] },
+      ],
+    };
+    expect(positionResultOfLichessEval({ fen: twoMoves, multiPv: 5 }, [both], 30)?.lines).toHaveLength(2);
+    const one: LichessEval = { depth: 60, lines: [both.lines[0]] };
+    expect(positionResultOfLichessEval({ fen: twoMoves, multiPv: 5 }, [one], 30)).toBeUndefined();
+  });
+
+  it("ignores an eval shallower than the target", () => {
     expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, found, 76)).toBeUndefined();
     expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, found, 75)).toBeDefined();
+    const shallow = evalOf(30, [
+      ["d2d4", 15],
+      ["c2c4", 12],
+    ]);
+    // d30's lines would fill five, but the target is 40: only d75's three count.
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 5 }, [...found, shallow], 40)).toBeUndefined();
+    expect(firstMoves(positionResultOfLichessEval({ fen: START, multiPv: 4 }, [...found, shallow], 30))).toEqual([
+      ["e2e4", 75],
+      ["d2d4", 75],
+      ["g1f3", 75],
+      ["c2c4", 30],
+    ]);
   });
 
   it("writes the API's king-takes-rook castling as the engine's king move", () => {
@@ -206,19 +319,28 @@ describe("positionResultOfLichessEval", () => {
     expect(pv).toHaveLength(10);
   });
 
-  it("ends a line at a move that does not play, and drops a line with none", () => {
+  it("ends a line at a move that does not play, and a line with none ends its eval's part", () => {
     const broken: LichessEval = {
       depth: 40,
       lines: [
-        { score: { kind: "cp", value: 20 }, moves: ["e2e4", "e2e4", "e7e5"] },
-        { score: { kind: "cp", value: 10 }, moves: ["a1a8"] },
-        { score: { kind: "cp", value: 5 }, moves: ["d2d4"] },
+        { score: cp(20), moves: ["e2e4", "e2e4", "e7e5"] },
+        { score: cp(10), moves: ["a1a8"] },
+        { score: cp(5), moves: ["d2d4"] },
       ],
     };
-    const result = positionResultOfLichessEval({ fen: START, multiPv: 3 }, broken, 30);
-    expect(result?.lines).toEqual([{ score: { kind: "cp", value: 20 }, depth: 40, pv: ["e2e4"] }]);
-    const none: LichessEval = { depth: 40, lines: [{ score: { kind: "cp", value: 0 }, moves: [] }] };
-    expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, none, 30)).toBeUndefined();
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, [broken], 30)?.lines).toEqual([
+      { score: cp(20), depth: 40, pv: ["e2e4"] },
+    ]);
+    // d4, after the gap, is not taken: one line where two are asked.
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 2 }, [broken], 30)).toBeUndefined();
+    // A shallower eval still gives its lines after a deeper one's gap.
+    const next = evalOf(35, [["d2d4", 8]]);
+    expect(firstMoves(positionResultOfLichessEval({ fen: START, multiPv: 2 }, [broken, next], 30))).toEqual([
+      ["e2e4", 40],
+      ["d2d4", 35],
+    ]);
+    const none: LichessEval = { depth: 40, lines: [{ score: cp(0), moves: [] }] };
+    expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, [none], 30)).toBeUndefined();
   });
 });
 

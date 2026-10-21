@@ -18,8 +18,8 @@ import {
 /**
  * **The lichess evaluation API as an eval source** (CTA-196) — the whole of
  * what the layer knows of it: on or off (`settings.ts`), a lookup
- * (`GET /fen`, its deepest eval when as deep as asked, its lines up to the
- * asked `MultiPV`), a write (`POST /evals`, while writing is ticked, of a
+ * (`GET /fen`, its evals as deep as asked merged up to the asked `MultiPV`
+ * — a hit only with that many lines, or every legal move, CTA-253), a write (`POST /evals`, while writing is ticked, of a
  * search at least as deep as its minimum depth to write — CTA-202), its
  * tab of Settings → Engine and the connection its tab's dot shows (CTA-199).
  */
@@ -34,7 +34,7 @@ export const lichessEvalSource: EvalSource = {
     if (url === undefined) return { kind: "missing" };
     const answer = await lookupLichessEval(url, fen, signal);
     if (answer.kind !== "found") return answer;
-    const result = positionResultOfLichessEval({ fen, multiPv }, answer.eval, depth);
+    const result = positionResultOfLichessEval({ fen, multiPv }, answer.evals, depth);
     return result === undefined ? { kind: "missing" } : { kind: "found", result };
   },
   writesEnabled: () => lichessEvalApiWriteUrl() !== undefined,
