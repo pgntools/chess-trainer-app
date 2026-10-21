@@ -181,7 +181,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   old `chessapp.jobsSettings.evalApi` moved there on the first read). On,
   **every analysis search asks it first** — every board's engine lines and
   every engine job's positions (the engine session, `lib/jobs/engineSession.ts`) — whichever engine runs; an engine choosing its move in a game
-  never does. With writing ticked, every engine search that reached its
+  never does. **A hit** (CTA-253) is every eval it holds at the search's
+  depth or deeper, merged deepest first up to the search's lines (a first move
+  already shown skipped, each line its own eval's depth) — and only when that
+  fills the lines asked for, or every legal move; fewer, and the engine
+  searches ([`docs/engine.md`](../../docs/engine.md) §10.3). With writing ticked, every engine search that reached its
   target depth **and the minimum depth to write** is sent to it (a shallower
   one is skipped, not refused — so the lichess database is never diluted by
   quick searches; a target depth below the minimum writes nothing); what it

@@ -10,11 +10,12 @@ import type { Score } from "../../engineAnalysis";
  * search asks about its position before the engine searches it. This module
  * is the client, pure but for `fetch`:
  *
- * - **`GET /fen?fen=<4-field FEN>&best=true`** — the deepest eval of a
- *   position, its lines White's point of view (`cp` or `mate`, mate signed by
- *   who mates — `Score`'s own convention) and in UCI, the API's castling
- *   written king-takes-rook (`e1h1`), which {@link positionResultOfLichessEval}
- *   turns into the engine's `e1g1`. Not there is a 404.
+ * - **`GET /fen?fen=<4-field FEN>`** — every eval the API holds of a
+ *   position (CTA-253; `best=true`, the deepest alone, before), its lines
+ *   White's point of view (`cp` or `mate`, mate signed by who mates —
+ *   `Score`'s own convention) and in UCI, the API's castling written
+ *   king-takes-rook (`e1h1`), which {@link positionResultOfLichessEval} turns
+ *   into the engine's `e1g1`. Not there is a 404.
  * - **`GET /health`** — `{ status: "ok", positions, write_enabled, … }`, what
  *   Connect checks.
  * - **`POST /evals`** — the API's write mode (`api.py --write`): an engine's
@@ -31,11 +32,11 @@ export const LICHESS_EVAL_API_TIMEOUT_MS = 5000;
 /** One line of an eval, as this app reads it: its score (White's view) and its moves in UCI. */
 export type LichessEvalLine = { score: Score; moves: string[] };
 
-/** The deepest eval the API holds for a position. */
+/** One eval the API holds for a position: its depth and its lines, best first. */
 export type LichessEval = { depth: number; lines: LichessEvalLine[] };
 
-/** What a lookup came to: an eval, nothing for that position, or no usable answer at all. */
-export type LichessEvalLookup = { kind: "found"; eval: LichessEval } | { kind: "missing" } | { kind: "unreachable" };
+/** What a lookup came to: the position's evals (at least one), nothing for that position, or no usable answer at all. */
+export type LichessEvalLookup = { kind: "found"; evals: LichessEval[] } | { kind: "missing" } | { kind: "unreachable" };
 
 /**
  * **The FEN the API matches on**: its first four fields, the en passant square
@@ -67,16 +68,26 @@ const lineFrom = (raw: unknown): LichessEvalLine | undefined => {
   return { score, moves };
 };
 
-/** The deepest eval out of `GET /fen`'s body, or `undefined` when it is not that shape. */
-export const lichessEvalFrom = (body: unknown): LichessEval | undefined => {
+/** One eval of the API's answer — a depth and at least one line, every line well formed — or `undefined`. */
+const evalFrom = (raw: unknown): LichessEval | undefined => {
+  if (!isRecord(raw) || !isInteger(raw.depth) || !Array.isArray(raw.pvs)) return undefined;
+  const lines = raw.pvs.map(lineFrom);
+  if (lines.length === 0 || lines.some((line) => line === undefined)) return undefined;
+  return { depth: raw.depth, lines: lines as LichessEvalLine[] };
+};
+
+/**
+ * **Every eval out of `GET /fen`'s body** — its first position's (one
+ * position, however the API puts its rows together: lichess's evals, a
+ * local one beside or in their place), in the API's order, a malformed eval
+ * dropped. `undefined` when the body is not that shape or no eval is left.
+ */
+export const lichessEvalsFrom = (body: unknown): LichessEval[] | undefined => {
   if (!isRecord(body) || !Array.isArray(body.positions)) return undefined;
   const position: unknown = body.positions[0];
   if (!isRecord(position) || !Array.isArray(position.evals)) return undefined;
-  const deepest: unknown = position.evals[0];
-  if (!isRecord(deepest) || !isInteger(deepest.depth) || !Array.isArray(deepest.pvs)) return undefined;
-  const lines = deepest.pvs.map(lineFrom);
-  if (lines.length === 0 || lines.some((line) => line === undefined)) return undefined;
-  return { depth: deepest.depth, lines: lines as LichessEvalLine[] };
+  const evals = position.evals.map(evalFrom).filter((found) => found !== undefined);
+  return evals.length === 0 ? undefined : evals;
 };
 
 /** `fetch` with the API's timeout, also given up when `signal` is — a GET, or a POST of `body` as JSON. */
@@ -104,7 +115,7 @@ const fetchWithTimeout = async (url: string, signal?: AbortSignal, body?: unknow
 };
 
 /**
- * **Ask the API for a position's deepest eval.** A 404 — and a 422, a FEN it
+ * **Ask the API for a position's evals.** A 404 — and a 422, a FEN it
  * will not take — is `missing`; a timeout, a network error, another status,
  * a body that is not JSON or not the API's shape is `unreachable`. Never throws.
  */
@@ -112,11 +123,11 @@ export const lookupLichessEval = async (baseUrl: string, fen: string, signal?: A
   const query = lichessEvalFen(fen);
   if (query === null) return { kind: "missing" };
   try {
-    const response = await fetchWithTimeout(`${baseUrl}/fen?fen=${encodeURIComponent(query)}&best=true`, signal);
+    const response = await fetchWithTimeout(`${baseUrl}/fen?fen=${encodeURIComponent(query)}`, signal);
     if (response.status === 404 || response.status === 422) return { kind: "missing" };
     if (!response.ok) return { kind: "unreachable" };
-    const found = lichessEvalFrom(await response.json().catch(() => undefined));
-    return found === undefined ? { kind: "unreachable" } : { kind: "found", eval: found };
+    const evals = lichessEvalsFrom(await response.json().catch(() => undefined));
+    return evals === undefined ? { kind: "unreachable" } : { kind: "found", evals };
   } catch {
     return { kind: "unreachable" };
   }
@@ -170,30 +181,43 @@ const engineMovesOf = (fen: string, moves: readonly string[]): string[] => {
 };
 
 /**
- * **An API eval as a position's result** — when it is as deep as the search asks
- * (`depth >= minDepth`): its lines, the first `multiPv`, each with the eval's
- * depth and its moves as the engine writes them. A line that has no playable
- * move is dropped, and with no line 1 left there is no result. `undefined`
- * also for a shallower eval: the engine searches it then.
+ * **A position's evals merged into its result** (CTA-253) — the evals as deep
+ * as the search asks (`depth >= minDepth`), deepest first, each giving its
+ * lines in its own order until `multiPv` are shown: a line whose first move a
+ * deeper eval already showed is skipped, every line keeps its own eval's depth
+ * and score, its moves as the engine writes them, and no line is spliced from
+ * two evals. A line with no playable move ends its eval's part (the lines
+ * after it are out of order). **A hit only when that fills
+ * `min(multiPv, legal moves)` lines** — so a board asking for five lines is
+ * not given one; `undefined` otherwise, and the engine searches it.
  */
 export const positionResultOfLichessEval = (
   position: { fen: string; multiPv: number },
-  found: LichessEval,
+  evals: readonly LichessEval[],
   minDepth: number,
 ): PositionResult | undefined => {
-  if (found.depth < minDepth) return undefined;
-  let lines: PositionLine[];
+  const wanted = Math.max(1, position.multiPv);
+  let legalMoves: number;
   try {
-    lines = found.lines
-      .slice(0, Math.max(1, position.multiPv))
-      .map((line) => ({ score: line.score, depth: found.depth, pv: engineMovesOf(position.fen, line.moves) }));
+    legalMoves = new Chess(position.fen).moves().length;
   } catch {
     return undefined;
   }
-  // Lines past one that does not play are out of order: they end there.
-  const gap = lines.findIndex((line) => line.pv.length === 0);
-  const kept = gap === -1 ? lines : lines.slice(0, gap);
-  return kept.length === 0 ? undefined : { fen: position.fen, lines: kept };
+  const deepFirst = evals.filter((found) => found.depth >= minDepth).sort((a, b) => b.depth - a.depth);
+  const lines: PositionLine[] = [];
+  const shown = new Set<string>();
+  for (const found of deepFirst) {
+    if (lines.length === wanted) break;
+    for (const line of found.lines) {
+      if (lines.length === wanted) break;
+      const pv = engineMovesOf(position.fen, line.moves);
+      if (pv.length === 0) break;
+      if (shown.has(pv[0])) continue;
+      shown.add(pv[0]);
+      lines.push({ score: line.score, depth: found.depth, pv });
+    }
+  }
+  return lines.length > 0 && lines.length >= Math.min(wanted, legalMoves) ? { fen: position.fen, lines } : undefined;
 };
 
 /** One entry of `POST /evals`: a position's eval as an engine searched it, its scores White's view. */
