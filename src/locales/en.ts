@@ -399,6 +399,16 @@ const en = {
      */
     expand: "Variation {{rank}}, {{score}} — show the full line",
     collapse: "Variation {{rank}}, {{score}} — collapse the line",
+    /**
+     * A line's own depth (CTA-254), on each row only while the lines shown
+     * were searched to different depths: the short label — the number inside
+     * `<ltr>`, pinned left to right — its words for a screen reader, and the
+     * chevron's labels with the depth in them.
+     */
+    lineDepth: "d<ltr>{{depth}}</ltr>",
+    lineDepthName: "depth {{depth}}",
+    expandAtDepth: "Variation {{rank}}, {{score}}, depth {{depth}} — show the full line",
+    collapseAtDepth: "Variation {{rank}}, {{score}}, depth {{depth}} — collapse the line",
   },
   /** The promotion picker — `views/shared/PromotionPicker.tsx`, on two screens. */
   promotion: {

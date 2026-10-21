@@ -288,6 +288,10 @@ const he: typeof en = {
     partial: "{{shown}} מתוך {{requested}} וריאציות עד כה.",
     expand: "וריאציה {{rank}}, {{score}} — להצגת הווריאציה במלואה",
     collapse: "וריאציה {{rank}}, {{score}} — לצמצום הווריאציה",
+    lineDepth: "ע׳<ltr>{{depth}}</ltr>",
+    lineDepthName: "עומק {{depth}}",
+    expandAtDepth: "וריאציה {{rank}}, {{score}}, עומק {{depth}} — להצגת הווריאציה במלואה",
+    collapseAtDepth: "וריאציה {{rank}}, {{score}}, עומק {{depth}} — לצמצום הווריאציה",
   },
   promotion: {
     title: "בחרו כלי",
