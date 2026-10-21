@@ -12,6 +12,18 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "Two measures — the depth behind the words, the move-time clock as a strip along the edge",
+      render: () => (
+        <ProgressChip
+          label="Depth 18/24"
+          value={75}
+          secondaryValue={60}
+          progressLabel="Depth 18 of 24, 3 of 5 seconds"
+          testId="gallery-progress-chip-two"
+        />
+      ),
+    },
+    {
       name: "Just started — an empty fill",
       render: () => (
         <ProgressChip label="Depth 0/24" value={0} progressLabel="Depth 0 of 24" testId="gallery-progress-chip-empty" />

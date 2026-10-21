@@ -645,8 +645,8 @@ describe("the space the variations take while the engine thinks", () => {
 
 /*
   The depth chip's fill (CTA-195): while a search runs, how far it has got
-  toward where it stops — the depth over the target, or the clock over the
-  move time, whichever is further along.
+  toward where it stops — the depth over the target behind the words, and
+  (CTA-251) the clock over the move time as a strip of its own beside it.
 */
 describe("the depth chip's progress", () => {
   const searchingAt = (depth: number): Analysis => ({
@@ -680,27 +680,60 @@ describe("the depth chip's progress", () => {
     await expectNoAxeViolations();
   });
 
-  it("with a move time, fills by the clock when the clock is further along than the depth", () => {
+  it("with a move time, fills by the depth alone and runs the clock as a strip of its own beside it (CTA-251)", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
     renderSearching(searchingAt(6), { targetDepth: 24, moveTimeMs: 2000 });
-    const chip = () => screen.getByRole("progressbar", { name: "Depth 6 of 24" });
-    // At the start the depth leads: 6 of 24.
+    const chip = () => screen.getByRole("progressbar");
+    const depthFill = () => screen.getByTestId("analysis-depth-fill");
+    const timeFill = () => screen.getByTestId("analysis-depth-secondary-fill");
+    // At the start: the depth's 6 of 24, the clock empty.
+    expect(chip()).toHaveAccessibleName("Depth 6 of 24, 0 of 2 seconds");
     expect(chip()).toHaveAttribute("aria-valuenow", "25");
+    expect(depthFill()).toHaveAttribute("data-value", "25");
+    expect(timeFill()).toHaveAttribute("data-value", "0");
 
-    // A second of two in: the clock is further along than the depth.
+    // A second of two in: the clock moves, the depth fill stays the depth's.
     act(() => vi.advanceTimersByTime(1000));
-    expect(chip()).toHaveAttribute("aria-valuenow", "50");
-    // Past the move time it reads full, never more.
+    expect(timeFill()).toHaveAttribute("data-value", "50");
+    expect(depthFill()).toHaveAttribute("data-value", "25");
+    expect(chip()).toHaveAttribute("aria-valuenow", "25");
+    expect(chip()).toHaveAccessibleName("Depth 6 of 24, 1 of 2 seconds");
+    // Past the move time the strip reads full, never more — and the name never past the move time.
     act(() => vi.advanceTimersByTime(1500));
-    expect(chip()).toHaveAttribute("aria-valuenow", "100");
+    expect(timeFill()).toHaveAttribute("data-value", "100");
+    expect(chip()).toHaveAccessibleName("Depth 6 of 24, 2 of 2 seconds");
     expect(chip()).toHaveTextContent("Depth 6/24");
+    // Still one progress bar, never a live region reading out each tick.
+    expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+    expect(chip()).not.toHaveAttribute("aria-live");
+    vi.useRealTimers();
+    await expectNoAxeViolations();
   });
 
-  it("with a move time, fills by the depth when the depth is further along than the clock", () => {
+  it("with a move time, the depth ahead of the clock fills the chip by the depth, the strip by the clock", () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
     renderSearching(searchingAt(20), { targetDepth: 24, moveTimeMs: 10_000 });
     act(() => vi.advanceTimersByTime(1000));
-    expect(screen.getByRole("progressbar", { name: "Depth 20 of 24" })).toHaveAttribute("aria-valuenow", "83");
+    expect(screen.getByRole("progressbar", { name: "Depth 20 of 24, 1 of 10 seconds" })).toHaveAttribute("aria-valuenow", "83");
+    expect(screen.getByTestId("analysis-depth-secondary-fill")).toHaveAttribute("data-value", "10");
+  });
+
+  it("names a move time of one second, and one of a fraction, in words", () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const { rerender } = renderSearching(searchingAt(6), { targetDepth: 24, moveTimeMs: 1000 });
+    expect(screen.getByRole("progressbar", { name: "Depth 6 of 24, 0 of 1 second" })).toBeInTheDocument();
+    rerender(
+      <AppThemeWithLang>
+        <BestVariations analysis={searchingAt(6)} requested={1} progress={{ targetDepth: 24, moveTimeMs: 1500 }} />
+      </AppThemeWithLang>,
+    );
+    expect(screen.getByRole("progressbar", { name: "Depth 6 of 24, 0 of 1.5 seconds" })).toBeInTheDocument();
+  });
+
+  it("without a move time has no strip, its fill and name the depth's as before", () => {
+    renderSearching(searchingAt(18), { targetDepth: 24, moveTimeMs: 0 });
+    expect(screen.getByRole("progressbar", { name: "Depth 18 of 24" })).toHaveAttribute("aria-valuenow", "75");
+    expect(screen.queryByTestId("analysis-depth-secondary-fill")).toBeNull();
   });
 
   it("starts the clock again for a new position", () => {
@@ -708,7 +741,7 @@ describe("the depth chip's progress", () => {
     const progress = { targetDepth: 24, moveTimeMs: 2000 };
     const { rerender } = renderSearching(searchingAt(0), progress);
     act(() => vi.advanceTimersByTime(1500));
-    expect(screen.getByRole("progressbar", { name: "Depth 0 of 24" })).toHaveAttribute("aria-valuenow", "75");
+    expect(screen.getByTestId("analysis-depth-secondary-fill")).toHaveAttribute("data-value", "75");
 
     const after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
     rerender(
@@ -716,7 +749,8 @@ describe("the depth chip's progress", () => {
         <BestVariations analysis={{ fen: after, depth: 0, lines: [] }} requested={1} progress={progress} />
       </AppThemeWithLang>,
     );
-    expect(screen.getByRole("progressbar", { name: "Depth 0 of 24" })).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByTestId("analysis-depth-secondary-fill")).toHaveAttribute("data-value", "0");
+    expect(screen.getByRole("progressbar", { name: "Depth 0 of 24, 0 of 2 seconds" })).toHaveAttribute("aria-valuenow", "0");
   });
 
   it("once the search has finished, reads the depth reached with no fill — as it always has", () => {
@@ -761,13 +795,25 @@ describe("the depth chip's progress", () => {
     return [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules].map((rule) => rule.cssText)).find((text) => text.startsWith(`.${name} `)) ?? "";
   };
 
-  it("slides the fill through the theme's transition, and not at all under reduced motion", () => {
-    const moving = renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 0 });
+  it("under Hebrew names the clock in Hebrew and starts its strip at the inline start (CTA-251)", async () => {
+    await i18n.changeLanguage("he");
+    renderSearching(searchingAt(18), { targetDepth: 24, moveTimeMs: 5000 });
+
+    const chip = screen.getByRole("progressbar", { name: "עומק 18 מתוך 24, 0 מתוך 5 שניות" });
+    expect(chip.querySelector("bdi")).toHaveAttribute("dir", "ltr");
+    expect(ownRule(screen.getByTestId("analysis-depth-secondary-fill"))).toMatch(/inset-inline-start: 0/);
+    await expectNoAxeViolations();
+  });
+
+  it("slides both fills through the theme's transition, and not at all under reduced motion", () => {
+    const moving = renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 2000 });
     expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/transition: width \d+ms/);
+    expect(ownRule(screen.getByTestId("analysis-depth-secondary-fill"))).toMatch(/transition: width \d+ms/);
     moving.unmount();
     stubReducedMotion();
-    renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 0 });
+    renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 2000 });
     expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/transition: none/);
+    expect(ownRule(screen.getByTestId("analysis-depth-secondary-fill"))).toMatch(/transition: none/);
   });
 });
 

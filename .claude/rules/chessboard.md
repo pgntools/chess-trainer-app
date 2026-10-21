@@ -683,8 +683,9 @@ it with `engineGateJobsMock`), the job then named in the button's name. **`searc
 target depth, held to the engine's `capabilities.maxDepth`, and its move time —
 while `searching`, and absent under infinite analysis: every board passes it to
 `BoardPanel` (`searchProgress`), whose variations block's depth chip then reads
-"Depth 18/24" and fills toward it (a `ProgressChip`, the further along of the
-depth and the move-time clock), "Depth 24" again once the search answers.
+"Depth 18/24" and fills toward it (a `ProgressChip`: the depth behind the
+words, and with a move time the clock as a thin strip along its edge, its
+`secondaryValue` — CTA-251), "Depth 24" again once the search answers.
 **What a board searches with is the reader's global search settings**
 (depth, move time, lines, Threads, Hash — `useEngineSearchSettings`, every
 search stopping at its depth or move time since CTA-185,

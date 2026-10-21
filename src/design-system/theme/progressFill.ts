@@ -10,3 +10,11 @@ export const PROGRESS_FILL_OPACITY = 0.2;
 /** **A progress fill's colour** — the theme's primary, tinted (`ProgressChip`). */
 export const progressFillOf = (palette: Pick<Palette, "primary">): string =>
   alpha(palette.primary.main, PROGRESS_FILL_OPACITY);
+
+/**
+ * **A progress chip's second fill** (CTA-251) — the thin strip along its
+ * bottom edge: the theme's primary at full strength, so it reads apart from
+ * the tinted fill behind the words. It carries meaning, so `themes/contrast.ts`
+ * measures it as a non-text part (3:1) over the paper and over that fill.
+ */
+export const progressSecondaryFillOf = (palette: Pick<Palette, "primary">): string => palette.primary.main;

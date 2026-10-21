@@ -1,13 +1,30 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import type { Theme } from "@mui/material/styles";
 
-import { progressFillOf } from "../../../theme/progressFill";
+import { progressFillOf, progressSecondaryFillOf } from "../../../theme/progressFill";
+
+/** The second fill's thickness: a strip, not a second chip. */
+const SECONDARY_FILL_PX = 3;
+
+const clampPercent = (value: number): number => Math.round(Math.max(0, Math.min(100, value)));
+
+/** What both fills share: held to the chip's inline start, as wide as their value, moving through the theme. */
+const fillSx = (theme: Theme, width: number) => ({
+  position: "absolute",
+  insetInlineStart: 0,
+  width: `${width}%`,
+  transition: theme.transitions.create("width", {
+    duration: theme.transitions.duration.shorter,
+    easing: theme.transitions.easing.easeOut,
+  }),
+}) as const;
 
 type ProgressChipBase = {
   /** The words in view ("Depth 18/24"). */
   label: ReactNode;
-  /** The chip's test id; its fill is `<testId>-fill`. */
+  /** The chip's test id; its fill is `<testId>-fill`, its second fill `<testId>-secondary-fill`. */
   testId: string;
 };
 
@@ -16,10 +33,18 @@ export type ProgressChipProps = ProgressChipBase &
     | {
         /** 0–100, clamped: how far the fill reaches from the chip's inline start. Absent: a plain chip, no fill. */
         value: number;
-        /** The progress's accessible name ("Depth 18 of 24") — required with a value, so a progress is never nameless (CTA-111). */
+        /**
+         * The progress's accessible name ("Depth 18 of 24") — required with a value, so a progress is never nameless (CTA-111).
+         * With a `secondaryValue` it names both ("Depth 18 of 24, 3 of 5 seconds"): one sentence, so a language orders it its own way.
+         */
         progressLabel: string;
+        /**
+         * 0–100, clamped: a second measure of the same progress (CTA-251) — a thin strip along the chip's bottom edge,
+         * from its inline start, in a stronger colour than the fill behind the words. Absent: no strip, the chip as before.
+         */
+        secondaryValue?: number;
       }
-    | { value?: undefined; progressLabel?: undefined }
+    | { value?: undefined; progressLabel?: undefined; secondaryValue?: undefined }
   );
 
 /**
@@ -38,9 +63,17 @@ export type ProgressChipProps = ProgressChipBase &
  * text over the fill is the surface's own `text.primary`, measured over the
  * fill in every theme (`themes/contrast.ts`), and the fill moves through
  * `theme.transitions`, so under reduced motion it steps rather than slides.
+ *
+ * With a `secondaryValue` (CTA-251) a second measure runs beside the first:
+ * a thin strip along the chip's bottom edge, the primary at full strength
+ * (`progressSecondaryFillOf`, measured at 3:1 over the paper and over the
+ * fill), from the same inline start — the variations box's move-time clock
+ * under its depth. Still one `progressbar`, its value the first measure's,
+ * its name (`progressLabel`) saying both; the strip moves as the fill does.
  */
-function ProgressChip({ label, value, progressLabel, testId }: ProgressChipProps) {
-  const shown = value === undefined ? undefined : Math.round(Math.max(0, Math.min(100, value)));
+function ProgressChip({ label, value, progressLabel, secondaryValue, testId }: ProgressChipProps) {
+  const shown = value === undefined ? undefined : clampPercent(value);
+  const secondary = shown === undefined || secondaryValue === undefined ? undefined : clampPercent(secondaryValue);
   return (
     <Chip
       size="small"
@@ -72,17 +105,26 @@ function ProgressChip({ label, value, progressLabel, testId }: ProgressChipProps
               data-testid={`${testId}-fill`}
               data-value={shown}
               sx={(theme) => ({
-                position: "absolute",
+                ...fillSx(theme, shown),
                 insetBlock: 0,
-                insetInlineStart: 0,
-                width: `${shown}%`,
                 bgcolor: progressFillOf(theme.palette),
-                transition: theme.transitions.create("width", {
-                  duration: theme.transitions.duration.shorter,
-                  easing: theme.transitions.easing.easeOut,
-                }),
               })}
             />
+            {secondary !== undefined && (
+              // The second measure: a strip on the chip's bottom edge, over the fill, under the words.
+              <Box
+                component="span"
+                aria-hidden
+                data-testid={`${testId}-secondary-fill`}
+                data-value={secondary}
+                sx={(theme) => ({
+                  ...fillSx(theme, secondary),
+                  insetBlockEnd: 0,
+                  height: SECONDARY_FILL_PX,
+                  bgcolor: progressSecondaryFillOf(theme.palette),
+                })}
+              />
+            )}
             <Box component="span" sx={{ position: "relative" }}>
               {label}
             </Box>

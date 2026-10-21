@@ -37,12 +37,12 @@ describe("the contrast report", () => {
       // text.secondary on a raised row, both text colours on the three surfaces, and text.primary on a progress fill (CTA-195).
       expect(count("text.secondary")).toBe(4);
       expect(count("text.primary")).toBe(4);
-      // primary: its contrastText on it, and it as text on the three surfaces.
-      expect(count("primary.main")).toBe(4);
+      // primary: its contrastText on it, it as text on the three surfaces, and a progress chip's second fill on the paper and on its first fill (CTA-251).
+      expect(count("primary.main")).toBe(6);
       expect(count("secondary.main")).toBe(1);
       expect(count("focusRing")).toBe(3);
       expect(count("controlBorder")).toBe(3);
-      expect(checks).toHaveLength(35);
+      expect(checks).toHaveLength(37);
     }
   });
 
