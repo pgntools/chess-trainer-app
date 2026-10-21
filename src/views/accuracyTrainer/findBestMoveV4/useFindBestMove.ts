@@ -81,7 +81,7 @@ export const useFindBestMove = ({
   const position = trainingPositionOf(record, key);
   const grade = gradeOf(record, key);
 
-  /** Events after the board's work — moving on from `key` plays the game's moves out (Next, Pass). */
+  /** Events after the board's work — moving on from `key` plays the game's moves out (Next, Skip). */
   const act = async (list: readonly SessionEvent[], { replay = false } = {}): Promise<boolean> => {
     const all = [board.flushWork(), ...list];
     const moved = reduceSession(record, all).current !== record.current;
@@ -91,9 +91,11 @@ export const useFindBestMove = ({
     return moved;
   };
 
-  /** **Results**: the reader's moves graded, the Result opened. */
+  /** **Results**: the reader's moves graded, the Result opened — the board back on the position, where the graded arrows are drawn. */
   const check = () => {
-    if (board.candidates.length > 0) void act([events.answer(key, board.candidates)]);
+    if (board.candidates.length === 0) return;
+    board.newMove();
+    void act([events.answer(key, board.candidates)]);
   };
   /** **Next while answering** (CTA-240): graded as Results grades them, and on at once — `summary` when none is left. */
   const checkAndNext = (): Landing => {
@@ -102,7 +104,7 @@ export const useFindBestMove = ({
     void act(list, { replay: true });
     return reduceSession(record, list).current === key ? "summary" : "moves";
   };
-  /** **Pass**: put off for later, and on at once. */
+  /** **Skip** (`pass`): put off for later, and on at once. */
   const pass = (): Landing => {
     const list = [events.pass(key), events.next()];
     void act(list, { replay: true });

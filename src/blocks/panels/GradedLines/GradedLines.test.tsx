@@ -46,7 +46,7 @@ describe("GradedLines (CTA-238)", () => {
 
   it("says a pass, and marks no line", () => {
     render(<GradedLines position={POSITION} grade={PASSED} testId="graded" />);
-    expect(screen.getByTestId("graded-headline")).toHaveTextContent("You passed.");
+    expect(screen.getByTestId("graded-headline")).toHaveTextContent("You skipped it.");
     expect(rowTexts().map((cells) => cells[4])).toEqual(["", "", ""]);
   });
 

@@ -43,7 +43,7 @@ type Shown = { key: PositionKey; nodeId: string | null; replay?: { start: string
  *   or, with the session's engine off, **offers it** (`engineOffer`, CTA-245): Yes
  *   turns it on for the session and asks; No goes on without it. Once per
  *   position while the screen is up.
- * - **On to another position** with `replayFrom` set (Next, Pass): the board
+ * - **On to another position** with `replayFrom` set (Next, Skip): the board
  *   starts at the position just left and plays the game's moves to the next
  *   one out (`replayPlan`, capped), through the replay unit.
  */
@@ -61,7 +61,7 @@ export const useSessionBoard = ({
   const [initial] = useState(() => boardTreeOf(record, record.current, words));
   const core = useBoardCore({ tree: initial.tree, nodeId: initial.nodeId, orientation: facingOf(record.game, record.current) });
   const [shown, setShown] = useState<Shown>({ key: record.current, nodeId: initial.nodeId });
-  // The position an action moves on from (Next, Pass): the replay starts there. `null`: straight to the next.
+  // The position an action moves on from (Next, Skip): the replay starts there. `null`: straight to the next.
   const [replayFrom, setReplayFrom] = useState<PositionKey | null>(null);
   const replay = useReplay({ nodeId: core.nodeId, goToNode: core.goToNode, ...(stepDelayMs === undefined ? {} : { stepDelayMs }) });
 
@@ -149,15 +149,15 @@ export const useSessionBoard = ({
     candidates: candidatesOf(core.tree, shown.nodeId),
     moveCandidate: (index: number, move: "up" | "down") => core.replaceTree(reorderedCandidates(core.tree, shown.nodeId, index, move)),
     removeCandidate: (index: number) => core.replaceTree(withoutCandidate(core.tree, shown.nodeId, index)),
-    /** **New move**: the board back on the position, so the next move played there starts a new line. */
+    /** **Add move**: the board back on the position, so the next move played there starts a new line. */
     newMove: () => core.goToNode(shown.nodeId),
-    /** On the position's own node — New move has nowhere to go back to. */
+    /** On the position's own node — Add move has nowhere to go back to. */
     onPosition: core.nodeId === shown.nodeId,
     /** Whether a piece may move: on the position, or inside a line from it. */
     canMove: atPosition,
     editableAt,
     flushWork,
-    /** The next load plays the game's moves from this position out (Next, Pass); `null` goes straight there. */
+    /** The next load plays the game's moves from this position out (Next, Skip); `null` goes straight there. */
     setReplayFrom,
     stopReplay: stop,
     board: { onPieceDrop, resolvePromotion },

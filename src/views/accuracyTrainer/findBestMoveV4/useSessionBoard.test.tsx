@@ -69,7 +69,7 @@ describe("useSessionBoard", () => {
     expect(result.current.editableAt(null)).toBe(false);
   });
 
-  it("lists the reader's moves in their order — one moved or deleted with its line — and New move goes back to the position", () => {
+  it("lists the reader's moves in their order — one moved or deleted with its line — and Add move goes back to the position", () => {
     const { result } = mount(sessionOfPgn(ANALYSED_PGN));
     drop(result, "e2", "e4");
     drop(result, "e7", "e5");

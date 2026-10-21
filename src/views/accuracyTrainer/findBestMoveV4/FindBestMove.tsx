@@ -59,7 +59,7 @@ type FindBestMoveProps = {
  * pure record, `lib/findBestMove/`), and this is where its parts go — the
  * board (`BoardShell` over the core, the explorer editing the position's own
  * lines alone), the right panel (Moves · Map · Result · Summary; the footer's
- * moves so far with New move · Pass · Results · Next, or Next once answered)
+ * moves so far with Add move · Skip · Results · Next, or Next once answered)
  * and the left one (`AccuracyTrainerDetails`: the game, its Case, Your moves,
  * Results, Achievements and Settings).
  */
@@ -97,7 +97,7 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
   // Once graded, on the position itself: the top N in green, the reader's moves outside them in red, over the reader's own arrows.
   // One arrow to a pair of squares (`distinctArrows`): a move of the reader's that is also graded keeps its grade's colour.
   const arrows = useMemo(() => {
-    // A pass is put off for later: no answer is drawn.
+    // A skip is put off for later: no answer is drawn.
     if (position === undefined || grade === null || grade.passed || core.nodeId !== board.positionNodeId) return distinctArrows(explorer.arrows);
     const arrowOf = (san: string, color: string) => {
       const squares = moveSquaresOf(position.fen, san);
@@ -280,8 +280,8 @@ function FindBestMove({ caseRecord, record, issues, dispatch, words, writeFailed
         {run.answering ? (
           <>
             {/* Back to the position, so the next move played there is a new line. */}
-            <Button size="small" onClick={board.newMove} disabled={board.onPosition} data-testid={`${ID}-new-move`}>
-              {t("accuracyTrainer.session.newMove")}
+            <Button variant="outlined" size="small" onClick={board.newMove} disabled={board.onPosition} data-testid={`${ID}-add-move`}>
+              {t("accuracyTrainer.session.addMove")}
             </Button>
             <Box sx={{ flexGrow: 1 }} />
             <Button variant="outlined" onClick={() => land(run.pass())} data-testid={`${ID}-pass`}>

@@ -608,9 +608,9 @@ const en = {
       },
       sides: { w: "White", b: "Black", both: "Both" },
       status: { ongoing: "Ongoing", done: "Done", unreadable: "Not resumable" },
-      /** The positions done (answered or passed) of all, then how. */
+      /** The positions done (answered or skipped) of all, then how. */
       progress: "{{done}}/{{total}}",
-      progressDetail: "{{answered}} answered, {{passed}} passed",
+      progressDetail: "{{answered}} answered, {{passed}} skipped",
       found: "{{found}}/{{target}}",
       foundDetail: "{{inPlace}} in place",
       pick: "Pick {{name}}",
@@ -650,7 +650,7 @@ const en = {
       games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
       caseProblem: "That case could not be read.",
       /** A Find Best Move session's own PGN loaded (CTA-239): it resumes, as a new session. */
-      loadedSession: "{{name}} — a Find Best Move session: {{done}} of {{count}} positions answered or passed. Resume goes on with it, a new session of its own.",
+      loadedSession: "{{name}} — a Find Best Move session: {{done}} of {{count}} positions answered or skipped. Resume goes on with it, a new session of its own.",
       sessionProblem: "This PGN is a Find Best Move session this version cannot read.",
       sessionSide: "The session's own positions are asked.",
       resume: "Resume",
@@ -661,7 +661,7 @@ const en = {
       train: "Train",
       white: "White",
       black: "Black",
-      pass: "Pass",
+      pass: "Skip",
       next: "Next",
       summary: "Summary",
       newSession: "New session",
@@ -671,18 +671,18 @@ const en = {
       label: "{{name}} — the exercise's own view",
       toggle: "The exercise's settings",
       tabs: { label: "The exercise's own view", moves: "Your moves", results: "Results", achievements: "Score", settings: "Settings" },
-      /** The Results tab: every position answered or passed. */
-      resultsList: "The positions answered or passed",
+      /** The Results tab: every position answered or skipped. */
+      resultsList: "The positions answered or skipped",
       achievementsNone: "Answer this position to see the pieces it wins — one in each category.",
-      resultsNone: "No position answered or passed yet.",
+      resultsNone: "No position answered or skipped yet.",
       resultGame: "Game:",
-      resultPassed: "Passed",
+      resultPassed: "Skipped",
       resultLater: "Answer it",
       resultWaiting: "Waiting for the engine",
       resultNoLines: "No line to compare",
       resultOpen: "Open {{move}} — {{score}}",
       resultOpenWon: "Open {{move}} — {{score}} — won {{pieces}}",
-      resultAnswer: "Answer {{move}} now — passed",
+      resultAnswer: "Answer {{move}} now — skipped",
       resultAnswering: "Answering now",
       resultBack: "Back to {{move}} — answering now",
       /** The Moves tab: the reader's moves at the position on screen. */
@@ -692,8 +692,8 @@ const en = {
       movesHint: "Each is a line you played from the position. Moving one moves its line; deleting one deletes it.",
       movesWaiting: "Checked — waiting for the engine's lines to grade them.",
       movesUnanswered: "Not answered yet — open it from the summary to answer it.",
-      /** A pass is "later": its lines stay hidden until it is answered. */
-      movesPassed: "Passed — put off for later. Its lines stay hidden until you answer it.",
+      /** A skip is "later": its lines stay hidden until it is answered. */
+      movesPassed: "Skipped — put off for later. Its lines stay hidden until you answer it.",
       answerAgain: "Answer it now",
       /** Graded without the engine's search — lost, or never asked (CTA-250). */
       movesEngineLost: "Graded without the engine's search. Evaluate it again to grade your moves against its lines.",
@@ -727,14 +727,14 @@ const en = {
     /** A session: an analysis board at each position — every move before it, none after — then one move chosen. */
     session: {
       tabs: { moves: "Moves", map: "Map", result: "Result" },
-      instructions: "Find the {{count}} best moves, best first: each line you play from the position is one, in the order of the lines — reorder them with the move menu's Promote variation; New move takes the board back to the position for the next. Then Results — or Next, to go straight on.",
+      instructions: "Find the {{count}} best moves, best first: each line you play from the position is one, in the order of the lines — reorder them with the move menu's Promote variation; Add move takes the board back to the position for the next. Then Results — or Next, to go straight on.",
       candidates: "Your moves:",
       noCandidates: "none yet — play one from the position.",
       check: "Results ({{count}})",
       /** Back to the position being answered, for the next line (CTA-240). */
-      newMove: "New move",
-      /** A pass on Result: put off for later, its lines hidden. */
-      passed: "You passed — put off for later. Its lines stay hidden; answer it now, or later from Your moves when the board is back at it.",
+      addMove: "Add move",
+      /** A skip on Result: put off for later, its lines hidden. */
+      passed: "You skipped it — put off for later. Its lines stay hidden; answer it now, or later from Your moves when the board is back at it.",
       /** The session's Case (CTA-238): made at Start, in one project of its own. */
       projectName: "Find Best Move",
       caseName: "{{name}} — Find Best Move",
@@ -744,7 +744,7 @@ const en = {
       moveLabel: "{{number}}. {{side}}",
       /** The answer as the Case's comment on the position says it. */
       answer: {
-        passed: "Find Best Move: passed",
+        passed: "Find Best Move: skipped",
         /** Answered, its engine still searching (CTA-244). */
         waiting: "Find Best Move: {{moves}} — waiting for the engine",
         moves: "Find Best Move: {{moves}} — {{found}} of the top {{count}}, {{inPlace}} in place",
@@ -788,7 +788,7 @@ const en = {
         found: "You found {{found}} of the top {{count}} — {{inPlace}} in their place.",
         none: "None of your moves is among the top {{count}}.",
         noLines: "There is no line here to compare your moves with.",
-        passed: "You passed.",
+        passed: "You skipped it.",
       },
     },
     achievements: {
@@ -861,7 +861,7 @@ const en = {
       measures: "Measures",
       positions: "Positions",
       answered: "Answered",
-      passed: "Passed",
+      passed: "Skipped",
       foundRate: "Best moves found",
       inPlaceRate: "In their place",
       perfect: "Positions done perfectly",
@@ -882,7 +882,7 @@ const en = {
       yours: "Your moves",
       result: "Result",
       notYet: "Not answered yet",
-      passedMark: "Passed",
+      passedMark: "Skipped",
       open: "Open {{move}}",
     },
   },

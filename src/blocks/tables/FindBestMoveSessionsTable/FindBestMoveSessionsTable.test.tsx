@@ -50,7 +50,7 @@ describe("FindBestMoveSessionsTable (CTA-239)", () => {
     expect(cells).toHaveLength(9);
     expect(cells[2]).toHaveTextContent("White");
     expect(cells[3]).toHaveTextContent("3");
-    expect(cells[4]).toHaveTextContent("9/207 answered, 2 passed");
+    expect(cells[4]).toHaveTextContent("9/207 answered, 2 skipped");
     expect(cells[5]).toHaveTextContent("15/219 in place");
     expect(screen.getByTestId("sessions-status-going")).toHaveTextContent("Ongoing");
     expect(screen.getByTestId("sessions-status-done")).toHaveTextContent("Done");
