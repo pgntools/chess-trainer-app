@@ -149,6 +149,22 @@ describe("lookupLichessEval", () => {
     expect(url.origin + url.pathname).toBe(`${API}/fen`);
     expect(url.searchParams.get("fen")).toBe("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
     expect(url.searchParams.has("best")).toBe(false);
+    expect(url.searchParams.has("min_depth")).toBe(false);
+  });
+
+  it("asks only for the evals at least as deep as minDepth — min_depth (CTA-256)", async () => {
+    const fetchMock = stubFetch(async () => json(START_BODY));
+    await lookupLichessEval(API, START, undefined, 35);
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.searchParams.get("fen")).toBe("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
+    expect(url.searchParams.get("min_depth")).toBe("35");
+  });
+
+  it("answers every eval an API without min_depth still sends, shallower ones too — the merge holds them to the depth (CTA-256)", async () => {
+    const shallow = { depth: 28, knodes: 1, pvs: [{ cp: 20, mate: null, line: "e2e4 e7e5" }] };
+    stubFetch(async () => json({ ...START_BODY, positions: [{ ...START_BODY.positions[0], evals: [...START_BODY.positions[0].evals, shallow] }] }));
+    const answer = await lookupLichessEval(API, START, undefined, 35);
+    expect(answer).toMatchObject({ kind: "found", evals: [{ depth: 75 }, { depth: 28 }] });
   });
 
   it.each([404, 422])("is missing on a %i", async (status) => {
