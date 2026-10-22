@@ -8,6 +8,7 @@ import { cleanup, configure } from "@testing-library/react";
 
 import { DEVELOPMENT_NOTICE_KEY, resetDevelopmentNotice } from "../lib/developmentNotice";
 import { resetSearchPreferences } from "../lib/engineSearchSettings";
+import { resetSoundSettings } from "../lib/soundSettings";
 
 /*
   How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
@@ -45,6 +46,14 @@ if (!globalThis.ResizeObserver) {
     disconnect() {}
   } as unknown as typeof globalThis.ResizeObserver;
 }
+
+// jsdom has `<audio>` but plays nothing: its `play`, `pause` and `load` report
+// "Not implemented" on the console. Every board plays a move sound (CTA-260),
+// so they are quiet no-ops here; a test that asserts a sound mocks
+// `lib/moveSoundPlayer` (`useMoveSounds.test.tsx`).
+window.HTMLMediaElement.prototype.play = () => Promise.resolve();
+window.HTMLMediaElement.prototype.pause = () => {};
+window.HTMLMediaElement.prototype.load = () => {};
 
 /*
   The record stores are imported here lazily, at teardown, not at the top of
@@ -125,6 +134,8 @@ afterEach(async () => {
   localStorage.clear();
   // The engine's search settings (CTA-181) are a preference: what this visit kept goes with the storage.
   resetSearchPreferences();
+  // So are the move sounds' settings (CTA-260).
+  resetSoundSettings();
   // Every record store is IndexedDB's: what each store kept, and the
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;
