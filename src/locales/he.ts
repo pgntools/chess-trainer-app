@@ -470,7 +470,12 @@ const he: typeof en = {
       sides: { white: "לבן", black: "שחור", both: "שניהם" },
       noneForSide: "אף עמדה של הצד הזה לא נותחה.",
       start: "התחלה",
-      games: { title: "המשחקים בקובץ", versus: "נגד", fallback: "משחק {{n}}" },
+      games: {
+        /** A text of several games (CTA-259): the one chosen, and the games picker to choose another. */
+        chosen: "משחק {{number}} מתוך {{total}}: {{game}}",
+        chooseOther: "בחירת משחק אחר…",
+        unreadable: "לא ניתן לקרוא את המשחק הזה — יש לבחור משחק אחר.",
+      },
       caseProblem: "לא ניתן היה לקרוא את המקרה.",
       loadedSession: "{{name}} — סשן של מציאת המסע הטוב ביותר: {{done}} מתוך {{count}} עמדות נענו או דולגו. המשך ימשיך אותו, כסשן חדש משלו.",
       sessionProblem: "ה-PGN הזה הוא סשן של מציאת המסע הטוב ביותר שגרסה זו אינה יכולה לקרוא.",

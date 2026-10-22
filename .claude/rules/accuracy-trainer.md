@@ -359,8 +359,8 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   from the tags alone**. A Case that holds no session keeps its row, which
   says so — it opens in Analysis and downloads as kept, but does not resume.
 - **The New session form** (`NewSessionForm`, the lobby's right-hand panel):
-  **Game** (a PGN uploaded or pasted — a file of several picks one — or a
-  Case picked; the side — White to start, CTA-257), **Board editor** (a position other than the
+  **Game** (a PGN uploaded or pasted, or a Case picked; the side — White
+  to start, CTA-257), **Board editor** (a position other than the
   standard start is the session's — one position, the side to move's, no line
   of its own: the engine finds them, the session's engine on —
   Start off with why while it cannot be answered) and **Settings** (*Moves to
@@ -373,6 +373,16 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   Start on, its session's engine off and offered at each position (§3.2). Start makes
   the session (`sessionFromGame` / `sessionFromPosition`) and its Case
   (`createSessionCase`) and opens it.
+- **A PGN of several games** (CTA-259 — New case's way, CTA-208): only
+  **indexed** (`indexPgnGames`, no move read — a file of thousands loads at
+  once), never listed in the form; the first game taken and **only the
+  chosen game parsed**; the form names it ("Game 3 of 15,905: White –
+  Black, Event, Date") with *Choose another game…*, which opens the games
+  picker (`GamesPickerDialog`, `one` mode — the Library's games table,
+  sortable, paged, a words box; its rows built the first time it opens); a
+  click chooses. A chosen game that will not read is said
+  (`accuracyTrainer.setup.games.unreadable`) and Start stays off. Picking a
+  Case, or loading one game, forgets the games.
 - **A session PGN loaded in the form** (a downloaded one, or a session Case
   picked): known by its tags, said with how far it got, the side toggle off —
   **Resume** in Start's place makes a **new** Case of it, where it was left
