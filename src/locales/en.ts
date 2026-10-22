@@ -64,6 +64,8 @@ const en = {
     settingsStorage: "Storage",
     /** Settings' Appearance tab (CTA-107), in the Settings folder. */
     settingsAppearance: "Appearance",
+    /** Settings' Sounds tab (CTA-260), in the Settings folder. */
+    settingsSounds: "Sounds",
     /** Settings' Engine tab (CTA-153), in the Settings folder. */
     settingsEngine: "Engine",
     /** Settings' Support tab (CTA-155), in the Settings folder. */
@@ -2726,6 +2728,7 @@ const en = {
       import: "Import",
       storage: "Storage",
       appearance: "Appearance",
+      sounds: "Sounds",
       engine: "Engine",
       support: "Support",
     },
@@ -2943,6 +2946,18 @@ const en = {
           checkedAt: "Checked at {{time}}.",
         },
       },
+    },
+    /** The Sounds tab (CTA-260): the boards' move sounds. */
+    sounds: {
+      intro: "Every board plays a sound when a piece moves — a move, a capture, castling, a check, a promotion, the end of the game.",
+      enabled: "Move sounds",
+      enabledHelp: "On every board, for your moves, the engine's and the trainer's.",
+      volume: "Volume",
+      stepping: "Sounds while stepping through moves",
+      steppingHelp: "Stepping forward through a game — the → key, a move clicked in the list, the board's controls. Moves played on the board sound either way.",
+      sample: "Play a sample",
+      creditsHeading: "Sound credits",
+      credits: "The move sounds are made from <impact>Impact Sounds</impact> and <interface>Interface Sounds</interface> by <kenney>Kenney</kenney>, released under the <licence>Creative Commons Zero (CC0 1.0)</licence> licence — free to use, credit not required.",
     },
     /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
     support: {

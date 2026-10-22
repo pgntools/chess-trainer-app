@@ -149,6 +149,17 @@ export const useBoardCore = ({
   const [dirty, setDirty] = useState(initialDirty);
   const markDirty = useCallback(() => setDirty(true), []);
 
+  /*
+    What the move sounds tell apart (CTA-260, `useMoveSounds`): **a move
+    played** — the reader's, the engine's, the trainer's, each through
+    `commit` or `playVariation` — marked with a new object each time, so even
+    a replayed move already in the tree counts; and **a game loaded** —
+    `loadTree`, `loadFen`, `reset` — counted, so the step that comes with it
+    is never heard as a move.
+  */
+  const [lastPlayed, setLastPlayed] = useState<{ nodeId: string } | null>(null);
+  const [loads, setLoads] = useState(0);
+
   const navigation = useTreeNavigation(tree, initialPly, initialNodeId);
   const { fen, nodeId, goToNode } = navigation;
 
@@ -166,6 +177,7 @@ export const useBoardCore = ({
       });
       setTree(added.tree);
       goToNode(added.nodeId);
+      setLastPlayed({ nodeId: added.nodeId });
       /*
         Only a move that actually added something is the reader's own work:
         `addMove` returns the *same tree by reference* when the move was
@@ -285,6 +297,7 @@ export const useBoardCore = ({
         setDirty(true);
       }
       goToNode(currentNodeId);
+      if (currentNodeId !== null && currentNodeId !== nodeId) setLastPlayed({ nodeId: currentNodeId });
     },
     [chessAt, fen, goToNode, nodeId, tree],
   );
@@ -297,6 +310,7 @@ export const useBoardCore = ({
       startFenRef.current = next.startFen;
       // The start position, in the same batch as the tree it belongs to.
       goToNode(null);
+      setLoads((count) => count + 1);
       // Deliberately loading something is the reader's own doing.
       setDirty(true);
     },
@@ -365,6 +379,7 @@ export const useBoardCore = ({
     setTree(startFen === undefined ? NEW_TREE : emptyTree(startFen));
     setPromotion(null);
     goToNode(null);
+    setLoads((count) => count + 1);
   }, [goToNode]);
 
   const flipBoard = useCallback(
@@ -401,6 +416,10 @@ export const useBoardCore = ({
     reset,
     dirty,
     markDirty,
+    /** The last move played on this board (not stepped to) — a new object per move (CTA-260). */
+    lastPlayed,
+    /** How many times a whole game was loaded or reset — a step that comes with one is not a move (CTA-260). */
+    loads,
   };
 };
 

@@ -11,6 +11,7 @@ import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
+import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
@@ -196,6 +197,13 @@ export const navItems = (): readonly NavItem[] => [
     to: "/settings/appearance",
     labelKey: "nav.settingsAppearance",
     icon: PaletteRoundedIcon,
+    folder: "settings",
+  },
+  // Sounds (CTA-260): the boards' move sounds.
+  {
+    to: "/settings/sounds",
+    labelKey: "nav.settingsSounds",
+    icon: VolumeUpRoundedIcon,
     folder: "settings",
   },
   // Engine (CTA-153): which engine every board runs.

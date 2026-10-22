@@ -10,6 +10,7 @@ import EngineBoardSquare from "../../shared/EngineBoardSquare";
 import type { PlayerPlates } from "../../shared/PlayerPlate";
 import BoardPanel, { type BoardPanelProps } from "./BoardPanel";
 import type { BoardCore } from "./useBoardCore";
+import { useMoveSounds } from "./useMoveSounds";
 
 /**
  * **The shell every v2 board is laid out by** — §9.3.1 of
@@ -51,6 +52,12 @@ import type { BoardCore } from "./useBoardCore";
  * next move takes). One of the screen's arrows on the same squares is
  * stood in for while the hover lasts, never edited — when it ends the
  * screen's arrows are exactly what it passed.
+ *
+ * ## The move sounds
+ *
+ * A move played or stepped to, one move forward, plays its sound
+ * (`useMoveSounds`, CTA-260) — here, so every board has them and none opts
+ * in; Settings → Sounds turns them off or quiet.
  *
  * ## What it deliberately leaves to the screen
  *
@@ -136,6 +143,8 @@ function BoardShell({
   panel,
   regionProps,
 }: BoardShellProps) {
+  useMoveSounds(core);
+
   /*
     The captured pieces for the position on screen, walked from the tree's own
     start position — the study-friendly baseline, not the standard one. The

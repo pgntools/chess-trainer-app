@@ -4,16 +4,18 @@ paths:
   - "src/lib/engineSearchSettings*"
   - "src/views/main/EngineMenu*"
   - "src/lib/evalSources/**"
+  - "src/lib/soundSettings*"
 ---
 
 # Settings — `/settings/<tab>`
 
 The app's own settings (CTA-86): one screen, **one tab per concern**, each tab
-a route segment. Six tabs today — **Export** and **Import** (the reader's
+a route segment. Seven tabs today — **Export** and **Import** (the reader's
 data out as one zip and back in — everything about them, the zip, the
 manifest, the layers, conflicts, caps, migrations, is
 [`import-export.md`](./import-export.md)), **Storage** (how much space the
-app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
+app's data takes, CTA-94), **Appearance** (the theme, CTA-107), **Sounds**
+(the boards' move sounds, CTA-260), **Engine**
 (which engine every board runs, CTA-153 — and the eval sources every analysis search asks first, CTA-196) and **Support** (how to reach us, CTA-155). This file is the section.
 
 ## 1. The section
@@ -22,9 +24,9 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the Stockfish connectors inner tab — a Browser and an API section: the `EnginePicker` and `EngineServerForm` blocks, CTA-198; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
-| Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
-| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `sounds` → `SoundsTab.tsx` (§3.1), `engine` → `EngineTab.tsx` (the Stockfish connectors inner tab — a Browser and an API section: the `EnginePicker` and `EngineServerForm` blocks, CTA-198; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsSounds`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
+| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.sounds.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
 **Adding a tab**: an entry in `SETTINGS_TABS` (`SettingsScreen.tsx`), a
 `navItems()` entry in the `settings` folder at `/settings/<id>`, and
@@ -85,6 +87,32 @@ system's registered themes (`src/design-system/themes/registry.ts`):
 
 Nothing about the reader's data changes, and the Export zip does not carry the
 choice (preferences are not data).
+
+### 3.1 The Sounds tab
+
+`/settings/sounds` (CTA-260) — the boards' **move sounds**:
+
+- **Three controls and a sample**, from the design system's forms (the MUI
+  lock's `Switch` and `Slider` through `SwitchField` and `SliderField`):
+  *Move sounds*, the master switch (**on by default**); *Volume*, 0–100 %
+  (70 by default); *Sounds while stepping through moves*, so browsing a game
+  can be quiet while a move played still sounds; and *Play a sample* — the
+  move sound at that volume. Off, the volume, the stepping switch and the
+  sample are disabled.
+- **A change applies at once** on every open board: the boards read the
+  settings as each sound plays (`readSoundSettings`), the tab through
+  `views/shared/useSoundSettings.ts` (`useSyncExternalStore`).
+- **A preference**, so `localStorage` — `chessapp.sounds`
+  (`lib/soundSettings.ts`, [`database.md`](./database.md) §2): JSON
+  `{ enabled, volume, stepping }`, read back field by field (a missing or
+  unreadable one its default, the volume held to 0–100); a refused write
+  only forgets it after the visit; another tab's change arrives by the
+  `storage` event. Not in the export zip.
+- **What sounds, and when**, is the board core's — `useMoveSounds`, called by
+  `BoardShell` ([`chessboard.md`](./chessboard.md) §9.3.1): one move
+  forward, played or stepped to, by its kind (`lib/moveSounds.ts`); the
+  samples are `public/sounds/` (Kenney's CC0 packs — the source, the licence
+  and how to rebuild them in its `README.md`, `scripts/move-sounds.sh`).
 
 ## 4. The Engine tab
 
@@ -326,6 +354,11 @@ whole design):
   `blocks/forms/EnginePicker/EnginePicker.test.tsx`, `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`,
   `blocks/forms/EngineServerForm/EngineServerForm.test.tsx`,
   `blocks/tables/EngineOptionsTable/EngineOptionsTable.test.tsx` — the blocks.
+- `views/settings/SoundsTab.test.tsx` — the Sounds tab: the defaults, each
+  control by role and name, a change stored at once (the master switch off
+  disabling the rest), the keyboard, the sample, Hebrew and axe;
+  `src/lib/soundSettings.test.ts` — the preference; the sounds themselves are
+  `chessboard.md` §9.3.1's.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second
   theme registered by a mock of the registry: the list and previews, a choice
   applying at once (a board colour probe), surviving a remount, and a bad

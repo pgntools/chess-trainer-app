@@ -481,6 +481,18 @@ describe("reduced motion, on every board (CTA-111)", () => {
     expect(boardOptions().showAnimations).toBe(false);
     unmount();
   });
+
+  // The move sounds (CTA-260) live in the shell: every board plays one, none opts in.
+  it.each(BOARDS)("$name plays a move's sound when a move is played", ({ Screen }) => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play");
+    const { unmount } = renderBoard(Screen);
+    expect(play).not.toHaveBeenCalled();
+    expect(drag("e2", "e4")).toBe(true);
+    expect(play).toHaveBeenCalled();
+    expect((play.mock.contexts[0] as HTMLAudioElement).src).toMatch(/sounds\/move\.mp3$/);
+    play.mockRestore();
+    unmount();
+  });
 });
 
 describe("an Analysis case's board (Analysis V2, CTA-186)", () => {
