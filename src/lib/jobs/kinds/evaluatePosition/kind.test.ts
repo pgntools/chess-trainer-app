@@ -104,6 +104,28 @@ describe("the Evaluate Position kind (CTA-238) on the jobs runtime", () => {
     expect(FakeEngine.latest().terminated).toBe(true);
   });
 
+  it("waits in the queue while the queue is held (CTA-258), then searches once and writes the session once", async () => {
+    await seed();
+    const clock = manualClock();
+    const runtime = started(testRuntime([evaluatePositionKind({ engine: engineDeps() })], memoryJobStore(), clock));
+    expect(await runtime.hold()).toBeUndefined();
+    const queued = await runtime.enqueue(EVALUATE_POSITION_KIND, inputOf());
+    if (!("id" in queued)) throw new Error("not queued");
+    for (let round = 0; round < 5; round += 1) {
+      await clock.advance(10_000);
+      await runUntilIdle(runtime);
+    }
+    expect(runtime.snapshot()?.find((each) => each.id === queued.id)?.status).toBe("queued");
+    expect(FakeEngine.instances).toHaveLength(0);
+    expect(sessionRecordOf(readPgnTags((await caseOf())!.pgn))?.record.positions.get(2)?.engine).not.toEqual({ kind: "searched", jobId: queued.id });
+
+    expect(await runtime.release()).toBeUndefined();
+    await runToEnd(runtime, clock, queued.id);
+    expect(runtime.snapshot()?.find((each) => each.id === queued.id)?.status).toBe("done");
+    expect(FakeEngine.instances).toHaveLength(1);
+    expect(sessionRecordOf(readPgnTags((await caseOf())!.pgn))?.record.positions.get(2)?.engine).toEqual({ kind: "searched", jobId: queued.id });
+  });
+
   it("writes its search into the session once, and loses none, when the tab dies between any two writes", async () => {
     const kinds = [evaluatePositionKind({ engine: engineDeps() })];
     await seed();

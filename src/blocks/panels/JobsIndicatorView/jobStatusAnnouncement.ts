@@ -23,11 +23,21 @@ const ANNOUNCED: Partial<Record<JobViewStatus, "started" | "paused" | "done" | "
  * moved on. Adjusted during render (`react-hooks/set-state-in-effect`), so it
  * is the same in every tab. Hand its words to `JobsIndicatorView`'s
  * `announcement`.
+ *
+ * **The queue hold** (`held`, CTA-258) is said too when it changes — "Job
+ * queue paused." / "Job queue resumed." — never on its first read. A running
+ * job the hold hands back to the queue says nothing more (queued is never
+ * announced); one starting after Resume queue is "Job started".
  */
-export const useJobStatusAnnouncement = (jobs: readonly AnnouncedJob[] | undefined): string => {
+export const useJobStatusAnnouncement = (jobs: readonly AnnouncedJob[] | undefined, held?: boolean): string => {
   const { t } = useTranslation();
   const [seen, setSeen] = useState<{ jobs: readonly AnnouncedJob[]; statuses: ReadonlyMap<string, JobViewStatus> } | undefined>();
+  const [seenHeld, setSeenHeld] = useState(held);
   const [message, setMessage] = useState("");
+  if (held !== seenHeld) {
+    if (held !== undefined && seenHeld !== undefined) setMessage(t(held ? "jobs.indicator.heldAnnounced" : "jobs.indicator.releasedAnnounced"));
+    setSeenHeld(held);
+  }
   if (jobs !== undefined && seen?.jobs !== jobs) {
     if (seen !== undefined) {
       for (const job of jobs) {

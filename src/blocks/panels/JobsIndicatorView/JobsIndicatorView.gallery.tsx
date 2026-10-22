@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
-import { HEBREW_RUNNING, LIVE_WORDS, RUNNING } from "./fixtures";
+import { HEBREW_RUNNING, HELD_EMPTY, HELD_QUEUED, LIVE_WORDS, RUNNING } from "./fixtures";
 import JobsIndicatorView, { type JobsIndicatorViewProps } from "./JobsIndicatorView";
 
 const demo = (props: Partial<JobsIndicatorViewProps>) => (
@@ -47,6 +47,9 @@ const gallery: GalleryModule<BlockFamilyId> = {
         </Box>
       ),
     },
+    { name: "The queue paused (CTA-258) — jobs waiting, a pause icon for the spinner", render: () => demo(HELD_QUEUED) },
+    { name: "The queue paused, nothing waiting — still shown", render: () => demo(HELD_EMPTY) },
+    { name: "The queue paused, compact — named in full", render: () => demo({ ...HELD_QUEUED, compact: true }) },
     { name: "A Hebrew title (switch the direction to RTL)", render: () => demo({ running: HEBREW_RUNNING }) },
   ],
 };

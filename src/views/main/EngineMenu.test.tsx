@@ -208,6 +208,17 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       expect(button()).toHaveAccessibleName("Engine settings — engine off");
     });
 
+    it("stops breathing once the queue is held (CTA-258) — the running job going back to the queue — and breathes again on release", () => {
+      engineJobsStub.set([job("running")]);
+      mount("off");
+      expect(icon()).toHaveAttribute("data-breathing", "true");
+      act(() => engineJobsStub.setHeld(true));
+      expect(icon()).toHaveAttribute("data-breathing", "false");
+      expect(button()).toHaveAccessibleName("Engine settings — engine off");
+      act(() => engineJobsStub.setHeld(false));
+      expect(icon()).toHaveAttribute("data-searching", "job");
+    });
+
     it("stays still for an engine job queued or paused, and for a job of another lane", () => {
       engineJobsStub.set([job("queued"), { ...job("paused"), id: "job-2" }, { ...job("running"), id: "job-3", lane: "cpu" }]);
       mount("on");

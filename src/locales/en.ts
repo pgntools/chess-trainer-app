@@ -3428,6 +3428,13 @@ const en = {
       confirmDeletePicked_one: "Delete {{count}} job?",
       confirmDeletePicked_other: "Delete {{count}} jobs?",
       confirmDeletePickedBody: "The picked jobs and their progress go — a running one is stopped. What they made stays; their files go with them.",
+      /** The queue hold (CTA-258): the header's toggle, its notice, a command refused. */
+      holdQueue: "Pause queue",
+      releaseQueue: "Resume queue",
+      heldTitle: "The queue is paused",
+      heldNotice: "No job starts until you resume the queue. A running job stopped where it was and waits in the queue; it goes on from there. Jobs you paused one by one stay paused.",
+      holdFailed: "The queue could not be paused. Try again.",
+      releaseFailed: "The queue could not be resumed. Try again.",
     },
     queued: "Queued: {{name}}.",
     openJob: "Open job",
@@ -3567,6 +3574,7 @@ const en = {
         requeued: "Queued again after a closed tab",
         interrupted: "Stopped by a closed tab",
         "lease-released": "Handed back",
+        held: "Stopped by Pause queue",
         failed: "Failed",
         done: "Done",
       },
@@ -3586,6 +3594,7 @@ const en = {
         paused: "Paused",
         cancelled: "Cancelled",
         interrupted: "Interrupted",
+        held: "Stopped by Pause queue",
       },
     },
     /**
@@ -3639,6 +3648,11 @@ const en = {
       done: "Job finished: {{name}}.",
       failed: "Job failed: {{name}}.",
       cancelled: "Job cancelled: {{name}}.",
+      /** The queue hold (CTA-258). */
+      held: "Jobs paused",
+      heldQueued: "Jobs paused: {{count}} queued",
+      heldAnnounced: "Job queue paused.",
+      releasedAnnounced: "Job queue resumed.",
     },
   },
   /**

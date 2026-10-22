@@ -3,7 +3,7 @@ import { render, renderHook, screen } from "@testing-library/react";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { JOBS_AFTER, JOBS_BEFORE, JOBS_PROGRESSED, LIVE_WORDS, RUNNING } from "./fixtures";
+import { HELD_EMPTY, HELD_QUEUED, JOBS_AFTER, JOBS_BEFORE, JOBS_PROGRESSED, LIVE_WORDS, RUNNING } from "./fixtures";
 import { useJobStatusAnnouncement, type AnnouncedJob } from "./jobStatusAnnouncement";
 import JobsIndicatorView, { type JobsIndicatorViewProps } from "./JobsIndicatorView";
 
@@ -57,6 +57,32 @@ describe("JobsIndicatorView (CTA-217)", () => {
   });
 });
 
+describe("JobsIndicatorView — the queue held (CTA-258)", () => {
+  it("says the queue is paused, with the count queued — a pause icon for the spinner, no progress", async () => {
+    mount({ ...HELD_QUEUED, running: RUNNING, heardAt: 1_000 });
+    const link = screen.getByRole("link", { name: "Jobs paused: 3 queued" });
+    expect(link).toHaveAttribute("href", "/jobs");
+    expect(link).toHaveAttribute("data-held", "true");
+    expect(screen.getByTestId("indicator-held")).toBeInTheDocument();
+    expect(screen.queryByTestId("indicator-heartbeat")).toBeNull();
+    await expectNoAxeViolations();
+  });
+
+  it("is shown with nothing waiting — a job queued now would not start", () => {
+    mount(HELD_EMPTY);
+    expect(screen.getByRole("link", { name: "Jobs paused" })).toBeInTheDocument();
+  });
+
+  it("is an icon alone when compact, named in full — in Hebrew too", async () => {
+    const { unmount } = mount({ ...HELD_QUEUED, compact: true });
+    expect(screen.getByRole("link", { name: "Jobs paused: 3 queued" })).toBeInTheDocument();
+    unmount();
+    await i18n.changeLanguage("he");
+    mount({ ...HELD_QUEUED, compact: true });
+    expect(screen.getByRole("link", { name: "משימות מושהות: 3 בתור" })).toBeInTheDocument();
+  });
+});
+
 describe("useJobStatusAnnouncement (CTA-217)", () => {
   it("says a status reached — not the first read, not a job that only moved on", () => {
     const { result, rerender } = renderHook(({ jobs }: { jobs: readonly AnnouncedJob[] | undefined }) => useJobStatusAnnouncement(jobs), {
@@ -78,6 +104,24 @@ describe("useJobStatusAnnouncement (CTA-217)", () => {
     rerender({ jobs: [{ id: "c", title: "Anand – Kramnik", status: "queued" }] });
     expect(result.current).toBe("");
     rerender({ jobs: [{ id: "c", title: "Anand – Kramnik", status: "running" }] });
+    expect(result.current).toBe("Job started: Anand – Kramnik.");
+  });
+
+  it("says the queue held and resumed (CTA-258) — not on its first read, nor for the job it hands back to the queue", () => {
+    type Props = { jobs: readonly AnnouncedJob[]; held: boolean | undefined };
+    const running: readonly AnnouncedJob[] = [{ id: "c", title: "Anand – Kramnik", status: "running" }];
+    const { result, rerender } = renderHook(({ jobs, held }: Props) => useJobStatusAnnouncement(jobs, held), {
+      initialProps: { jobs: running, held: undefined } as Props,
+    });
+    rerender({ jobs: running, held: false });
+    expect(result.current).toBe("");
+    rerender({ jobs: running, held: true });
+    expect(result.current).toBe("Job queue paused.");
+    rerender({ jobs: [{ ...running[0], status: "queued" }], held: true });
+    expect(result.current).toBe("Job queue paused.");
+    rerender({ jobs: [{ ...running[0], status: "queued" }], held: false });
+    expect(result.current).toBe("Job queue resumed.");
+    rerender({ jobs: running, held: false });
     expect(result.current).toBe("Job started: Anand – Kramnik.");
   });
 });

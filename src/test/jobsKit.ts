@@ -14,7 +14,10 @@ import { JOB_LANES } from "../lib/jobs/runtime";
 // The engine that answers every search at once, in a module of its own (no runtime import).
 export { AnsweringEngine, engineDeps, legalMove } from "./answeringEngine";
 
-/** A store whose writes fail from the `after`+1-th on — a tab that died mid-run, its writes never landing. */
+/**
+ * A store whose writes fail from the `after`+1-th on — a tab that died mid-run, its writes never landing.
+ * The queue hold's meta (CTA-258) is passed on where the inner store keeps it, its write one of the counted.
+ */
 export const crashingStore = (inner: JobStore, after: number): { store: JobStore; crashed: () => boolean; writes: () => number } => {
   let writes = 0;
   let crashed = false;
@@ -39,6 +42,9 @@ export const crashingStore = (inner: JobStore, after: number): { store: JobStore
       sealArtifact: gate((jobId: string, key: string, meta: { name: string; mimeType: string }) => inner.sealArtifact(jobId, key, meta)),
       readArtifact: (artifactId) => inner.readArtifact(artifactId),
       subscribe: (listener) => inner.subscribe(listener),
+      ...(inner.getMeta !== undefined && inner.putMeta !== undefined
+        ? { getMeta: inner.getMeta.bind(inner), putMeta: gate(inner.putMeta.bind(inner)) }
+        : {}),
     },
     crashed: () => crashed,
     writes: () => writes,

@@ -220,6 +220,47 @@ describe("the Jobs screen — /jobs (CTA-221)", () => {
   });
 });
 
+describe("Pause queue — the whole queue held (CTA-258)", () => {
+  it("holds the queue from the header — a notice, the indicator, the rows' commands still working — and resumes it", async () => {
+    const id = await queueAnalysis();
+    mountAt("/jobs");
+    await screen.findByRole("link", { name: "Open the job Alice – Bob" });
+    const user = userEvent.setup();
+    const indicator = await screen.findByTestId("jobs-indicator");
+    expect(indicator).toHaveTextContent("Jobs: 1 queued");
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    await user.click(await screen.findByRole("button", { name: "Pause queue" }));
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("The queue is paused");
+    expect(notice).toHaveTextContent("No job starts until you resume the queue.");
+    expect(screen.getByRole("link", { name: "Jobs paused: 1 queued" })).toHaveAttribute("href", "/jobs");
+    await waitFor(() => expect(screen.getByTestId("jobs-indicator-status")).toHaveTextContent("Job queue paused."));
+    expect(jobRuntime().held()).toBe(true);
+    await expectNoAxeViolations();
+
+    // The row's own Pause and Resume work under the hold: resumed, it is back in the queue, waiting.
+    await user.click(screen.getByRole("button", { name: "Pause Alice – Bob" }));
+    await waitFor(() => expect(screen.getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Paused"));
+    await user.click(screen.getByRole("button", { name: "Resume Alice – Bob" }));
+    await waitFor(() => expect(screen.getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Queued"));
+
+    // Resume queue: the notice goes, and is said.
+    await user.click(screen.getByRole("button", { name: "Resume queue" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("jobs-indicator-status")).toHaveTextContent("Job queue resumed."));
+    expect(screen.getByRole("button", { name: "Pause queue" })).toBeInTheDocument();
+    expect(jobRuntime().held()).toBe(false);
+  });
+
+  it("shows the held queue in the header's indicator on every screen, a job or none waiting", async () => {
+    startJobRuntime();
+    expect(await jobRuntime().hold()).toBeUndefined();
+    mountAt("/engine/games");
+    expect(await screen.findByRole("link", { name: "Jobs paused" })).toHaveAttribute("href", "/jobs");
+  });
+});
+
 describe("Resume against the settings in effect (CTA-236)", () => {
   /** A job queued deeper than the current settings, then paused. */
   const pausedDeeper = async () => {

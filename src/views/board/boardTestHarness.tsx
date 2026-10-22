@@ -247,8 +247,9 @@ type GateJobRecord = { id: string; lane: string; status: string; control?: "paus
  * **The jobs the engine gate reads** (CTA-237, `views/board/core/engineGateJobs.ts`),
  * stubbed: read at once — none running unless a test sets one — so a board
  * whose engine starts on (Play with Engine) does not wait on the page's
- * runtime reading IndexedDB. `set` puts a job running; `pause` records the
- * gate's pause; `reset` (in an `afterEach`) goes back to none.
+ * runtime reading IndexedDB. `set` puts a job running; `setHeld` holds the
+ * queue (CTA-258); `pause` records the gate's pause; `reset` (in an
+ * `afterEach`) goes back to none.
  *
  * ```ts
  * vi.mock("../board/core/engineGateJobs", async () =>
@@ -258,6 +259,7 @@ type GateJobRecord = { id: string; lane: string; status: string; control?: "paus
  */
 export const engineJobsStub = (() => {
   let records: readonly GateJobRecord[] = [];
+  let held = false;
   const listeners = new Set<() => void>();
   const pauses: string[] = [];
   return {
@@ -265,12 +267,19 @@ export const engineJobsStub = (() => {
       records = next;
       listeners.forEach((listener) => listener());
     },
+    /** The queue held (CTA-258), or released. */
+    setHeld: (next: boolean) => {
+      held = next;
+      listeners.forEach((listener) => listener());
+    },
     reset: () => {
       records = [];
+      held = false;
       pauses.length = 0;
       listeners.forEach((listener) => listener());
     },
     read: () => records,
+    readHeld: () => held,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => {
@@ -286,6 +295,7 @@ export const engineGateJobsMock = async () => {
   const { useSyncExternalStore } = await import("react");
   return {
     useEngineGateJobs: () => useSyncExternalStore(engineJobsStub.subscribe, engineJobsStub.read, engineJobsStub.read),
+    useEngineGateHeld: () => useSyncExternalStore(engineJobsStub.subscribe, engineJobsStub.readHeld, engineJobsStub.readHeld),
     pauseEngineJob: async (id: string) => {
       engineJobsStub.pauses.push(id);
     },
