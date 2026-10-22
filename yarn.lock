@@ -674,10 +674,9 @@
   resolved "https://registry.yarnpkg.com/@oxc-project/types/-/types-0.153.0.tgz#ac7cd0095a6db231a892d41310ddf2e1b2329bfc"
   integrity sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==
 
-"@pgntools/jobs-runtime@^0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@pgntools/jobs-runtime/-/jobs-runtime-0.2.1.tgz#76ad4cb5c9ed10180894969474511b1a63f1f06d"
-  integrity sha512-4TOIFC1Lr6DRdwEJb1J8dM9UeArwLp3hlDNp2HVPJkcNkiccsmxM/OusG3N9tTXd/4xiROMQ5Sj/r2MRKhoSkA==
+"@pgntools/jobs-runtime@github:pgntools/jobs-runtime#v0.3.0-dev.2":
+  version "0.3.0-dev.2"
+  resolved "https://codeload.github.com/pgntools/jobs-runtime/tar.gz/779bd82500e562336b6f6996db50e320e7e26c18"
   dependencies:
     xstate "^5.33.2"
 

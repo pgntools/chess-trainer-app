@@ -7,8 +7,8 @@ import { useTranslation } from "react-i18next";
 
 import { JobStamp } from "../../tables";
 
-/** How an attempt ended — the runtime's `JobAttempt.outcome`. */
-export type JobAttemptOutcome = "done" | "failed" | "retry-scheduled" | "paused" | "cancelled" | "interrupted";
+/** How an attempt ended — the runtime's `JobAttempt.outcome` (`held`: the queue was paused, CTA-258). */
+export type JobAttemptOutcome = "done" | "failed" | "retry-scheduled" | "paused" | "cancelled" | "interrupted" | "held";
 
 /** One attempt at a job — the runtime's `JobAttempt`. */
 export type JobAttemptView = {
