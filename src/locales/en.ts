@@ -2956,6 +2956,8 @@ const en = {
       stepping: "Sounds while stepping through moves",
       steppingHelp: "Stepping forward through a game — the → key, a move clicked in the list, the board's controls. Moves played on the board sound either way.",
       sample: "Play a sample",
+      creditsHeading: "Sound credits",
+      credits: "The move sounds are made from <impact>Impact Sounds</impact> and <interface>Interface Sounds</interface> by <kenney>Kenney</kenney>, released under the <licence>Creative Commons Zero (CC0 1.0)</licence> licence — free to use, credit not required.",
     },
     /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
     support: {

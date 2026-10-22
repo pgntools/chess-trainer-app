@@ -77,6 +77,15 @@ describe("Settings → Sounds", () => {
     expect(screen.getByRole("slider", { name: "עוצמה" })).toBeInTheDocument();
   });
 
+  it("credits the sounds' source and licence, linked", () => {
+    mount();
+    const credits = screen.getByRole("region", { name: "Sound credits" });
+    expect(credits).toHaveTextContent("Creative Commons Zero");
+    expect(screen.getByRole("link", { name: "Kenney" })).toHaveAttribute("href", "https://www.kenney.nl");
+    expect(screen.getByRole("link", { name: "Impact Sounds" })).toHaveAttribute("href", "https://kenney.nl/assets/impact-sounds");
+    expect(screen.getByRole("link", { name: /Creative Commons Zero/ })).toHaveAttribute("href", expect.stringContaining("creativecommons.org"));
+  });
+
   it("passes axe", async () => {
     const { container } = mount();
     await expectNoAxeViolations(container);

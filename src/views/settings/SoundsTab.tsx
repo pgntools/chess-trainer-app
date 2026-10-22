@@ -1,8 +1,9 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import { SliderField, SwitchField } from "../../design-system/components/forms";
 import { playMoveSound } from "../../lib/moveSoundPlayer";
@@ -63,6 +64,22 @@ function SoundsTab() {
         >
           {t("settings.sounds.sample")}
         </Button>
+      </Box>
+      <Box component="section" aria-labelledby="sounds-credits-heading" data-testid="sounds-credits">
+        <Typography variant="subtitle2" component="h2" id="sounds-credits-heading">
+          {t("settings.sounds.creditsHeading")}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          <Trans
+            i18nKey="settings.sounds.credits"
+            components={{
+              kenney: <Link href="https://www.kenney.nl" target="_blank" rel="noopener noreferrer" />,
+              impact: <Link href="https://kenney.nl/assets/impact-sounds" target="_blank" rel="noopener noreferrer" />,
+              interface: <Link href="https://kenney.nl/assets/interface-sounds" target="_blank" rel="noopener noreferrer" />,
+              licence: <Link href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer" />,
+            }}
+          />
+        </Typography>
       </Box>
     </Box>
   );

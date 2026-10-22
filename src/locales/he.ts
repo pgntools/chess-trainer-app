@@ -2357,6 +2357,8 @@ const he: typeof en = {
       stepping: "צלילים בזמן מעבר בין מסעים",
       steppingHelp: "מעבר קדימה במשחק — מקש →, לחיצה על מסע ברשימה, כפתורי הלוח. מסעים שמשוחקים על הלוח משמיעים צליל בכל מקרה.",
       sample: "השמעת דוגמה",
+      creditsHeading: "קרדיט לצלילים",
+      credits: "צלילי המסעים הופקו מתוך <impact>Impact Sounds</impact> ו-<interface>Interface Sounds</interface> של <kenney>Kenney</kenney>, ברישיון <licence>Creative Commons Zero (CC0 1.0)</licence> — חופשי לשימוש, ללא חובת קרדיט.",
     },
     support: {
       title: "צריכים עזרה עם {{name}}?",
