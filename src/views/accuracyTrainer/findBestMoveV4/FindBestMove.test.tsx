@@ -511,6 +511,59 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(jobRuntime().snapshot() ?? []).toEqual([]);
   });
 
+  it("takes the first game of several, names it, and chooses another in the games picker — only the chosen game read (CTA-259)", async () => {
+    const user = userEvent.setup();
+    mount();
+    const several = [
+      '[Event "Club"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 *',
+      '[Event "Club"]\n[White "Carol"]\n[Black "Dan"]\n[Date "2026.01.02"]\n\n1. d4 d5 2. c4 *',
+      '[Event "Club"]\n[White "Eve"]\n[Black "Finn"]\n\n1. e4 e5 2. Ke3 *',
+    ].join("\n\n");
+    await load(user, several);
+    // No list of the games in the form: the first taken, named, and a way to choose another.
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByTestId("accuracy-setup-chosen")).toHaveTextContent("Game 1 of 3: Alice – Bob, Club");
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Alice – Bob — 2 positions to train");
+    expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
+    await expectNoAxeViolations();
+
+    // A game that will not read is said, and Start is off.
+    await user.click(screen.getByRole("button", { name: "Choose another game…" }));
+    let picker = screen.getByRole("dialog", { name: "Choose a game" });
+    expect(within(picker).queryByRole("checkbox")).not.toBeInTheDocument();
+    await user.click(within(picker).getByText("Eve"));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose a game" })).not.toBeInTheDocument());
+    expect(screen.getByTestId("accuracy-setup-chosen")).toHaveTextContent("Game 3 of 3: Eve – Finn, Club");
+    expect(screen.getByRole("alert")).toHaveTextContent("That game cannot be read — choose another.");
+    expect(screen.queryByTestId("accuracy-setup-loaded")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+
+    // Another game chosen is the session's source, named from its tags.
+    await user.click(screen.getByRole("button", { name: "Choose another game…" }));
+    picker = screen.getByRole("dialog", { name: "Choose a game" });
+    await user.click(within(picker).getByText("Carol"));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose a game" })).not.toBeInTheDocument());
+    expect(screen.getByTestId("accuracy-setup-chosen")).toHaveTextContent("Game 2 of 3: Carol – Dan, Club, 2026.01.02");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Carol – Dan — 3 positions to train: White 2, Black 1.");
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByTestId(`${ID}-progress`);
+    expect(screen.getByRole("heading", { level: 2, name: "Carol – Dan" })).toBeInTheDocument();
+    await pgnHolds('[White "Carol"]', "1. d4");
+  });
+
+  it("forgets the games of a file once one game is loaded in their place", async () => {
+    const user = userEvent.setup();
+    mount();
+    await load(user, '[Event "A"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 *\n\n[Event "B"]\n[White "Carol"]\n[Black "Dan"]\n\n1. d4 d5 *');
+    expect(screen.getByTestId("accuracy-setup-chosen")).toBeInTheDocument();
+    await user.clear(screen.getByRole("textbox", { name: "Or paste its PGN" }));
+    await load(user, '[White "Gil"]\n[Black "Hana"]\n\n1. c4 e5 *');
+    expect(screen.queryByTestId("accuracy-setup-chosen")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose another game…" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Gil – Hana");
+  });
+
   it("asks the engine where the lines are too few: a job on the first move, the choice graded once it ends, its lines in the session", async () => {
     const user = userEvent.setup();
     mount();

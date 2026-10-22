@@ -647,7 +647,12 @@ const en = {
       sides: { white: "White", black: "Black", both: "Both" },
       noneForSide: "No position of that side was analysed.",
       start: "Start",
-      games: { title: "Games in the file", versus: "vs", fallback: "Game {{n}}" },
+      games: {
+        /** A text of several games (CTA-259): the one chosen, and the games picker to choose another. */
+        chosen: "Game {{number}} of {{total}}: {{game}}",
+        chooseOther: "Choose another game…",
+        unreadable: "That game cannot be read — choose another.",
+      },
       caseProblem: "That case could not be read.",
       /** A Find Best Move session's own PGN loaded (CTA-239): it resumes, as a new session. */
       loadedSession: "{{name}} — a Find Best Move session: {{done}} of {{count}} positions answered or skipped. Resume goes on with it, a new session of its own.",
