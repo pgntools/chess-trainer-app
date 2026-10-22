@@ -511,7 +511,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     expect(jobRuntime().snapshot() ?? []).toEqual([]);
   });
 
-  it("takes the first game of several, names it, and chooses another in the games picker — only the chosen game read (CTA-259)", async () => {
+  it("opens the games picker on a PGN of several games — the first taken until another is chosen, only the chosen game read (CTA-259)", async () => {
     const user = userEvent.setup();
     mount();
     const several = [
@@ -520,7 +520,12 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
       '[Event "Club"]\n[White "Eve"]\n[Black "Finn"]\n\n1. e4 e5 2. Ke3 *',
     ].join("\n\n");
     await load(user, several);
-    // No list of the games in the form: the first taken, named, and a way to choose another.
+    // The picker opens at once, no ticks — a click chooses.
+    let picker = await screen.findByRole("dialog", { name: "Choose a game" });
+    expect(within(picker).queryByRole("checkbox")).not.toBeInTheDocument();
+    // Closed without a choice: no list of the games in the form, the first taken and named, and a way to choose another.
+    await user.click(within(picker).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose a game" })).not.toBeInTheDocument());
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(screen.getByTestId("accuracy-setup-chosen")).toHaveTextContent("Game 1 of 3: Alice – Bob, Club");
     expect(screen.getByTestId("accuracy-setup-loaded")).toHaveTextContent("Alice – Bob — 2 positions to train");
@@ -529,8 +534,7 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
 
     // A game that will not read is said, and Start is off.
     await user.click(screen.getByRole("button", { name: "Choose another game…" }));
-    let picker = screen.getByRole("dialog", { name: "Choose a game" });
-    expect(within(picker).queryByRole("checkbox")).not.toBeInTheDocument();
+    picker = screen.getByRole("dialog", { name: "Choose a game" });
     await user.click(within(picker).getByText("Eve"));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose a game" })).not.toBeInTheDocument());
     expect(screen.getByTestId("accuracy-setup-chosen")).toHaveTextContent("Game 3 of 3: Eve – Finn, Club");
@@ -556,6 +560,8 @@ describe("Find Best Move v4 (CTA-238, CTA-244)", () => {
     const user = userEvent.setup();
     mount();
     await load(user, '[Event "A"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 *\n\n[Event "B"]\n[White "Carol"]\n[Black "Dan"]\n\n1. d4 d5 *');
+    await user.click(within(await screen.findByRole("dialog", { name: "Choose a game" })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose a game" })).not.toBeInTheDocument());
     expect(screen.getByTestId("accuracy-setup-chosen")).toBeInTheDocument();
     await user.clear(screen.getByRole("textbox", { name: "Or paste its PGN" }));
     await load(user, '[White "Gil"]\n[Black "Hana"]\n\n1. c4 e5 *');

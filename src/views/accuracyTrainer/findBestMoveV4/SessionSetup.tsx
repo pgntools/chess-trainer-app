@@ -66,7 +66,8 @@ type GameProblem = { detail?: string };
  *   needs the engine, which each position offers.
  * - **A text of several games** (CTA-259 — New case's way, CTA-208): only
  *   **indexed** (`indexPgnGames`, tags and text, no move read), the first
- *   game taken and only the chosen game parsed; the form names it ("Game 3
+ *   game taken and only the chosen game parsed, the games picker opened at
+ *   once; the form names the game ("Game 3
  *   of 15,905: …") with *Choose another game…*, which opens the games
  *   picker (`GamesPickerDialog`, `one` mode — its rows built the first time
  *   it opens). A chosen game that will not read is said, and no source.
@@ -143,7 +144,10 @@ function SessionSetup({ source, onSource, setup, side, onSide }: SessionSetupPro
     const indexed = indexPgnGames([normaliseRepertoireText(text)]);
     if (indexed.length > 1) {
       setEntries(indexed);
+      // The first game until another is chosen — and the picker opens on them at once.
       chooseGame(indexed, 0);
+      setRowsBuilt(true);
+      setChoosingGame(true);
       return;
     }
     const reading = readRepertoireText(text);
