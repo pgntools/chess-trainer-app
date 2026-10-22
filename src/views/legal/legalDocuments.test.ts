@@ -7,6 +7,7 @@ import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
 import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettings";
 import { JOBS_SETTINGS_STORAGE_KEY } from "../../lib/jobsSettings";
+import { SOUND_SETTINGS_STORAGE_KEY } from "../../lib/soundSettings";
 import { EVAL_SOURCES } from "../../lib/evalSources";
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
@@ -30,6 +31,8 @@ const STORED = [
   ENGINE_SEARCH_SETTINGS_STORAGE_KEY,
   // The Jobs settings — the default engine and preset (CTA-193).
   JOBS_SETTINGS_STORAGE_KEY,
+  // The move sounds' settings (CTA-260).
+  SOUND_SETTINGS_STORAGE_KEY,
   // What each eval source keeps — the lichess evaluation API's settings (CTA-196).
   ...EVAL_SOURCES.flatMap((source) => source.storageKeys),
   LANGUAGE_STORAGE_KEY,

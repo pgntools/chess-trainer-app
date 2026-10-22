@@ -139,7 +139,7 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/analysis/jobs")).toEqual([]);
   });
 
-  it("files Export, Import, Storage, Appearance and Engine in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-153)", () => {
+  it("files Export, Import, Storage, Appearance, Sounds, Engine and Support in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-260, CTA-153, CTA-155)", () => {
     const settings = navFolders().find((folder) => folder.id === "settings");
     expect(settings).toMatchObject({ labelKey: "nav.folders.settings" });
     expect(settings?.singleEntry).toBeFalsy();
@@ -152,6 +152,7 @@ describe("the shipped nav tree", () => {
       ["/settings/import", "nav.settingsImport"],
       ["/settings/storage", "nav.settingsStorage"],
       ["/settings/appearance", "nav.settingsAppearance"],
+      ["/settings/sounds", "nav.settingsSounds"],
       ["/settings/engine", "nav.settingsEngine"],
       ["/settings/support", "nav.settingsSupport"],
     ]);
@@ -159,6 +160,7 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/settings/import")).toEqual(["settings"]);
     expect(folderPath("/settings/storage")).toEqual(["settings"]);
     expect(folderPath("/settings/appearance")).toEqual(["settings"]);
+    expect(folderPath("/settings/sounds")).toEqual(["settings"]);
     expect(folderPath("/settings/engine")).toEqual(["settings"]);
     expect(folderPath("/settings/support")).toEqual(["settings"]);
   });

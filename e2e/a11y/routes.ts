@@ -202,6 +202,8 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },
   { id: "settings-storage", pattern: "/settings/:tab", path: "settings/storage" },
   { id: "settings-appearance", pattern: "/settings/:tab", path: "settings/appearance" },
+  // The Sounds tab (CTA-260): the move sounds' switches and volume.
+  { id: "settings-sounds", pattern: "/settings/:tab", path: "settings/sounds" },
   // The Engine tab (CTA-153): the registry's engines, the multi-thread one disabled where the host does not isolate the page.
   { id: "settings-engine", pattern: "/settings/:tab", path: "settings/engine" },
   // The Support tab (CTA-155): a line and the button that opens the support dialog.
