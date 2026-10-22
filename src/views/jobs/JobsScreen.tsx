@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -16,13 +18,14 @@ import {
 } from "../../blocks/tables";
 import type { DataTableSort } from "../../design-system/patterns/tables";
 import { ConfirmDialog, DeleteManyDialog } from "../../design-system/components/dialogs";
+import { InlineAlert, useSnackbar } from "../../design-system/components/feedback";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
 import { JOB_KIND_LOCALE_KEYS } from "../../lib/jobs/kinds";
 import { jobRuntime } from "../../lib/jobs/runtime";
 import { useOwnPageHeading } from "../main/pageTitle";
 import { jobRowOf, kindLabelOf, newestFirst } from "./jobViews";
 import { JOBS_SETTINGS_PATH, jobPath } from "./paths";
-import { useJobEntitiesVersion, useJobRecords } from "./useJobs";
+import { useJobEntitiesVersion, useJobQueueHeld, useJobRecords } from "./useJobs";
 import { useResumeJob } from "./useResumeJob";
 
 /**
@@ -35,11 +38,20 @@ import { useResumeJob } from "./useResumeJob";
  * Delete are the runtime's commands — store writes any tab can make, which
  * the tab running the job acts on. Resume on an engine job whose settings
  * differ from the current ones asks first (`useResumeJob`, CTA-236).
+ *
+ * **Pause queue / Resume queue** (CTA-258), in the header: the runtime's
+ * queue hold — durable, every tab's — under which no queued job starts and a
+ * running one goes back to the queue from its checkpoint; a notice says so
+ * while it lasts. The rows' commands go on working under it (a row's Resume
+ * puts its job back in the queue, waiting), and Resume queue leaves a job
+ * paused on its own paused.
  */
 function JobsScreen() {
   useOwnPageHeading();
   const { t } = useTranslation();
   const jobs = useJobRecords();
+  const held = useJobQueueHeld();
+  const { show } = useSnackbar();
   // The subjects' names and links come from their stores: a rename or a delete re-renders the rows.
   const entities = useJobEntitiesVersion();
   const [filters, setFilters] = useState<JobQueueFilterValues>(NO_JOB_QUEUE_FILTERS);
@@ -75,6 +87,14 @@ function JobsScreen() {
   );
   const runtime = jobRuntime();
   const pickedCount = [...picked].filter((id) => jobs?.some((job) => job.id === id)).length;
+  const toggleHold = () => {
+    const holding = held !== true;
+    void (holding ? runtime.hold() : runtime.release()).then((problem) => {
+      if (problem !== undefined) {
+        show({ severity: "error", message: t(holding ? "jobs.screen.holdFailed" : "jobs.screen.releaseFailed"), testId: "jobs-hold-failed" });
+      }
+    });
+  };
 
   return (
     <Box data-testid="jobs-screen" sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -82,16 +102,28 @@ function JobsScreen() {
         title={t("jobs.screen.title")}
         count={<span data-testid="jobs-count">{jobs === undefined ? "" : t("jobs.count", { count: jobs.length })}</span>}
         actions={
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<SettingsRoundedIcon />}
-            component={RouterLink}
-            to={JOBS_SETTINGS_PATH}
-            data-testid="jobs-settings-link"
-          >
-            {t("jobs.screen.settings")}
-          </Button>
+          <>
+            <Button
+              size="small"
+              variant={held === true ? "contained" : "outlined"}
+              startIcon={held === true ? <PlayArrowRoundedIcon /> : <PauseRoundedIcon />}
+              onClick={toggleHold}
+              disabled={held === undefined}
+              data-testid="jobs-hold-toggle"
+            >
+              {t(held === true ? "jobs.screen.releaseQueue" : "jobs.screen.holdQueue")}
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<SettingsRoundedIcon />}
+              component={RouterLink}
+              to={JOBS_SETTINGS_PATH}
+              data-testid="jobs-settings-link"
+            >
+              {t("jobs.screen.settings")}
+            </Button>
+          </>
         }
         testId="jobs-header"
       >
@@ -99,6 +131,13 @@ function JobsScreen() {
           {t("jobs.screen.intro")}
         </Typography>
       </ListScreenHeader>
+      {held === true && (
+        <Box sx={{ mb: 2 }}>
+          <InlineAlert severity="info" title={t("jobs.screen.heldTitle")} testId="jobs-held-notice">
+            {t("jobs.screen.heldNotice")}
+          </InlineAlert>
+        </Box>
+      )}
       <JobQueueTable
         rows={rows}
         loading={jobs === undefined}

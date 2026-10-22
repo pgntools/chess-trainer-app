@@ -35,7 +35,7 @@
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
     "@mui/stylis-plugin-rtl": "^9.4.0",
-    "@pgntools/jobs-runtime": "^0.2.1",
+    "@pgntools/jobs-runtime": "github:pgntools/jobs-runtime#v0.3.0-dev.2",
     "@xstate/react": "^6.1.0",
     "chess.js": "^1.4.0",
     "fflate": "^0.8.3",

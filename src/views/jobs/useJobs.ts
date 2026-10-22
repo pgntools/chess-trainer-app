@@ -33,6 +33,20 @@ export const useJobRecord = (id: string): JobRecord | undefined => {
   return useJob(jobRuntime(), id);
 };
 
+const subscribeRuntime = (listener: () => void) => jobRuntime().subscribe(listener);
+const runtimeHeld = () => jobRuntime().held();
+
+/**
+ * **Is the queue held** (CTA-258) — the runtime's queue hold (`hold()` /
+ * `release()`, durable and shared by every tab): while it is, no queued job
+ * starts and a running one goes back to the queue from its checkpoint.
+ * `undefined` until the first read lands; the pre-render reads none.
+ */
+export const useJobQueueHeld = (): boolean | undefined => {
+  useStartedRuntime();
+  return useSyncExternalStore(subscribeRuntime, runtimeHeld, () => undefined);
+};
+
 /** A running job's live telemetry, from whichever tab runs it. */
 export const useJobLiveOf = (id: string): unknown => useJobLive(jobRuntime(), id);
 

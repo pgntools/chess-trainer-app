@@ -47,7 +47,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 
 | Path | What lives there |
 | --- | --- |
-| `package.json` | `"@pgntools/jobs-runtime": "^0.2.1"` — from npm (published from the runtime's CI with provenance; `npm audit signatures`). A dev build is a git tag carrying `dist/` (`github:pgntools/jobs-runtime#v0.3.0-dev.N`). |
+| `package.json` | `"@pgntools/jobs-runtime": "github:pgntools/jobs-runtime#v0.3.0-dev.2"` — **a dev build** (a git tag carrying `dist/`) for the queue hold (JBR-3, CTA-258) until 0.3.0 is on npm; then back to a range from npm (published from the runtime's CI with provenance; `npm audit signatures`). |
 | `src/lib/jobs/runtime.ts` | **The page's one runtime**: `jobRuntime()` (made lazily, touching nothing), `startJobRuntime()` (the shell's effect), `stopJobRuntime()` / `deleteJobsDb()` (tests). Namespace and database `chessapp.backgroundJobs`, one lane `{ engine: 1 }` (the `cpu` lane went with the merge, CTA-232), at most 200 jobs, the browser adapters (`indexedDbJobStore`, `webLocksLeader`, `broadcastBus`), `newRecordId` ids. |
 | `src/lib/jobs/kinds/index.ts` | **The kind registry** — `jobKinds(deps)`, one line per kind; `JOB_KIND_LOCALE_KEYS`; `RETIRED_JOB_KIND_LOCALE_KEYS` (a retired kind's old name, CTA-232) and `isRegisteredJobKind`. A factory: a test hands in an engine. |
 | `src/lib/jobs/kinds/<kind>/` | **A kind**: `core.ts` (pure: input and state types, lenient parsers, plan, one step, the outputs planned), `kind.ts` (the `JobKind` adapter over the core and the app's stores), their tests. `computerAnalysis/` (with `liveAnalysis.ts`, a running job's results so far), `repertoireEvaluation/`, `evaluatePosition/` (CTA-238, dev-only — §3.2). |
@@ -56,7 +56,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `src/lib/jobs/kinds/engineRuns.ts` | One engine session per job **run**, kept across its steps by job id and closed when a step's signal aborts, a step throws, or at `finalize`; an engine server's engine failing becomes the retryable `EngineServerUnreachableError`. |
 | `src/lib/jobs/entityTypes.ts`, `entities.ts` | **The entity registry**: `analysis-case`, `analysis-project`, `repertoire`, `library-collection` — each a label, an app path and an existence check over its store's snapshot; `subscribeJobEntities`. A kind names types and never imports a screen. `library-collection` no kind applies to since CTA-232: it stays for a reader's stored merge jobs (their subjects named and linked, an unfinished one deleted with its collection). |
 | `src/lib/jobs/subjectDeletion.ts` | **The deletion rule's hook**: the stores call `removeUnfinishedJobsOf`; the runtime registers itself (a delete before it exists is held). |
-| `src/views/jobs/` | **The screens**: `JobsScreen` (`/jobs`), `JobScreen` (`/jobs/<id>`), `JobsSettingsScreen` (`/jobs/settings`), `JobsShell` (the runtime's start, the eval sources' warning, the header indicator), `useJobs.ts` (the runtime's React hooks over the page's runtime), `jobViews.ts` (a record mapped onto the blocks' view models), `kindViews.ts` + `kindViewTypes.ts` (each kind's views), `kinds/` (those views), `useNewJob.ts` + `NewJobHost.tsx`, `useResumeJob.ts` (Resume, asking first — CTA-236), `paths.ts`, `useJobsSettings.ts`. |
+| `src/views/jobs/` | **The screens**: `JobsScreen` (`/jobs`), `JobScreen` (`/jobs/<id>`), `JobsSettingsScreen` (`/jobs/settings`), `JobsShell` (the runtime's start, the eval sources' warning, the header indicator), `useJobs.ts` (the runtime's React hooks over the page's runtime, and `useJobQueueHeld` — the queue hold, CTA-258), `jobViews.ts` (a record mapped onto the blocks' view models), `kindViews.ts` + `kindViewTypes.ts` (each kind's views), `kinds/` (those views), `useNewJob.ts` + `NewJobHost.tsx`, `useResumeJob.ts` (Resume, asking first — CTA-236), `paths.ts`, `useJobsSettings.ts`. |
 | `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable` (its filters in its headers since CTA-221, `JobQueueFilters` gone), `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221), `JobSettingsChangedDialog` (CTA-236); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`, `JobEngineSettings` (the Evaluate Position job's engine settings plate, CTA-248); `JobsSettingsForm`. (`CollectionMergeForm` is the Library's since CTA-232, in its `CollectionMergeDialog`; `CollectionMergeSummary` is gone.) Block-local view models: no block imports the runtime. |
 | `src/test/jobsKit.ts` | The kinds' test kit (§6); its answering engine in `src/test/answeringEngine.ts` (no runtime import — a screen test mocking the registry imports it from its mock). |
 
@@ -79,6 +79,7 @@ a kind's own). `/analysis/jobs` is an unknown route.
  a screen ──useNewJob(entity)──▶ NewJobHost ──kind's NewJob view──▶ jobRuntime().enqueue(kind, input)
                                                                         │
  any tab: pause · resume · cancel · remove · removeUnfinishedOf ──────▶ │  @pgntools/jobs-runtime
+ any tab: hold · release (the whole queue, CTA-258) ────────────────────▶ │
                                                                         ▼  (IndexedDB chessapp.backgroundJobs,
  the leader tab (Web Lock): lane engine ──▶ kind.plan / step / finalize / applyOutput   Web Lock, BroadcastChannel)
                                                         │                       │
@@ -104,6 +105,8 @@ a kind's own). `/analysis/jobs` is an unknown route.
   (CTA-232); a kind that needs one again declares it in `JOB_LANES`.
 - **Retention**: 200 jobs; past it the oldest finished go with their files;
   an enqueue is refused (`too-many`) when every one is unfinished.
+- **The queue hold** (CTA-258, the runtime's `hold()` / `release()` /
+  `held()`, JBR-3) — §4.2.
 
 ---
 
@@ -290,7 +293,9 @@ stay in the catalogs, as the dev screens' do).
 - **The header indicator** — `JobsIndicatorView` over the runtime: the
   running job's title and progress, or the queued count; the engine kinds'
   beat and live words (`liveSummary`); announced politely only on a change of
-  status (`useJobStatusAnnouncement`).
+  status (`useJobStatusAnnouncement`). While the queue is held (§4.2),
+  "Jobs paused" (and the count queued) with a pause icon, on every screen,
+  even with nothing waiting.
 - **New job** — `useNewJob(testId)` → `{ open(subjects, context?), dialog }`:
   the kinds whose `appliesTo` holds the entity's type, the first that can
   start chosen; the chosen kind's `NewJob` view renders `NewJobFrame` itself
@@ -357,6 +362,45 @@ difference; **a field the stored input does not carry is never different**
   `JobSettingsChangedDialog.test.tsx`, `views/jobs/Jobs.test.tsx` (both
   screens).
 
+### 4.2 Pause queue — the whole queue held (CTA-258)
+
+Pausing a running job only lets the lane claim the next one, so **the whole
+queue is paused by the runtime's queue hold** (`@pgntools/jobs-runtime`
+0.3, JBR-3 — not an app-side loop over `pause(id)`, which would neither stop
+a job queued afterwards nor tell a reader's own pauses from its own).
+
+- **The runtime**: `hold()` writes one durable runtime-wide value (the
+  store's `meta`; `indexedDbJobStore` at database version 2) — every tab's
+  lanes stop claiming, and the running job's step is aborted and the job
+  handed back to **`queued`** from its checkpoint (history `held`, attempt
+  outcome `held`, no attempt spent). `release()` lets the queue go on in its
+  usual order; **a job the reader paused stays paused** — per-job statuses
+  are never touched by the hold. An enqueue while held waits as queued
+  (a Find Best Move session's Evaluate Position job too). Per-job Pause /
+  Resume / Cancel / Delete keep working; a row's Resume while held puts its
+  job back in the queue, waiting. `held()` is `undefined` until the first
+  read, and `subscribe()` hears it change, in every tab; it survives a
+  reload and a leader handover.
+- **The app**: `useJobQueueHeld()` (`views/jobs/useJobs.ts`, over
+  `jobRuntime().subscribe` / `held()`); the Jobs screen's header toggles
+  **Pause queue** / **Resume queue** (`jobRuntime().hold()` / `release()`;
+  a refusal is an error snackbar, `jobs.screen.holdFailed` /
+  `releaseFailed`) and, while held, an `InlineAlert` notice — nothing starts
+  until resumed, the stopped job waits in the queue, jobs paused one by one
+  stay paused; the header indicator (`JobsIndicatorView`'s `held`) shows it
+  on every screen, and `useJobStatusAnnouncement(jobs, held)` says "Job queue
+  paused." / "Job queue resumed." (never on the first read); a history's
+  `held` event and attempt outcome have their words
+  (`jobs.history.eventTypes.held`, `jobs.history.outcome.held`).
+- **The top bar's robot** (`views/main/engineSearching.ts`) breathes for no
+  job while the queue is held — the running one is going back to the queue
+  (`useEngineGateHeld`, `views/board/core/engineGateJobs.ts`; the board
+  harness's `engineJobsStub.setHeld`). The engine gate itself (invariant 5)
+  is unchanged: the held job is `queued` within its step.
+- Words: `jobs.screen.holdQueue`, `releaseQueue`, `heldTitle`, `heldNotice`,
+  `holdFailed`, `releaseFailed`; `jobs.indicator.held`, `heldQueued`,
+  `heldAnnounced`, `releasedAnnounced`.
+
 ---
 
 ## 5. Invariants
@@ -400,6 +444,17 @@ difference; **a field the stored input does not carry is never different**
 - **Two tabs**: two runtimes over one `memoryJobStore` and one `memoryLock` —
   one pauses, the other's step aborts and its engine is terminated; Resume
   goes on from the checkpoint (`computerAnalysis/kind.test.ts`).
+- **The queue hold** (`lib/jobs/queueHold.test.ts`, CTA-258): two tabs, one
+  holding — the running job back to queued at its checkpoint, nothing
+  starting, a job queued meanwhile waiting, Resume queue going on from the
+  checkpoint; a job paused before or during the hold still paused after;
+  the hold kept across a reload of the page's runtime (fake-indexeddb); and
+  **the crash kit through a hold** — an engine that holds the queue at its
+  second position, the run counted, then the tab dying after every write,
+  the second tab releasing and finishing: done, each Case once.
+  `crashingStore` passes the store's `getMeta` / `putMeta` on (`putMeta` a
+  counted write). Evaluate Position waiting while held:
+  `evaluatePosition/kind.test.ts`; the screen: `views/jobs/Jobs.test.tsx`.
 - **The registry** (`kinds/index.test.ts`): every kind's words in both
   catalogs, its entity types, `parseState(plan().state)` round-tripping.
 - **The screens** (`views/jobs/Jobs.test.tsx`) mount the real routes over the

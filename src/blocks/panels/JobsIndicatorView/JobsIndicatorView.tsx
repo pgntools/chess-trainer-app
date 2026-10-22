@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import PauseCircleOutlineRoundedIcon from "@mui/icons-material/PauseCircleOutlineRounded";
 import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
@@ -14,6 +15,11 @@ export type JobsIndicatorViewProps = {
   running?: { title: string; progress: JobProgressView };
   /** How many wait in the queue. */
   queuedCount: number;
+  /**
+   * The queue is held (CTA-258): nothing starts until it is resumed. Shown
+   * whatever runs or waits — a pause icon for the spinner, "Jobs paused".
+   */
+  held?: boolean;
   /** The Jobs screen (`/jobs`). */
   link: LinkTarget;
   /** An icon alone (under the breakpoint), named in full. */
@@ -40,6 +46,10 @@ export type JobsIndicatorViewProps = {
  * none runs or waits. **Its status region says what `announcement` says** —
  * a change of status, never the progress.
  *
+ * **While the queue is held** (`held`, CTA-258) it is shown even with nothing
+ * waiting — a job queued now would not start: "Jobs paused" (and the count
+ * queued), a pause icon in the spinner's place.
+ *
  * **While the engine is heard** (`heardAt`), its spinner beats once each
  * time (`useEnginePulse`: an opacity beat on the theme's durations, still
  * under reduced motion), and the live words join its name.
@@ -47,20 +57,35 @@ export type JobsIndicatorViewProps = {
  * Presentational: what runs, the queue, the link and the words to announce
  * are props. Its words are `jobs.indicator.*`.
  */
-function JobsIndicatorView({ running, queuedCount, link, compact, heardAt, liveWords, announcement, testId }: JobsIndicatorViewProps) {
+function JobsIndicatorView({
+  running,
+  queuedCount,
+  held = false,
+  link,
+  compact,
+  heardAt,
+  liveWords,
+  announcement,
+  testId,
+}: JobsIndicatorViewProps) {
   const { t } = useTranslation();
-  const pulse = useEnginePulse(heardAt);
+  const pulse = useEnginePulse(held ? undefined : heardAt);
   const extra = liveWords === undefined || liveWords === "" ? "" : `, ${liveWords}`;
   const progress = running?.progress;
-  const label =
-    running !== undefined
+  const heldWords = queuedCount > 0 ? t("jobs.indicator.heldQueued", { count: queuedCount }) : t("jobs.indicator.held");
+  const label = held
+    ? heldWords
+    : running !== undefined
       ? `${t("jobs.indicator.label", { name: running.title, done: running.progress.done, total: running.progress.total })}${extra}`
       : t("jobs.indicator.labelQueued", { count: queuedCount });
-  const shown =
-    progress !== undefined
+  const shown = held
+    ? heldWords
+    : progress !== undefined
       ? t("jobs.indicator.running", { done: progress.done, total: progress.total })
       : t("jobs.indicator.queued", { count: queuedCount });
-  const spinner = (
+  const icon = held ? (
+    <PauseCircleOutlineRoundedIcon aria-hidden="true" fontSize="small" data-testid={`${testId}-held`} />
+  ) : (
     <Box
       component="span"
       aria-hidden="true"
@@ -84,22 +109,23 @@ function JobsIndicatorView({ running, queuedCount, link, compact, heardAt, liveW
       <Box role="status" data-testid={`${testId}-status`} sx={visuallyHidden}>
         {announcement}
       </Box>
-      {(running !== undefined || queuedCount > 0) &&
+      {(held || running !== undefined || queuedCount > 0) &&
         (compact ? (
           <IconAction label={label} link={link} testId={testId}>
-            {spinner}
+            {icon}
           </IconAction>
         ) : (
           <Button
             {...(linkProps(link) as Record<string, unknown>)}
             size="small"
             variant="text"
-            startIcon={spinner}
+            startIcon={icon}
+            data-held={held}
             data-testid={testId}
             sx={{ whiteSpace: "nowrap" }}
           >
             {shown}
-            {running !== undefined && (
+            {!held && running !== undefined && (
               <Box component="span" sx={visuallyHidden}>
                 {`, ${running.title}${extra}`}
               </Box>
