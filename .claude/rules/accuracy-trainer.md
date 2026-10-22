@@ -375,7 +375,8 @@ tags). Its Case is made with `display.writeEvals` off (S4) besides.
   (`createSessionCase`) and opens it.
 - **A PGN of several games** (CTA-259 — New case's way, CTA-208): only
   **indexed** (`indexPgnGames`, no move read — a file of thousands loads at
-  once), never listed in the form; the first game taken and **only the
+  once), never listed in the form; **the games picker opens at once** on
+  them, the first game taken until another is chosen, and **only the
   chosen game parsed**; the form names it ("Game 3 of 15,905: White –
   Black, Event, Date") with *Choose another game…*, which opens the games
   picker (`GamesPickerDialog`, `one` mode — the Library's games table,
