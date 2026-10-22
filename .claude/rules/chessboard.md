@@ -590,6 +590,8 @@ Everything every board has, and nothing any single board has:
 | `annotateTree` | `(edit: (tree) => tree) => void` | An edit that **keeps every node** (a comment, a tag) applied to the tree as it stands when it lands, with no step and without marking the board dirty — for a writer that is not a click, whose callback may be renders old (the engine's `[%eval]`, CTA-167). |
 | `dirty` / `markDirty` | | Whether this board is the reader's own work. |
 | `pgn` | `string` | `treeToPgn(tree)`, memoised on the tree. |
+| `lastPlayed` | `{ nodeId } \| null` | The last move **played** — a drop, the picker answered, `playVariation` — a new object per move, a replayed move already in the tree too (CTA-260, the move sounds). |
+| `loads` | `number` | How many times `loadTree` / `loadFen` / `reset` replaced the game — a step that comes with one is not a move (CTA-260). |
 
 ```ts
 useBoardCore({
@@ -849,6 +851,26 @@ arrows in `chess.arrowPalettes.classic.hovered` (standing in for a screen
 arrow on the same squares), and the screen's arrows are back as they were
 when the hover ends. Every board, Masked Pieces too (the true squares, never
 a name).
+
+**The move sounds live here** (CTA-260): the shell calls `useMoveSounds(core)`
+(`core/useMoveSounds.ts`), so every board composed from the core plays them
+and none opts in. **One move forward sounds**: the node on screen a child of
+the one before — a move played (the reader's, the engine's reply, the
+trainer's, a line clicked one move deep: `core.lastPlayed`) or a step through
+the game (→, a move clicked, `BoardControls`). A step back, a jump of several
+moves, the first render and a game loaded (`core.loads` moved) are silent.
+The kind is `lib/moveSounds.ts`'s (`moveSoundOf`: the game's end — a mate or
+a position with no move — then a promotion, a check, castling, a capture, a
+move); the reader's settings (Settings → Sounds, `lib/soundSettings.ts`) are
+read as the sound plays — off, nothing; `stepping` off, a step is silent and
+a move played still sounds. `lib/moveSoundPlayer.ts` plays them: an
+`<audio>` per kind from `public/sounds/` under `BASE_URL`, made once a board
+mounts (never at module load — the pre-render), a refused `play()` (the
+browser's autoplay rule) swallowed. In tests, `src/test/setup.ts` makes
+jsdom's `play` a no-op; `useMoveSounds.test.tsx` mocks the player and drives
+the core, and `boards.test.tsx` holds every board to playing one. The
+Blog's embedded boards (`DemoBoard`, `ExcerptBoard`) and the position editor
+are not composed from the core and are silent.
 
 ```
 BoardShell
