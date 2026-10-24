@@ -1,4 +1,4 @@
-**Chess training technique specification**
+# Chess training technique specification
 
 # **Piece Masking / Hidden Pieces**
 
