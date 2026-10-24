@@ -1,19 +1,19 @@
 **Chess training technique specification**
 
-# **Piece Masking / Hidden Pieces**
+## **Piece Masking / Hidden Pieces**
 
 *A precise definition of the visualization and working-memory exercise*
 
 | Core idea: The player sees where the pieces are, but the visual identity of some or all pieces is deliberately removed or disguised. The player must maintain the true piece identity internally while continuing to play normal chess. |
 | :---- |
 
-# **1\. Definition**
+## **1\. Definition**
 
 Piece Masking is a chess-training technique in which the board geometry and piece locations remain visible, but the visual information that identifies a piece type is suppressed or replaced. For example, queens, rooks, bishops, and knights may all be displayed using the same pawn graphic. The game itself remains an ordinary legal chess game: the underlying piece types, legal moves, captures, checks, promotions, and material values have not changed.
 
 The defining requirement is that the player must remember the hidden identity of each masked piece and use that internal representation to reason about the position and choose legal moves.
 
-# **2\. What the technique is \- and is not**
+## **2\. What the technique is \- and is not**
 
 | Technique | Description | Included? |
 | :---- | :---- | :---- |
@@ -23,9 +23,9 @@ The defining requirement is that the player must remember the hidden identity of
 | Woodpecker Method | Repeated solving of a set of chess puzzles to reinforce patterns. | NO |
 | Normal chess | All piece identities are visible and no information is deliberately removed. | BASELINE |
 
-# **3\. Exact training model**
+## **3\. Exact training model**
 
-## **3.1 Visible information**
+### **3.1 Visible information**
 
 The training interface should normally preserve:
 
@@ -35,7 +35,7 @@ The training interface should normally preserve:
 * Visual information needed to see that a square is occupied.  
 * Optional legal move highlighting, clocks, and other ordinary game UI elements, depending on the training mode.
 
-## **3.2 Hidden information**
+### **3.2 Hidden information**
 
 The following information is deliberately removed from the visual representation for masked pieces:
 
@@ -43,7 +43,7 @@ The following information is deliberately removed from the visual representation
 * Any visual cue that makes the hidden type trivially recognizable, such as piece silhouette, notation glyph, or distinctive color/shape.  
 * Optional derived information such as the piece symbol in move history, when the goal is strict identity masking.
 
-## **3.3 Preserved internal state**
+### **3.3 Preserved internal state**
 
 The software must retain the real chess state even when the user interface does not reveal it. For every piece, the hidden state includes at least:
 
@@ -53,7 +53,7 @@ The software must retain the real chess state even when the user interface does 
 * Whether the piece is still present in the game.  
 * All ordinary chess state required for legal move generation (castling rights, en-passant state, promotion state, and move sequence where applicable).
 
-# **4\. Canonical exercise**
+## **4\. Canonical exercise**
 
 A canonical implementation of the technique can be defined as follows:
 
@@ -65,7 +65,7 @@ A canonical implementation of the technique can be defined as follows:
 6. The exercise continues until the game ends, the training session is stopped, or the chosen reveal condition is triggered.  
 7. At the end, the software may reveal the true position and optionally provide mistakes or identity-recall feedback.
 
-# **5\. The central cognitive task**
+## **5\. The central cognitive task**
 
 The exercise is not primarily about memorizing a static picture. It requires maintaining an evolving internal mapping:
 
@@ -73,7 +73,7 @@ The exercise is not primarily about memorizing a static picture. It requires mai
 
 After every move, the player must update that mapping. When a masked piece moves, is captured, promotes, or participates in castling, the internal representation must remain synchronized with the board.
 
-# **6\. Example**
+## **6\. Example**
 
 Suppose the actual position contains:
 
@@ -86,7 +86,7 @@ Suppose the actual position contains:
 
 To the player, g5, e7, and d8 visually appear to contain pawns. The player nevertheless must know that the pieces on those squares have bishop, knight, and queen movement, respectively. A move that would be legal for a pawn but illegal for the actual piece must not become legal merely because the piece is displayed as a pawn.
 
-# **7\. Important implementation rule: rendering must not change chess semantics**
+## **7\. Important implementation rule: rendering must not change chess semantics**
 
 Masking is a presentation-layer transformation, not a rules transformation. Internally, the chess engine must continue to operate on the true piece types.
 
@@ -98,7 +98,7 @@ Masking is a presentation-layer transformation, not a rules transformation. Inte
 * A masked piece can be captured according to its real identity and square occupancy.  
 * Notation, PGN, engine analysis, and game legality should use the true underlying position.
 
-# **8\. Variants**
+## **8\. Variants**
 
 | Variant | Mechanism | Difficulty |
 | :---- | :---- | :---- |
@@ -110,7 +110,7 @@ Masking is a presentation-layer transformation, not a rules transformation. Inte
 | Temporary masking | Mask pieces for a period, then reveal them for verification. | Adaptive |
 | Random masking | Randomly choose which pieces are masked at the start of a game or phase. | Adaptive |
 
-# **9\. Reveal and feedback modes**
+## **9\. Reveal and feedback modes**
 
 A software implementation can vary when the real identities become visible. These are different training modes, not different definitions of the technique:
 
@@ -121,7 +121,7 @@ A software implementation can vary when the real identities become visible. Thes
 * End of game: the entire true position is revealed only after the session.  
 * Timed reveal: pieces become visible for a short verification interval.
 
-# **10\. Difficulty progression**
+## **10\. Difficulty progression**
 
 | Level | Masking | Typical goal | Main demand |
 | :---- | :---- | :---- | :---- |
@@ -131,7 +131,7 @@ A software implementation can vary when the real identities become visible. Thes
 | 4 | All pieces except pawns or complete identity masking | Longer games | Strong working-memory load |
 | 5 | Full masking with little/no external assistance | Sustained play | Near-blindfold-style internal representation |
 
-# **11\. Recommended product terminology**
+## **11\. Recommended product terminology**
 
 There does not appear to be a universally standardized historical name for this exact exercise. For software, the following terminology is clear and avoids incorrectly presenting it as a formally named historical method.
 
@@ -144,14 +144,14 @@ There does not appear to be a universally standardized historical name for this 
 | Blindfold Chess | Avoid as the primary name | Related concept, but technically broader and different. |
 | Woodpecker Method | Do not use | Refers to puzzle repetition, not this exercise. |
 
-# **12\. Suggested software specification**
+## **12\. Suggested software specification**
 
 A concise product requirement for the feature could read:
 
 | “Piece Masking is a visualization and working-memory training mode in which the application renders selected chess pieces with a neutral or identical appearance while preserving their true identities internally. The user plays legal chess against a human or engine using the hidden piece identities. The UI must not expose the masked piece type except through the configured reveal mechanism. All chess rules, move generation, notation, game state, and analysis remain based on the underlying true position.” |
 | :---- |
 
-# **13\. Design principles**
+## **13\. Design principles**
 
 * Do not turn the exercise into a different chess variant; the rules remain standard chess.  
 * Do not provide accidental identity cues through piece silhouette, color, animation, notation, move hints, or engine overlays unless the mode explicitly permits them.  
@@ -159,12 +159,12 @@ A concise product requirement for the feature could read:
 * Let difficulty be controlled by the amount and duration of masking rather than by changing chess rules.  
 * Treat revealing a piece as a training aid or event, not as a change to the underlying position.
 
-# **14\. Terminology note**
+## **14\. Terminology note**
 
 **Historical terminology:** Older Soviet/Russian chess literature discusses chess memory, operational memory, spatial imagination, and exercises that deliberately reduce reliance on visual recognition. However, the exact practice of replacing the visual representations of pieces with pawns does not appear to have a single universally established name in the sources reviewed for this specification. “Piece Masking” is therefore used here as a precise descriptive product term, not as a claim about an official historical method name.
 ---
 
-# **15\. Implementation in this app (CTA-15, rebuilt in CTA-79)**
+## **15\. Implementation in this app (CTA-15, rebuilt in CTA-79)**
 
 This section is not part of the specification above. It records how the
 technique is built in `chessapp-analyze-v1`: the four design decisions
@@ -174,7 +174,7 @@ what the rebuild onto Play with Engine's v2 screen changed (CTA-79,
 reaches, the stored record, the invariants, tests and recipes — is
 [`.claude/rules/masked-pieces.md`](../.claude/rules/masked-pieces.md).
 
-## **15.1 Where it lives**
+### **15.1 Where it lives**
 
 | Piece | File |
 | :---- | :---- |
@@ -189,7 +189,7 @@ PGN path knows the feature exists — §7 and §13 turned into an arrangement of
 files. The mask is read at render time on the board (`options.pieces`, the
 captured strips, the material diff) and in the notation, and nowhere else.
 
-## **15.2 Decision 1 — mask by piece type, not by individual piece**
+### **15.2 Decision 1 — mask by piece type, not by individual piece**
 
 A `PieceMask` is a twelve-entry map from a true type (`wK` … `bP`) to the type
 drawn in its place, so each colour is masked independently and "mask only
@@ -207,7 +207,7 @@ A mask entry is expected to point at a piece of the **same colour**: colour is
 visible information (§3.1) and only the type is hidden (§3.2). The editor offers
 nothing else.
 
-## **15.3 Decision 2 — notation masking, a setting, on by default**
+### **15.3 Decision 2 — notation masking, a setting, on by default**
 
 SAN names the piece that moved, and the move list sits directly beside the
 board, so `Nf3` hands back the identity the board is busy hiding (§3.2's
@@ -231,7 +231,7 @@ to look at, so `e4` in the move list is the one thing that would say which of
 them really was one. Under *Non-pawns only* the king is the opposite case:
 nothing else is drawn as a king, so `Kf1` gives nothing away and stays SAN.
 
-## **15.4 Decision 3 — share the screen, add a costume**
+### **15.4 Decision 3 — share the screen, add a costume**
 
 CTA-15 reused the play hook (`usePlayWithEngine`) **verbatim** with its own
 panel, and lifted the eval bar + board + promotion-picker square into
@@ -263,13 +263,13 @@ choice of what to promote to, so four identical pawns there would hide a
 decision they are in the middle of making rather than one they are meant to
 remember. The piece it produces is drawn masked from the next render on.
 
-## **15.5 Decision 4 — the tab is called "Masking"**
+### **15.5 Decision 4 — the tab is called "Masking"**
 
 "Editor" is already taken by the position editor (the Lobby's Board editor
 tab), which edits *positions*; this tab edits *appearance*. It is the fourth tab after Play with Engine's Moves · Map ·
 Engine.
 
-## **15.6 The presets that ship**
+### **15.6 The presets that ship**
 
 Three rows of the variants table (§8), weakest first:
 
@@ -282,7 +282,7 @@ Three rows of the variants table (§8), weakest first:
 The twelve per-type controls sit under them, so any *Selected types* mask is one
 edit away.
 
-## **15.7 Deliberately not built yet**
+### **15.7 Deliberately not built yet**
 
 The reveal and feedback modes (§9), and progressive / temporary / random masking
 and the difficulty ladder (§8, §10). All of them build on this same `PieceMask`
