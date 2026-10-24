@@ -162,6 +162,7 @@ A concise product requirement for the feature could read:
 # **14\. Terminology note**
 
 **Historical terminology:** Older Soviet/Russian chess literature discusses chess memory, operational memory, spatial imagination, and exercises that deliberately reduce reliance on visual recognition. However, the exact practice of replacing the visual representations of pieces with pawns does not appear to have a single universally established name in the sources reviewed for this specification. “Piece Masking” is therefore used here as a precise descriptive product term, not as a claim about an official historical method name.
+
 ---
 
 # **15\. Implementation in this app (CTA-15, rebuilt in CTA-79)**
